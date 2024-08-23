@@ -1,11 +1,23 @@
+// src/components/Home.js
+
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import TransactionList from "./TransactionList";
-import TransactionForm from "./TransactionForm"; // Importa il componente corretto
+import TransactionForm from "./TransactionForm";
+import Statistics from "./Statistics";
 import { useAuth } from "./AuthProvider";
 import { firestore } from "../firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-import Chart from "react-apexcharts";
+import {
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  startOfDay,
+  endOfDay,
+} from "date-fns";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import "./Home.css";
 
 const Home = () => {
@@ -16,23 +28,30 @@ const Home = () => {
     totalExpense: 0,
     balance: 0,
   });
+  const [viewMode, setViewMode] = useState("monthly");
 
   useEffect(() => {
     if (currentUser) {
       const fetchTransactions = async () => {
+        let startDate, endDate;
         const today = new Date();
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const endOfMonth = new Date(
-          today.getFullYear(),
-          today.getMonth() + 1,
-          0
-        );
+
+        if (viewMode === "monthly") {
+          startDate = startOfMonth(today);
+          endDate = endOfMonth(today);
+        } else if (viewMode === "weekly") {
+          startDate = startOfWeek(today);
+          endDate = endOfWeek(today);
+        } else if (viewMode === "daily") {
+          startDate = startOfDay(today);
+          endDate = endOfDay(today);
+        }
 
         const q = query(
           collection(firestore, "transactions"),
           where("userId", "==", currentUser.uid),
-          where("date", ">=", startOfMonth),
-          where("date", "<=", endOfMonth)
+          where("date", ">=", startDate),
+          where("date", "<=", endDate)
         );
 
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -49,7 +68,7 @@ const Home = () => {
 
       fetchTransactions();
     }
-  }, [currentUser]);
+  }, [currentUser, viewMode]);
 
   const calculateStats = (transactions) => {
     let totalIncome = 0;
@@ -90,6 +109,58 @@ const Home = () => {
 
   const series = [stats.totalIncome, stats.totalExpense];
 
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+  };
+
+  const generatePDF = () => {
+    const today = new Date();
+    const formattedDate = today.toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
+
+    const reportType =
+      viewMode === "daily"
+        ? "giornaliero"
+        : viewMode === "weekly"
+        ? "settimanale"
+        : viewMode === "monthly"
+        ? "mensile"
+        : "annuale";
+
+    const userName = currentUser.displayName
+      ? currentUser.displayName.replace(/\s+/g, "-")
+      : "nomeutente";
+
+    const fileName = `[${formattedDate}]report-${reportType}-${userName}-soldisotto.pdf`;
+
+    const doc = new jsPDF();
+    doc.text("Statistiche Finanziarie", 14, 16);
+
+    const statsTable = transactions.map((tx) => [
+      tx.date.toDate().toLocaleDateString(),
+      tx.description,
+      tx.amount.toFixed(2),
+      tx.type === "income" ? "Entrata" : "Uscita",
+      tx.place || "-",
+      tx.paymentMethod || "-",
+    ]);
+
+    doc.autoTable({
+      head: [
+        [
+          "Data",
+          "Descrizione",
+          "Importo",
+          "Tipo",
+          "Luogo",
+          "Metodo di Pagamento",
+        ],
+      ],
+      body: statsTable,
+    });
+
+    doc.save(fileName);
+  };
+
   return (
     <div className="home-container">
       <header className="home-header">
@@ -103,49 +174,18 @@ const Home = () => {
         <p>Gestisci le tue finanze in modo semplice e veloce.</p>
       </header>
       {currentUser && (
-        <div className="home-stats">
-          <h2>Statistiche Mensili</h2>
-          <div className="stats-container">
-            <motion.div
-              className="stat-item"
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <h3>Entrate Totali</h3>
-              <p>{stats.totalIncome.toFixed(2)} €</p>
-            </motion.div>
-            <motion.div
-              className="stat-item"
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <h3>Uscite Totali</h3>
-              <p>{stats.totalExpense.toFixed(2)} €</p>
-            </motion.div>
-            <motion.div
-              className="stat-item"
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <h3>Saldo</h3>
-              <p>{stats.balance.toFixed(2)} €</p>
-            </motion.div>
-          </div>
-          <motion.div
-            className="chart-container"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Chart options={options} series={series} type="pie" width="400" />
-          </motion.div>
-          <TransactionForm /> {/* Usa il componente combinato */}
+        <div className="home-content">
+          <TransactionForm />
           <div className="transaction-list-container">
             <TransactionList />
           </div>
+          <Statistics
+            stats={stats}
+            options={options}
+            series={series}
+            handleViewModeChange={handleViewModeChange}
+            generatePDF={generatePDF}
+          />
         </div>
       )}
     </div>
