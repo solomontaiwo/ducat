@@ -1,10 +1,16 @@
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import Navbar from "../Navbar/Navbar";
 import BottomNavigation from "./BottomNavigation";
+import TransactionModal from "../Transaction/TransactionModal";
 import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
+import { FiPlus } from "react-icons/fi";
+
+// Must match the minHeight set in BottomNavigation
+const BOTTOM_NAV_HEIGHT_PX = 70;
 
 const AppLayout = ({ children }) => {
   AppLayout.propTypes = {
@@ -13,8 +19,9 @@ const AppLayout = ({ children }) => {
 
   const location = useLocation();
   const { currentUser } = useAuth();
-  const { isDemo } = useUnifiedTransactions();
+  const { isDemo, canAddMoreTransactions } = useUnifiedTransactions();
   const isMobile = useMediaQuery({ maxWidth: 768 });
+  const [showFabModal, setShowFabModal] = useState(false);
 
   // Define public routes where navigation is not shown
   const publicRoutes = ["/", "/login", "/register"];
@@ -40,6 +47,28 @@ const AppLayout = ({ children }) => {
       </main>
 
       {showNavigation && isMobile && <BottomNavigation />}
+
+      {showNavigation && (
+        <>
+          <button
+            onClick={() => setShowFabModal(true)}
+            disabled={isDemo && !canAddMoreTransactions}
+            aria-label="Add transaction"
+            style={
+              isMobile
+                ? { bottom: `calc(${BOTTOM_NAV_HEIGHT_PX}px + env(safe-area-inset-bottom) + 1rem)`, right: "1rem" }
+                : { bottom: "1.5rem", right: "1.5rem" }
+            }
+            className="fixed z-50 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl h-14 w-14 transition-all duration-200 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FiPlus className="h-6 w-6" />
+          </button>
+          <TransactionModal
+            show={showFabModal}
+            onClose={() => setShowFabModal(false)}
+          />
+        </>
+      )}
     </div>
   );
 };
