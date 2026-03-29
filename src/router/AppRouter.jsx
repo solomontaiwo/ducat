@@ -67,7 +67,7 @@ const pageVariants = {
 const pageTransition = {
   type: "tween",
   ease: [0.22, 1, 0.36, 1],
-  duration: 0.45
+  duration: 0.35
 };
 
 const AppRouter = () => {
