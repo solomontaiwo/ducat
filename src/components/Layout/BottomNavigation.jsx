@@ -29,7 +29,7 @@ const BottomNavigation = ({ navVisible }) => {
     { key: "/transactions", icon: <FiList size={20} />, label: t("navbar.transactions"), path: "/transactions", badge: isDemo ? `${transactions.length}/${maxTransactions}` : null },
     { key: "/analytics", icon: <FiBarChart size={20} />, label: t("navbar.analytics"), path: "/analytics" },
     { key: "/goals", icon: <FiTarget size={20} />, label: t("navbar.goals"), path: "/goals" },
-    ...(isDemo ? [{ key: "/insights", icon: <FiPieChart size={20} />, label: t("navbar.insights"), path: "/insights" }] : []),
+    { key: "/insights", icon: <FiPieChart size={20} />, label: t("navbar.insights"), path: "/insights" },
     ...(currentUser
       ? [{ key: "/profile", icon: <FiUser size={20} />, label: t("navbar.profile"), path: "/profile" }]
       : [
@@ -53,14 +53,17 @@ const BottomNavigation = ({ navVisible }) => {
       }`}
       style={{ minHeight: `${BOTTOM_NAV_HEIGHT_PX}px` }}
     >
-      <div className="mx-auto grid max-w-5xl grid-cols-5 items-center px-2" style={{ height: `${BOTTOM_NAV_HEIGHT_PX}px` }}>
+      <div
+        className="mx-auto grid max-w-5xl items-center px-2"
+        style={{ height: `${BOTTOM_NAV_HEIGHT_PX}px`, gridTemplateColumns: `repeat(${navigationItems.length}, minmax(0, 1fr))` }}
+      >
         {navigationItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <button
               key={item.key}
               onClick={() => handleNavigation(item)}
-              className={`relative flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition ${
+              className={`relative flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
