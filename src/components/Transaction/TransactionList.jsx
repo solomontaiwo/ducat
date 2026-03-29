@@ -10,7 +10,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "../ui/dialog";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import { useDrag } from "@use-gesture/react";
 import { format, isToday, isYesterday } from "date-fns";
 import { it, enUS } from "date-fns/locale";
 import { useMediaQuery } from "react-responsive";
@@ -26,6 +27,113 @@ import { Select } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { useDateRange } from "../../hooks/useDateRange.jsx";
 import { useTransactionFilter } from "../../hooks/useTransactionFilter.jsx";
+import PropTypes from "prop-types";
+
+const SWIPE_DELETE_THRESHOLD = 80;
+const SWIPE_VELOCITY_THRESHOLD = 0.5;
+const SNAP_ANIMATION = { type: "spring", stiffness: 500, damping: 40 };
+
+const SwipeableTransactionCard = ({ transaction, onEdit, onDelete, language, getCategoryLabel }) => {
+  const x = useMotionValue(0);
+  const deleteOpacity = useTransform(x, [-SWIPE_DELETE_THRESHOLD, -20], [1, 0]);
+
+  const bind = useDrag(
+    ({ down, movement: [mx], velocity: [vx], direction: [dx] }) => {
+      if (down) {
+        x.set(Math.min(0, mx));
+      } else {
+        if (mx < -SWIPE_DELETE_THRESHOLD || (vx > SWIPE_VELOCITY_THRESHOLD && dx < 0)) {
+          onDelete(transaction.id);
+        }
+        animate(x, 0, SNAP_ANIMATION);
+      }
+    },
+    { axis: "x", filterTaps: true }
+  );
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl">
+      <motion.div
+        style={{ opacity: deleteOpacity }}
+        className="absolute inset-y-0 right-0 flex items-center bg-destructive px-5 rounded-r-2xl"
+        aria-hidden="true"
+      >
+        <FiTrash2 className="h-5 w-5 text-white" />
+      </motion.div>
+      <motion.div
+        style={{ x }}
+        {...bind()}
+        className="relative z-10 flex items-center justify-between rounded-2xl border border-border bg-card/80 p-4 shadow-sm touch-pan-y"
+      >
+        <div className="flex items-start gap-3">
+          <div className="space-y-1">
+            <div className="text-base font-semibold leading-tight">{transaction.description}</div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>
+                {format(transaction.date, language === "it" ? "dd MMM yyyy" : "MMM dd, yyyy", {
+                  locale: language === "it" ? it : enUS,
+                })}
+              </span>
+              <span>•</span>
+              <span>{getCategoryLabel(transaction.category)}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div
+            className={`text-base font-bold ${
+              transaction.type === "income" ? "text-emerald-600" : "text-rose-600"
+            }`}
+          >
+            {transaction.type === "income" ? "+" : "-"}
+            {formatCurrency(transaction.amount)}
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 w-9 p-0"
+              aria-label="Edit transaction"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(transaction);
+              }}
+            >
+              <FiEdit2 className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 w-9 p-0 text-destructive hover:text-destructive"
+              aria-label="Delete transaction"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(transaction.id);
+              }}
+            >
+              <FiTrash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+SwipeableTransactionCard.propTypes = {
+  transaction: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
+    date: PropTypes.instanceOf(Date).isRequired,
+    category: PropTypes.string.isRequired,
+    type: PropTypes.oneOf(["income", "expense"]).isRequired,
+    amount: PropTypes.number.isRequired,
+  }).isRequired,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  language: PropTypes.string.isRequired,
+  getCategoryLabel: PropTypes.func.isRequired,
+};
 
 const TransactionList = () => {
   const { currentUser, loading: authLoading } = useAuth();
@@ -377,55 +485,14 @@ const TransactionList = () => {
                     key={transaction.id}
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center justify-between rounded-2xl border border-border bg-card/80 p-4 shadow-sm"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="space-y-1">
-                        <div className="text-base font-semibold leading-tight">{transaction.description}</div>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span>
-                            {format(transaction.date, i18n.language === "it" ? "dd MMM yyyy" : "MMM dd, yyyy", { locale: getDateLocale(i18n.language) })}
-                          </span>
-                          <span>•</span>
-                          <span>{getCategoryLabel(transaction.category)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`text-base font-bold ${
-                          transaction.type === "income" ? "text-emerald-600"
-                            : "text-rose-600"
-                        }`}
-                      >
-                        {transaction.type === "income" ? "+" : "-"}
-                        {formatCurrency(transaction.amount)}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-9 w-9 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditTransaction(transaction);
-                          }}
-                        >
-                          <FiEdit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-9 w-9 p-0 text-destructive hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(transaction.id);
-                          }}
-                        >
-                          <FiTrash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
+                    <SwipeableTransactionCard
+                      transaction={transaction}
+                      onEdit={setEditTransaction}
+                      onDelete={handleDeleteClick}
+                      language={i18n.language}
+                      getCategoryLabel={getCategoryLabel}
+                    />
                   </motion.div>
                 ))}
               </div>
