@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useLayoutEffect, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 
 // Creazione del contesto per il tema
@@ -14,7 +14,7 @@ const setCSSVariables = (isDark) => {
   document.body.classList.toggle("dark", isDark);
   document.documentElement.classList.toggle("light", !isDark);
   document.body.classList.toggle("light", !isDark);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", isDark ? "#0f172a" : "#f8fafc");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", isDark ? "#080c16" : "#f9f9fb");
 };
 
 // Componente principale per il tema
@@ -57,8 +57,8 @@ export const ThemeProvider = ({ children }) => {
     return theme;
   };
 
-  useEffect(() => {
-    // Applica il tema iniziale
+  useLayoutEffect(() => {
+    // Applica il tema iniziale prima del paint per evitare flash
     applyTheme(theme);
 
     // Ascolta i cambiamenti delle preferenze di sistema
