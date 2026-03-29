@@ -5,15 +5,13 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import TransactionModal from "../Transaction/TransactionModal.jsx";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { FiBarChart2, FiList, FiPlus, FiPieChart, FiTarget, FiTrendingUp } from "react-icons/fi";
+import { FiBarChart2, FiList, FiPlus, FiTrendingUp } from "react-icons/fi";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import RecentTransactions from "./RecentTransactions";
 import formatCurrency from "../../utils/formatCurrency.jsx";
 import { calculateStats, getPeriodRange } from "../../utils/statsUtils.jsx";
 import { useBudget } from "../../hooks/useBudgets.jsx";
-import { useGoal } from "../../hooks/useGoals.jsx";
-import { InsightsService } from "../../services/insightsService.jsx";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
@@ -31,8 +29,7 @@ const Dashboard = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [dashboardData, setDashboardData] = useState([]);
   const { t } = useTranslation();
-  const { budgets, getBudgetStatus } = useBudget();
-  const { goals } = useGoal();
+  const { getBudgetStatus } = useBudget();
 
   useEffect(() => {
     const load = async () => {
@@ -100,13 +97,6 @@ const Dashboard = () => {
         icon: <FiBarChart2 />,
         action: () => navigate("/analytics"),
       },
-      {
-        key: "view-insights",
-        title: t("navbar.insights"),
-        subtitle: t("insights.subtitle"),
-        icon: <FiPieChart />,
-        action: () => navigate("/insights"),
-      },
     ],
     [isDemo, canAddMoreTransactions, navigate, t]
   );
@@ -115,11 +105,6 @@ const Dashboard = () => {
   const topBudgetAlert = useMemo(
     () => budgetStatus.sort((a, b) => b.percentage - a.percentage)[0],
     [budgetStatus]
-  );
-  const topGoal = useMemo(() => goals[0], [goals]);
-  const topInsight = useMemo(
-    () => InsightsService.generate({ transactions: dashboardData, budgets, goals })[0],
-    [dashboardData, budgets, goals]
   );
 
   return (
@@ -134,7 +119,7 @@ const Dashboard = () => {
         </div>
         <div className="flex flex-wrap gap-2 md:gap-3">
           <Button variant="outline" size="lg" onClick={() => navigate("/analytics")} className="gap-2 px-4">
-            <FiPieChart className="h-4 w-4" />
+            <FiBarChart2 className="h-4 w-4" />
             {t("navbar.analytics")}
           </Button>
           <Button size="lg" onClick={() => setShowQuickAdd(true)} disabled={isDemo && !canAddMoreTransactions} className="gap-2 px-4">
@@ -247,7 +232,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-1">
         <Card className="glass">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -269,55 +254,6 @@ const Dashboard = () => {
             )}
             <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/budgets")}>
               {t("budgets.manage")}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="glass">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FiTarget /> {t("goals.title")}
-            </CardTitle>
-            <CardDescription>{t("goals.subtitle")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {topGoal ? (
-              <>
-                <p className="text-sm">{topGoal.name}</p>
-                <p className="text-2xl font-bold">
-                  {Math.round((topGoal.currentAmount / topGoal.targetAmount) * 100 || 0)}%
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(topGoal.currentAmount)} / {formatCurrency(topGoal.targetAmount)}
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("goals.empty")}</p>
-            )}
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/goals")}>
-              {t("goals.manage")}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="glass">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FiPieChart /> {t("insights.title")}
-            </CardTitle>
-            <CardDescription>{t("insights.subtitle")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {topInsight ? (
-              <>
-                <p className="text-sm font-medium">{topInsight.title}</p>
-                <p className="text-xs text-muted-foreground">{topInsight.description}</p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("insights.empty")}</p>
-            )}
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/insights")}>
-              {t("insights.open")}
             </Button>
           </CardContent>
         </Card>

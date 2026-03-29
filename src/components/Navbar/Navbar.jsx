@@ -3,7 +3,7 @@ import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import { useMediaQuery } from "react-responsive";
 import { motion } from "framer-motion";
-import { FiBarChart, FiHome, FiList, FiLogOut, FiPieChart, FiTarget, FiTrendingUp, FiZap } from "react-icons/fi";
+import { FiBarChart, FiHome, FiList, FiLogOut, FiTrendingUp, FiZap } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -32,8 +32,6 @@ const Navbar = () => {
     { label: t("navbar.dashboard"), path: "/dashboard", icon: <FiHome /> },
     { label: t("navbar.transactions"), path: "/transactions", icon: <FiList /> },
     { label: t("navbar.analytics"), path: "/analytics", icon: <FiBarChart /> },
-    { label: t("navbar.insights"), path: "/insights", icon: <FiPieChart /> },
-    { label: t("navbar.goals"), path: "/goals", icon: <FiTarget /> },
     { label: t("navbar.cashflow"), path: "/cashflow", icon: <FiTrendingUp /> },
   ];
 

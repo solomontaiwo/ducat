@@ -12,8 +12,6 @@ const Analytics = lazy(() => import("../components/Analytics/TransactionAnalytic
 const Stats = lazy(() => import("../components/Stats/Stats"));
 const Profile = lazy(() => import("../components/Profile/Profile"));
 const BudgetList = lazy(() => import("../components/Budgets/BudgetList"));
-const GoalList = lazy(() => import("../components/Goals/GoalList"));
-const InsightsFeed = lazy(() => import("../components/Insights/InsightsFeed"));
 const CashflowTimeline = lazy(() => import("../components/Cashflow/CashflowTimeline"));
 const Home = lazy(() => import("../components/Home/Home"));
 const LandingPage = lazy(() => import("../components/Home/LandingPage"));
@@ -50,9 +48,9 @@ const PublicRoute = ({ children }) => {
 // Page transition variants
 const pageVariants = {
   initial: {
-    opacity: 1,
-    y: 10, // Reduced movement for subtler effect
-    scale: 0.99 // Very subtle zoom in
+    opacity: 0,
+    y: 8,
+    scale: 0.995
   },
   in: {
     opacity: 1,
@@ -61,15 +59,15 @@ const pageVariants = {
   },
   out: {
     opacity: 0,
-    y: -10, // Reduced movement
-    scale: 0.99
+    y: -8,
+    scale: 0.995
   }
 };
 
 const pageTransition = {
   type: "tween",
-  ease: "anticipate",
-  duration: 0.3
+  ease: [0.22, 1, 0.36, 1],
+  duration: 0.45
 };
 
 const AppRouter = () => {
@@ -93,8 +91,6 @@ const AppRouter = () => {
     { path: "/stats", element: <Stats /> },
     { path: "/profile", element: <Profile /> },
     { path: "/budgets", element: <BudgetList /> },
-    { path: "/goals", element: <GoalList /> },
-    { path: "/insights", element: <InsightsFeed /> },
     { path: "/cashflow", element: <CashflowTimeline /> },
     { path: "/landing", element: <LandingPage /> },
     { path: "*", element: <Navigate to="/" replace /> },
