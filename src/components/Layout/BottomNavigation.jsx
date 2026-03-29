@@ -15,7 +15,7 @@ import { Badge } from "../ui/badge";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 
-export const BOTTOM_NAV_HEIGHT_PX = 70;
+export const BOTTOM_NAV_HEIGHT_PX = 78;
 
 const BottomNavigation = ({ navVisible }) => {
   const location = useLocation();
@@ -28,8 +28,8 @@ const BottomNavigation = ({ navVisible }) => {
     { key: "/dashboard", icon: <FiHome size={20} />, label: t("navbar.dashboard"), path: "/dashboard" },
     { key: "/transactions", icon: <FiList size={20} />, label: t("navbar.transactions"), path: "/transactions", badge: isDemo ? `${transactions.length}/${maxTransactions}` : null },
     { key: "/analytics", icon: <FiBarChart size={20} />, label: t("navbar.analytics"), path: "/analytics" },
-    { key: "/insights", icon: <FiPieChart size={20} />, label: t("navbar.insights"), path: "/insights" },
     { key: "/goals", icon: <FiTarget size={20} />, label: t("navbar.goals"), path: "/goals" },
+    ...(isDemo ? [{ key: "/insights", icon: <FiPieChart size={20} />, label: t("navbar.insights"), path: "/insights" }] : []),
     ...(currentUser
       ? [{ key: "/profile", icon: <FiUser size={20} />, label: t("navbar.profile"), path: "/profile" }]
       : [
@@ -48,30 +48,32 @@ const BottomNavigation = ({ navVisible }) => {
 
   return (
     <div
-      className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${
+      className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border/80 bg-background/95 shadow-[0_-8px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${
         navVisible ? "translate-y-0" : "translate-y-full"
       }`}
       style={{ minHeight: `${BOTTOM_NAV_HEIGHT_PX}px` }}
     >
-      <div className="mx-auto flex max-w-5xl items-center justify-around px-4" style={{ height: `${BOTTOM_NAV_HEIGHT_PX}px` }}>
+      <div className="mx-auto grid max-w-5xl grid-cols-5 items-center px-2" style={{ height: `${BOTTOM_NAV_HEIGHT_PX}px` }}>
         {navigationItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <button
               key={item.key}
               onClick={() => handleNavigation(item)}
-              className={`relative flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+              className={`relative flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                  isActive ? "bg-primary/15 text-primary shadow-sm" : "bg-muted text-foreground"
+                className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                  isActive
+                    ? "bg-gradient-to-br from-primary/20 to-primary/10 text-primary shadow-[0_6px_16px_rgba(37,99,235,0.25)]"
+                    : "bg-muted/80 text-foreground"
                 }`}
               >
                 {item.icon}
               </div>
-              <span className="text-[11px]">{item.label}</span>
+              <span className="max-w-[58px] truncate leading-none">{item.label}</span>
               {item.badge && (
                 <Badge variant="secondary" className="absolute -top-1 -right-2">
                   {item.badge}
