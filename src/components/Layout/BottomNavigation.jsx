@@ -5,6 +5,7 @@ import {
   FiHome,
   FiList,
   FiBarChart,
+  FiTrendingUp,
   FiUser,
   FiLogIn,
   FiUserPlus,
@@ -26,6 +27,7 @@ const BottomNavigation = ({ navVisible }) => {
     { key: "/dashboard", icon: <FiHome size={20} />, label: t("navbar.dashboard"), path: "/dashboard" },
     { key: "/transactions", icon: <FiList size={20} />, label: t("navbar.transactions"), path: "/transactions", badge: isDemo ? `${transactions.length}/${maxTransactions}` : null },
     { key: "/analytics", icon: <FiBarChart size={20} />, label: t("navbar.analytics"), path: "/analytics" },
+    { key: "/cashflow", icon: <FiTrendingUp size={20} />, label: t("navbar.cashflow"), path: "/cashflow" },
     ...(currentUser
       ? [{ key: "/profile", icon: <FiUser size={20} />, label: t("navbar.profile"), path: "/profile" }]
       : [
