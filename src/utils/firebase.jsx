@@ -11,6 +11,14 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+if (!firebaseConfig.apiKey) {
+  throw new Error(
+    "[firebase] VITE_FIREBASE_API_KEY is missing. " +
+      "For local dev, create a .env file based on .env.example. " +
+      "For CI/CD, add the VITE_FIREBASE_* values as GitHub repository secrets."
+  );
+}
+
 // Inizializza Firebase
 const app = initializeApp(firebaseConfig);
 
