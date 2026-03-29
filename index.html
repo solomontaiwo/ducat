@@ -38,9 +38,8 @@
         const savedTheme = localStorage.getItem("theme") || "system";
         const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         const isDarkMode = savedTheme === "dark" || (savedTheme === "system" && systemPrefersDark);
-        document.documentElement.classList.toggle("dark-theme", isDarkMode);
-        document.documentElement.classList.toggle("light-theme", !isDarkMode);
-        document.querySelector('meta[name="theme-color"]').setAttribute("content", isDarkMode ? "#1f1f1f" : "#f0f0f0");
+        document.documentElement.classList.toggle("dark", isDarkMode);
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", isDarkMode ? "#0f172a" : "#f8fafc");
         const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
         if (statusBarMeta) {
           statusBarMeta.setAttribute("content", isDarkMode ? "black" : "default");
@@ -53,38 +52,31 @@
   </script>
 
   <style>
-    /* Tema scuro di default */
+    /* Pre-React background matching Tailwind's --background values to prevent flash */
     :root {
-      --background-color: #1f1f1f;
-      --text-color: #e0e0e0;
-      --primary-color: #1a73e8;
+      background-color: #f8fafc; /* hsl(210 40% 98%) - light theme */
     }
 
-    /* Tema chiaro */
-    .light-theme {
-      --background-color: #f0f0f0;
-      --text-color: #333333;
-      --primary-color: #007bff;
+    .dark {
+      background-color: #0d1117; /* hsl(210 29% 7%) - dark theme */
     }
 
     body {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      background-color: var(--background-color);
-      color: var(--text-color);
-      transition: background-color 0.3s ease, color 0.3s ease;
+      background-color: inherit;
     }
   </style>
+
+  <!-- Design System -->
+  <link rel="stylesheet" href="src/styles/design-system.css" />
 </head>
 
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>
   <div id="root"></div>
 
-  <!-- Design System -->
-  <link rel="stylesheet" href="src/styles/design-system.css" />
-  
   <!-- Google Fonts - Inter for modern typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
