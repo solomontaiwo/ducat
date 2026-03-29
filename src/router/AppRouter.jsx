@@ -48,7 +48,7 @@ const PublicRoute = ({ children }) => {
 // Page transition variants
 const pageVariants = {
   initial: {
-    opacity: 0,
+    opacity: 0.96,
     y: 8,
     scale: 0.995
   },
