@@ -29,7 +29,7 @@ const Dashboard = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [dashboardData, setDashboardData] = useState([]);
   const { t } = useTranslation();
-  const { getBudgetStatus } = useBudget();
+  const { budgets, getBudgetStatus } = useBudget();
 
   useEffect(() => {
     const load = async () => {
@@ -101,11 +101,10 @@ const Dashboard = () => {
     [isDemo, canAddMoreTransactions, navigate, t]
   );
 
-  const budgetStatus = useMemo(() => getBudgetStatus(), [getBudgetStatus]);
-  const topBudgetAlert = useMemo(
-    () => budgetStatus.sort((a, b) => b.percentage - a.percentage)[0],
-    [budgetStatus]
-  );
+  const topBudgetAlert = useMemo(() => {
+    if (!budgets.length) return null;
+    return getBudgetStatus().sort((a, b) => b.percentage - a.percentage)[0];
+  }, [budgets, getBudgetStatus]);
 
   return (
     <div className="page-shell">
@@ -232,32 +231,30 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <div>
-        <Card className="glass">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FiTrendingUp /> {t("budgets.title")}
-            </CardTitle>
-            <CardDescription>{t("budgets.subtitle")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {topBudgetAlert ? (
-              <>
-                <p className="text-sm capitalize">{t(`categories.${topBudgetAlert.category}`, { defaultValue: topBudgetAlert.category })}</p>
-                <p className="text-2xl font-bold">{Math.round(topBudgetAlert.percentage)}%</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(topBudgetAlert.spent)} / {formatCurrency(topBudgetAlert.limit)}
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("budgets.empty")}</p>
-            )}
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/budgets")}>
-              {t("budgets.manage")}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="glass">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FiTrendingUp /> {t("budgets.title")}
+          </CardTitle>
+          <CardDescription>{t("budgets.subtitle")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {topBudgetAlert ? (
+            <>
+              <p className="text-sm capitalize">{t(`categories.${topBudgetAlert.category}`, { defaultValue: topBudgetAlert.category })}</p>
+              <p className="text-2xl font-bold">{Math.round(topBudgetAlert.percentage)}%</p>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(topBudgetAlert.spent)} / {formatCurrency(topBudgetAlert.limit)}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("budgets.empty")}</p>
+          )}
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/budgets")}>
+            {t("budgets.manage")}
+          </Button>
+        </CardContent>
+      </Card>
 
       <TransactionModal show={showQuickAdd} onClose={() => setShowQuickAdd(false)} transaction={null} />
     </div>
