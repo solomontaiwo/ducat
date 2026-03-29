@@ -15,6 +15,8 @@ import { useBudget } from "../../hooks/useBudgets.jsx";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
+const PERIOD_OPTIONS = ["daily", "weekly", "monthly", "last3Months", "all"];
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
@@ -28,6 +30,17 @@ const Dashboard = () => {
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [dashboardData, setDashboardData] = useState([]);
+  const [periodPref, setPeriodPref] = useState(() => {
+    const saved = localStorage.getItem("analytics-period");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return { period: "monthly" };
+      }
+    }
+    return { period: "monthly" };
+  });
   const { t } = useTranslation();
   const { budgets, getBudgetStatus } = useBudget();
 
@@ -45,17 +58,9 @@ const Dashboard = () => {
     load();
   }, [isDemo, transactions, currentUser, fetchAllTransactions]);
 
-  const periodPref = useMemo(() => {
-    const saved = localStorage.getItem("analytics-period");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return { period: "monthly" };
-      }
-    }
-    return { period: "monthly" };
-  }, []);
+  useEffect(() => {
+    localStorage.setItem("analytics-period", JSON.stringify(periodPref));
+  }, [periodPref]);
 
   const { start: periodStart, end: periodEnd } = getPeriodRange(periodPref.period || "monthly", periodPref.customRange);
   
@@ -97,13 +102,20 @@ const Dashboard = () => {
         icon: <FiBarChart2 />,
         action: () => navigate("/analytics"),
       },
+      {
+        key: "view-cashflow",
+        title: t("navbar.cashflow"),
+        subtitle: t("cashflow.subtitle"),
+        icon: <FiTrendingUp />,
+        action: () => navigate("/cashflow"),
+      },
     ],
     [isDemo, canAddMoreTransactions, navigate, t]
   );
 
   const topBudgetAlert = useMemo(() => {
     if (!budgets.length) return null;
-    return getBudgetStatus().sort((a, b) => b.percentage - a.percentage)[0];
+    return [...getBudgetStatus()].sort((a, b) => b.percentage - a.percentage)[0];
   }, [budgets, getBudgetStatus]);
 
   return (
@@ -115,6 +127,25 @@ const Dashboard = () => {
             {currentUser ? "👋" : "👋"} {t("welcome")}
           </h2>
           <p className="text-sm text-muted-foreground max-w-2xl">{t("motivationalQuote")}</p>
+          <div className="flex flex-wrap gap-2 pt-2">
+            {PERIOD_OPTIONS.map((period) => {
+              const isActivePeriod = (periodPref.period || "monthly") === period;
+              return (
+                <button
+                  key={period}
+                  type="button"
+                  onClick={() => setPeriodPref((prev) => ({ ...prev, period }))}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                    isActivePeriod
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card/70 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t(`periods.${period}`, { defaultValue: period })}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 md:gap-3">
           <Button variant="outline" size="lg" onClick={() => navigate("/analytics")} className="gap-2 px-4">
@@ -199,7 +230,7 @@ const Dashboard = () => {
             <CardTitle>{t("quickActions")}</CardTitle>
             <CardDescription>{t("whatToRegister")}</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-4">
+          <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {quickActions.map((action) => (
               <button
                 key={action.key}
