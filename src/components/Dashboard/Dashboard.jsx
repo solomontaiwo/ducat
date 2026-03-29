@@ -116,6 +116,7 @@ const Dashboard = () => {
   const topBudgetAlert = useMemo(() => {
     if (!budgets.length) return null;
     const budgetStatuses = getBudgetStatus();
+    if (!budgetStatuses.length) return null;
     return budgetStatuses.reduce(
       (top, budget) => (budget.percentage > top.percentage ? budget : top),
       budgetStatuses[0]
@@ -234,7 +235,7 @@ const Dashboard = () => {
             <CardTitle>{t("quickActions")}</CardTitle>
             <CardDescription>{t("whatToRegister")}</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
+          <CardContent className="grid gap-3 md:grid-cols-2">
             {quickActions.map((action) => (
               <button
                 key={action.key}
