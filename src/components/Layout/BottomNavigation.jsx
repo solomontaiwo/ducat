@@ -2,35 +2,20 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import { FiHome, FiList, FiBarChart, FiUser, FiLogIn, FiUserPlus } from "react-icons/fi";
-import { useEffect, useState } from "react";
 import { Badge } from "../ui/badge";
 import { useTranslation } from "react-i18next";
+import PropTypes from "prop-types";
 
-const BottomNavigation = () => {
+const BottomNavigation = ({ navVisible }) => {
+  BottomNavigation.propTypes = {
+    navVisible: PropTypes.bool.isRequired,
+  };
+
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { isDemo, transactions, maxTransactions, startDemo } = useUnifiedTransactions();
-  const [visible, setVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
   const { t } = useTranslation();
-
-  useEffect(() => {
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentY = window.scrollY;
-          setVisible(currentY < lastScrollY || currentY < 20);
-          setLastScrollY(currentY);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
 
   const navigationItems = [
     { key: "/dashboard", icon: <FiHome size={20} />, label: t("navbar.dashboard"), path: "/dashboard" },
@@ -55,7 +40,7 @@ const BottomNavigation = () => {
   return (
     <div
       className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${
-        visible ? "translate-y-0" : "translate-y-full"
+        navVisible ? "translate-y-0" : "translate-y-full"
       }`}
       style={{ minHeight: "70px" }}
     >

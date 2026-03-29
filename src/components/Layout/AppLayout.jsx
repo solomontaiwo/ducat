@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
@@ -9,7 +9,7 @@ import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
 import { FiPlus } from "react-icons/fi";
 
-// Must match the minHeight set in BottomNavigation
+// Must match the minHeight / h-[70px] used inside BottomNavigation
 const BOTTOM_NAV_HEIGHT_PX = 70;
 
 const AppLayout = ({ children }) => {
@@ -23,6 +23,26 @@ const AppLayout = ({ children }) => {
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const [showFabModal, setShowFabModal] = useState(false);
 
+  // Scroll-visibility state lives here so the FAB can react to it
+  const [navVisible, setNavVisible] = useState(true);
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentY = window.scrollY;
+          setNavVisible(currentY < lastScrollY || currentY < 20);
+          lastScrollY = currentY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   // Define public routes where navigation is not shown
   const publicRoutes = ["/", "/login", "/register"];
   const isPublicRoute = publicRoutes.includes(location.pathname);
@@ -31,6 +51,13 @@ const AppLayout = ({ children }) => {
   // 1. It is not a public route AND
   // 2. (User is authenticated OR is in demo mode)
   const showNavigation = !isPublicRoute && (currentUser || isDemo);
+
+  // FAB sits above the nav bar when it's visible; drops to the viewport edge when nav is hidden
+  const fabBottom = isMobile
+    ? navVisible
+      ? `calc(${BOTTOM_NAV_HEIGHT_PX}px + env(safe-area-inset-bottom) + 1rem)`
+      : `calc(env(safe-area-inset-bottom) + 1rem)`
+    : "1.5rem";
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -46,7 +73,7 @@ const AppLayout = ({ children }) => {
         <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>
       </main>
 
-      {showNavigation && isMobile && <BottomNavigation />}
+      {showNavigation && isMobile && <BottomNavigation navVisible={navVisible} />}
 
       {showNavigation && (
         <>
@@ -54,12 +81,8 @@ const AppLayout = ({ children }) => {
             onClick={() => setShowFabModal(true)}
             disabled={isDemo && !canAddMoreTransactions}
             aria-label="Add transaction"
-            style={
-              isMobile
-                ? { bottom: `calc(${BOTTOM_NAV_HEIGHT_PX}px + env(safe-area-inset-bottom) + 1rem)`, right: "1rem" }
-                : { bottom: "1.5rem", right: "1.5rem" }
-            }
-            className="fixed z-50 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl h-14 w-14 transition-all duration-200 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ bottom: fabBottom, right: "1rem", transition: "bottom 0.3s ease" }}
+            className="fixed z-50 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl h-14 w-14 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FiPlus className="h-6 w-6" />
           </button>
