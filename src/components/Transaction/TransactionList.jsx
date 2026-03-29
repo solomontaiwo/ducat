@@ -93,6 +93,7 @@ const SwipeableTransactionCard = ({ transaction, onEdit, onDelete, language, get
               size="sm"
               variant="ghost"
               className="h-9 w-9 p-0"
+              aria-label="Edit transaction"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit(transaction);
@@ -104,6 +105,7 @@ const SwipeableTransactionCard = ({ transaction, onEdit, onDelete, language, get
               size="sm"
               variant="ghost"
               className="h-9 w-9 p-0 text-destructive hover:text-destructive"
+              aria-label="Delete transaction"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(transaction.id);
