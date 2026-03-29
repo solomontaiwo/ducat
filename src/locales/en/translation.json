@@ -118,6 +118,9 @@
     "dashboard": "Dashboard",
     "transactions": "Transactions",
     "analytics": "Analytics",
+    "insights": "Insights",
+    "goals": "Goals",
+    "cashflow": "Cashflow",
     "profile": "Profile",
     "logout": "Logout",
     "register": "Register",
@@ -280,6 +283,46 @@
       "tryFilters": "Try modifying your search filters",
       "addFirst": "Start by adding your first transaction"
     }
+  },
+  "budgets": {
+    "title": "Budgets",
+    "subtitle": "Control spending with smart category limits",
+    "add": "Add budget",
+    "addSubtitle": "Set a monthly cap for a spending category",
+    "empty": "No budgets yet. Create one to start tracking limits.",
+    "manage": "Manage budgets",
+    "limit": "Budget limit",
+    "remaining": "Remaining",
+    "alertThreshold": "Alert threshold (%)",
+    "suggestions": "Smart suggestions",
+    "suggestionsSubtitle": "Based on your recent spending patterns",
+    "suggestedLimit": "Suggested limit"
+  },
+  "goals": {
+    "title": "Goals",
+    "subtitle": "Track your savings goals and automate progress",
+    "add": "Add goal",
+    "addSubtitle": "Create a savings target and timeline",
+    "empty": "No goals yet. Add one to start planning your savings.",
+    "manage": "Manage goals",
+    "targetAmount": "Target amount",
+    "startAmount": "Starting amount",
+    "due": "Due",
+    "dueDate": "Due date",
+    "autoContribute": "Enable auto-contribution",
+    "autoContributeAmount": "Auto-contribution amount",
+    "applyAuto": "Apply auto"
+  },
+  "insights": {
+    "title": "Insights",
+    "subtitle": "Actionable suggestions from your financial activity",
+    "empty": "No insights available yet.",
+    "open": "Open insights"
+  },
+  "cashflow": {
+    "title": "Cashflow timeline",
+    "subtitle": "Visualize your running balance over time",
+    "empty": "Add transactions to see your cashflow trend."
   },
   "pdf": {
     "reportTitle": "Financial Statistics Report",

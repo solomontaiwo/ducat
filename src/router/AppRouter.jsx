@@ -11,6 +11,10 @@ const TransactionList = lazy(() => import("../components/Transaction/Transaction
 const Analytics = lazy(() => import("../components/Analytics/TransactionAnalytics"));
 const Stats = lazy(() => import("../components/Stats/Stats"));
 const Profile = lazy(() => import("../components/Profile/Profile"));
+const BudgetList = lazy(() => import("../components/Budgets/BudgetList"));
+const GoalList = lazy(() => import("../components/Goals/GoalList"));
+const InsightsFeed = lazy(() => import("../components/Insights/InsightsFeed"));
+const CashflowTimeline = lazy(() => import("../components/Cashflow/CashflowTimeline"));
 const Home = lazy(() => import("../components/Home/Home"));
 const LandingPage = lazy(() => import("../components/Home/LandingPage"));
 
@@ -88,6 +92,10 @@ const AppRouter = () => {
     { path: "/analytics", element: <Analytics /> },
     { path: "/stats", element: <Stats /> },
     { path: "/profile", element: <Profile /> },
+    { path: "/budgets", element: <BudgetList /> },
+    { path: "/goals", element: <GoalList /> },
+    { path: "/insights", element: <InsightsFeed /> },
+    { path: "/cashflow", element: <CashflowTimeline /> },
     { path: "/landing", element: <LandingPage /> },
     { path: "*", element: <Navigate to="/" replace /> },
   ];

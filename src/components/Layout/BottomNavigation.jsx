@@ -1,7 +1,16 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
-import { FiHome, FiList, FiBarChart, FiUser, FiLogIn, FiUserPlus } from "react-icons/fi";
+import {
+  FiHome,
+  FiList,
+  FiBarChart,
+  FiUser,
+  FiLogIn,
+  FiUserPlus,
+  FiTarget,
+  FiPieChart,
+} from "react-icons/fi";
 import { Badge } from "../ui/badge";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
@@ -19,6 +28,8 @@ const BottomNavigation = ({ navVisible }) => {
     { key: "/dashboard", icon: <FiHome size={20} />, label: t("navbar.dashboard"), path: "/dashboard" },
     { key: "/transactions", icon: <FiList size={20} />, label: t("navbar.transactions"), path: "/transactions", badge: isDemo ? `${transactions.length}/${maxTransactions}` : null },
     { key: "/analytics", icon: <FiBarChart size={20} />, label: t("navbar.analytics"), path: "/analytics" },
+    { key: "/insights", icon: <FiPieChart size={20} />, label: t("navbar.insights"), path: "/insights" },
+    { key: "/goals", icon: <FiTarget size={20} />, label: t("navbar.goals"), path: "/goals" },
     ...(currentUser
       ? [{ key: "/profile", icon: <FiUser size={20} />, label: t("navbar.profile"), path: "/profile" }]
       : [

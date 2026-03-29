@@ -17,8 +17,8 @@ import { firestore } from "../utils/firebase.jsx";
 import { transactionInputSchema } from "../schemas/transaction.jsx";
 
 const COLLECTION_NAME = "transactions";
-const CACHE_KEY = "soldi_sotto_transactions_cache";
-const COUNT_CACHE_KEY = "soldi_sotto_transactions_count_cache";
+const CACHE_KEY = "soldi_sotto_transactions_cache_v2";
+const COUNT_CACHE_KEY = "soldi_sotto_transactions_count_cache_v2";
 const DEFAULT_TTL_MS = 3 * 60 * 1000; // 3 minutes for stale-while-revalidate
 
 
@@ -32,8 +32,11 @@ const normalizeDate = (dateInput) => {
 // Helper to clear cache for full data and count
 const invalidateCache = () => {
   try {
-    localStorage.removeItem(CACHE_KEY);
-    localStorage.removeItem(COUNT_CACHE_KEY);
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith(CACHE_KEY) || key.startsWith(COUNT_CACHE_KEY)) {
+        localStorage.removeItem(key);
+      }
+    });
   } catch (e) {
     console.warn("Failed to clear cache", e);
   }
@@ -64,10 +67,21 @@ export const TransactionService = {
   },
 
   // Fetch all transactions with Caching
-  fetchAll: async (userId, { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, onRevalidated, revalidateIfFresh = true } = {}) => {
+  fetchAll: async (
+    userId,
+    {
+      forceRefresh = false,
+      ttlMs = DEFAULT_TTL_MS,
+      onRevalidated,
+      revalidateIfFresh = true,
+      period = "all",
+      type = "all",
+    } = {}
+  ) => {
+    const scopedCacheKey = `${CACHE_KEY}:${userId}:${period}:${type}`;
     const readCache = () => {
       try {
-        const raw = localStorage.getItem(CACHE_KEY);
+        const raw = localStorage.getItem(scopedCacheKey);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (parsed.cacheUserId !== userId) return null;
@@ -105,11 +119,13 @@ export const TransactionService = {
         };
       });
 
+      const filtered = transactions.filter((item) => (type === "all" ? true : item.type === type));
+
       try {
         localStorage.setItem(
-          CACHE_KEY,
+          scopedCacheKey,
           JSON.stringify({
-            data: transactions,
+            data: filtered,
             cacheUserId: userId,
             cachedAt: Date.now(),
           })
@@ -118,7 +134,7 @@ export const TransactionService = {
         console.warn("Cache write error", e);
       }
 
-      return transactions;
+      return filtered;
     };
 
     const shouldRevalidateInBackground = cache && (!isFresh || revalidateIfFresh);
@@ -141,10 +157,20 @@ export const TransactionService = {
   },
 
   // Get total count of transactions with Caching
-  getTotalCount: async (userId, { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, onRevalidated, revalidateIfFresh = true } = {}) => {
+  getTotalCount: async (
+    userId,
+    {
+      forceRefresh = false,
+      ttlMs = DEFAULT_TTL_MS,
+      onRevalidated,
+      revalidateIfFresh = true,
+      type = "all",
+    } = {}
+  ) => {
+    const scopedCountCacheKey = `${COUNT_CACHE_KEY}:${userId}:${type}`;
     const readCache = () => {
       try {
-        const raw = localStorage.getItem(COUNT_CACHE_KEY);
+        const raw = localStorage.getItem(scopedCountCacheKey);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (parsed.cacheUserId !== userId) return null;
@@ -159,13 +185,24 @@ export const TransactionService = {
     const isFresh = cache?.cachedAt && Date.now() - cache.cachedAt < ttlMs;
 
     const fetchFromNetwork = async () => {
-      const q = query(collection(firestore, COLLECTION_NAME), where("userId", "==", userId));
-      const snapshot = await getCountFromServer(q);
-      const count = snapshot.data().count;
+      let count = 0;
+      if (type === "all") {
+        const q = query(collection(firestore, COLLECTION_NAME), where("userId", "==", userId));
+        const snapshot = await getCountFromServer(q);
+        count = snapshot.data().count;
+      } else {
+        const q = query(
+          collection(firestore, COLLECTION_NAME),
+          where("userId", "==", userId),
+          where("type", "==", type)
+        );
+        const snapshot = await getCountFromServer(q);
+        count = snapshot.data().count;
+      }
 
       try {
         localStorage.setItem(
-          COUNT_CACHE_KEY,
+          scopedCountCacheKey,
           JSON.stringify({
             count,
             cacheUserId: userId,
