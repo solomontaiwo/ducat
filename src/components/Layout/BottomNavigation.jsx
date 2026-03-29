@@ -6,6 +6,8 @@ import { Badge } from "../ui/badge";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 
+export const BOTTOM_NAV_HEIGHT_PX = 70;
+
 const BottomNavigation = ({ navVisible }) => {
   BottomNavigation.propTypes = {
     navVisible: PropTypes.bool.isRequired,
@@ -42,9 +44,9 @@ const BottomNavigation = ({ navVisible }) => {
       className={`fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${
         navVisible ? "translate-y-0" : "translate-y-full"
       }`}
-      style={{ minHeight: "70px" }}
+      style={{ minHeight: `${BOTTOM_NAV_HEIGHT_PX}px` }}
     >
-      <div className="mx-auto flex h-[70px] max-w-5xl items-center justify-around px-4">
+      <div className="mx-auto flex max-w-5xl items-center justify-around px-4" style={{ height: `${BOTTOM_NAV_HEIGHT_PX}px` }}>
         {navigationItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (

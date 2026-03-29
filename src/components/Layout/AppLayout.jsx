@@ -3,14 +3,11 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import Navbar from "../Navbar/Navbar";
-import BottomNavigation from "./BottomNavigation";
+import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
 import TransactionModal from "../Transaction/TransactionModal";
 import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
 import { FiPlus } from "react-icons/fi";
-
-// Must match the minHeight / h-[70px] used inside BottomNavigation
-const BOTTOM_NAV_HEIGHT_PX = 70;
 
 const AppLayout = ({ children }) => {
   AppLayout.propTypes = {
