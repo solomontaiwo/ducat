@@ -20,16 +20,9 @@ const Register = lazy(() => import("../components/Auth/Register"));
 
 // Loading component
 const PageLoader = () => (
-  <motion.div
-    key="pageloader"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    transition={{ duration: 0.3 }}
-    className="flex min-h-screen items-center justify-center bg-background"
-  >
+  <div className="flex min-h-screen items-center justify-center bg-background">
     <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-  </motion.div>
+  </div>
 );
 
 // Route guards
@@ -53,7 +46,7 @@ const PublicRoute = ({ children }) => {
 // Page transition variants
 const pageVariants = {
   initial: {
-    opacity: 0,
+    opacity: 1,
     y: 10, // Reduced movement for subtler effect
     scale: 0.99 // Very subtle zoom in
   },
