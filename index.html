@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
   <!-- Barra di stato trasparente in Chrome -->
-  <meta name="theme-color" content="#f0f0f0" />
+  <meta name="theme-color" content="#f9f9fb" />
 
   <!-- Descrizione del sito -->
   <meta name="description" content="Gestisci le tue finanze in modo semplice e veloce." />
@@ -39,7 +39,7 @@
         const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         const isDarkMode = savedTheme === "dark" || (savedTheme === "system" && systemPrefersDark);
         document.documentElement.classList.toggle("dark", isDarkMode);
-        document.querySelector('meta[name="theme-color"]').setAttribute("content", isDarkMode ? "#0f172a" : "#f8fafc");
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", isDarkMode ? "#080c16" : "#f9f9fb");
         const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
         if (statusBarMeta) {
           statusBarMeta.setAttribute("content", isDarkMode ? "black" : "default");
@@ -54,11 +54,11 @@
   <style>
     /* Pre-React background matching Tailwind's --background values to prevent flash */
     :root {
-      background-color: #f8fafc; /* hsl(210 40% 98%) - light theme */
+      background-color: #f9f9fb; /* hsl(220 27% 98%) - light theme */
     }
 
     .dark {
-      background-color: #0d1117; /* hsl(210 29% 7%) - dark theme */
+      background-color: #080c16; /* hsl(222 47% 6%) - dark theme */
     }
 
     body {
