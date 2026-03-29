@@ -116,7 +116,10 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
             category: formData.category,
           }));
     }
-    if (success) onClose();
+    if (success) {
+      navigator.vibrate?.(50);
+      onClose();
+    }
   };
 
   return (
