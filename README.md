@@ -45,18 +45,26 @@ SoldiSotto is a web application developed in React, designed to manage personal 
 4. Configure Firebase:
 
    - Create a project on Firebase.
-   - Obtain your Firebase configuration credentials and insert them into a `.env` file at the root of the project.
+   - Copy `.env.example` to `.env` at the root of the project and fill in your Firebase credentials. **Do not commit `.env`** — it is already listed in `.gitignore`.
 
-   Example of a `.env` file:
+   ```bash
+   cp .env.example .env
+   # then edit .env with your values
+   ```
+
+   Your `.env` should look like this (use `VITE_FIREBASE_*` prefixes — required by Vite):
 
    ```plaintext
-   REACT_APP_API_KEY=your-api-key
-   REACT_APP_AUTH_DOMAIN=your-auth-domain
-   REACT_APP_PROJECT_ID=your-project-id
-   REACT_APP_STORAGE_BUCKET=your-storage-bucket
-   REACT_APP_MESSAGING_SENDER_ID=your-messaging-sender-id
-   REACT_APP_APP_ID=your-app-id
+   VITE_FIREBASE_API_KEY=your-api-key
+   VITE_FIREBASE_AUTH_DOMAIN=your-auth-domain
+   VITE_FIREBASE_PROJECT_ID=your-project-id
+   VITE_FIREBASE_STORAGE_BUCKET=your-storage-bucket
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
+   VITE_FIREBASE_APP_ID=your-app-id
+   VITE_FIREBASE_MEASUREMENT_ID=your-measurement-id
    ```
+
+   > **Note:** The Firebase web `apiKey` is not a backend secret (it is visible in the browser), but you should still manage it through environment variables rather than hardcoding it, to avoid accidental changes and keep configuration out of source control.
 
 5. Start the application:
 
@@ -68,36 +76,27 @@ SoldiSotto is a web application developed in React, designed to manage personal 
 
 ## Deployment on GitHub Pages
 
-To deploy this project on GitHub Pages:
+This project deploys automatically to GitHub Pages via GitHub Actions on every push to `main`.
 
-1. Install the `gh-pages` package if not already installed:
+### How CI injects environment variables
 
-   ```bash
-   npm install gh-pages --save-dev
-   ```
+The workflow (`.github/workflows/deploy.yml`) passes the `VITE_FIREBASE_*` values as environment variables to the `npm run build` step. Vite embeds them in the bundle at build time.
 
-2. Configure your `package.json` by adding the `"homepage"` field:
+**You must add the following secrets** in your GitHub repository settings under **Settings → Secrets and variables → Actions → New repository secret**:
 
-   ```json
-   "homepage": "https://your-username.github.io/repository-name"
-   ```
+| Secret name | Where to find the value |
+|---|---|
+| `VITE_FIREBASE_API_KEY` | Firebase console → Project settings → Your apps |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase console → Project settings → Your apps |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase console → Project settings → Your apps |
+| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase console → Project settings → Your apps |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase console → Project settings → Your apps |
+| `VITE_FIREBASE_APP_ID` | Firebase console → Project settings → Your apps |
+| `VITE_FIREBASE_MEASUREMENT_ID` | Firebase console → Project settings → Your apps |
 
-   Replace `your-username` with your GitHub username and `repository-name` with the repository name.
+Once the secrets are set, any push to `main` will trigger the workflow, build the app with the correct config, and publish the `dist/` folder to GitHub Pages.
 
-3. Add the following `scripts` to `package.json`:
-
-   ```json
-   "predeploy": "npm run build",
-   "deploy": "gh-pages -d build"
-   ```
-
-4. Run the deployment command:
-
-   ```bash
-   npm run deploy
-   ```
-
-5. Go to your GitHub repository settings under **Pages** to ensure that `gh-pages` is selected as the source branch. Your application will be live at the URL defined in the `homepage` field.
+> **Do not commit your `.env` file.** It is already excluded in `.gitignore` via `*.env`.
 
 ## Contributions
 
@@ -156,18 +155,26 @@ SoldiSotto è un'applicazione web sviluppata in React, progettata per gestire le
 4. Configura Firebase:
 
    - Crea un progetto su Firebase.
-   - Ottieni le tue credenziali di configurazione Firebase e inseriscile nel file `.env` nella radice del progetto.
+   - Copia `.env.example` in `.env` nella radice del progetto e inserisci le tue credenziali Firebase. **Non committare `.env`** — è già incluso nel `.gitignore`.
 
-   Esempio di file `.env`:
+   ```bash
+   cp .env.example .env
+   # poi modifica .env con i tuoi valori
+   ```
+
+   Il file `.env` deve avere questo formato (usa i prefissi `VITE_FIREBASE_*` — richiesti da Vite):
 
    ```plaintext
-   REACT_APP_API_KEY=tuo-api-key
-   REACT_APP_AUTH_DOMAIN=tuo-auth-domain
-   REACT_APP_PROJECT_ID=tuo-project-id
-   REACT_APP_STORAGE_BUCKET=tuo-storage-bucket
-   REACT_APP_MESSAGING_SENDER_ID=tuo-messaging-sender-id
-   REACT_APP_APP_ID=tuo-app-id
+   VITE_FIREBASE_API_KEY=tuo-api-key
+   VITE_FIREBASE_AUTH_DOMAIN=tuo-auth-domain
+   VITE_FIREBASE_PROJECT_ID=tuo-project-id
+   VITE_FIREBASE_STORAGE_BUCKET=tuo-storage-bucket
+   VITE_FIREBASE_MESSAGING_SENDER_ID=tuo-messaging-sender-id
+   VITE_FIREBASE_APP_ID=tuo-app-id
+   VITE_FIREBASE_MEASUREMENT_ID=tuo-measurement-id
    ```
+
+   > **Nota:** L'`apiKey` web di Firebase non è un segreto backend (è visibile nel browser), ma dovresti comunque gestirla tramite variabili d'ambiente invece di inserirla direttamente nel codice, per evitare modifiche accidentali e mantenere la configurazione fuori dal controllo versione.
 
 5. Avvia l'applicazione:
 
@@ -179,36 +186,27 @@ SoldiSotto è un'applicazione web sviluppata in React, progettata per gestire le
 
 ## Deploy su GitHub Pages
 
-Per fare il deploy di questo progetto su GitHub Pages:
+Il progetto viene deployato automaticamente su GitHub Pages tramite GitHub Actions ad ogni push su `main`.
 
-1. Installa il pacchetto `gh-pages` se non è già installato:
+### Come la CI inietta le variabili d'ambiente
 
-   ```bash
-   npm install gh-pages --save-dev
-   ```
+Il workflow (`.github/workflows/deploy.yml`) passa i valori `VITE_FIREBASE_*` come variabili d'ambiente allo step `npm run build`. Vite li incorpora nel bundle al momento della build.
 
-2. Configura il tuo `package.json` aggiungendo il campo `"homepage"`:
+**Devi aggiungere i seguenti segreti** nelle impostazioni del repository GitHub sotto **Settings → Secrets and variables → Actions → New repository secret**:
 
-   ```json
-   "homepage": "https://tuo-username.github.io/nome-repository"
-   ```
+| Nome del segreto | Dove trovare il valore |
+|---|---|
+| `VITE_FIREBASE_API_KEY` | Firebase console → Impostazioni progetto → Le tue app |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase console → Impostazioni progetto → Le tue app |
+| `VITE_FIREBASE_PROJECT_ID` | Firebase console → Impostazioni progetto → Le tue app |
+| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase console → Impostazioni progetto → Le tue app |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase console → Impostazioni progetto → Le tue app |
+| `VITE_FIREBASE_APP_ID` | Firebase console → Impostazioni progetto → Le tue app |
+| `VITE_FIREBASE_MEASUREMENT_ID` | Firebase console → Impostazioni progetto → Le tue app |
 
-   Sostituisci `tuo-username` con il tuo username GitHub e `nome-repository` con il nome della repository.
+Una volta impostati i segreti, ogni push su `main` attiverà il workflow, builderà l'app con la configurazione corretta e pubblicherà la cartella `dist/` su GitHub Pages.
 
-3. Aggiungi i seguenti `scripts` in `package.json`:
-
-   ```json
-   "predeploy": "npm run build",
-   "deploy": "gh-pages -d build"
-   ```
-
-4. Esegui il comando di deploy:
-
-   ```bash
-   npm run deploy
-   ```
-
-5. Vai nelle impostazioni del repository GitHub sotto **Pages** e assicurati che la branch `gh-pages` sia selezionata come sorgente. La tua applicazione sarà visibile all'URL definito nel campo `homepage`.
+> **Non committare il file `.env`.** È già escluso nel `.gitignore` tramite `*.env`.
 
 ## Contributi
 
