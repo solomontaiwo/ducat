@@ -14,6 +14,7 @@
     "deploy": "npm run build && npm run postbuild && gh-pages -d dist"
   },
   "dependencies": {
+    "@use-gesture/react": "^10.3.1",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "firebase": "^11.3.1",
@@ -29,6 +30,7 @@
     "react-loading-skeleton": "^3.5.0",
     "react-responsive": "^10.0.0",
     "react-router-dom": "^6.29.0",
+    "recharts": "^3.8.1",
     "zod": "^4.1.13"
   },
   "devDependencies": {

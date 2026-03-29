@@ -17,12 +17,22 @@ import { generatePeriodPDFReport } from "../../utils/pdfUtils.jsx";
 import { generateExportFileName } from "../../utils/downloadUtils.jsx"; // Using unified filename generator
 import { useDateRange } from "../../hooks/useDateRange.jsx";
 import { calculateStats } from "../../utils/statsUtils.jsx";
+import { useTheme } from "../../utils/ThemeProvider.jsx";
+import {
+  PieChart, Pie, Cell,
+  AreaChart, Area,
+  BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from "recharts";
+
+const CHART_COLORS = ["#f43f5e", "#fb923c", "#facc15", "#4ade80", "#60a5fa", "#a78bfa", "#f472b6", "#34d399"];
 
 const TransactionAnalytics = () => {
   const { isDemo, transactions: recentTransactions, maxTransactions, loading: contextLoading, fetchAllTransactions } = useUnifiedTransactions();
   const { currentUser } = useAuth();
   const { expenseCategories, incomeCategories } = useCategories();
   const { t, i18n } = useTranslation();
+  const { isDarkMode } = useTheme();
 
   // Use custom hook for date range management
   const { period, setPeriod, customRange, setCustomRange, startDate, endDate } = useDateRange(
@@ -89,9 +99,9 @@ const TransactionAnalytics = () => {
           };
         });
     };
-    
+
     const filteredTransactions = analyticsData.filter((transaction) => {
-       return transaction.date && isWithinInterval(transaction.date, { start: startDate, end: endDate });
+      return transaction.date && isWithinInterval(transaction.date, { start: startDate, end: endDate });
     });
 
     const expenseByCategory = {};
@@ -114,13 +124,13 @@ const TransactionAnalytics = () => {
     for (let i = 5; i >= 0; i--) {
       const monthStart = startOfMonth(subMonths(now, i));
       const monthEnd = endOfMonth(subMonths(now, i));
-      const monthTransactions = analyticsData.filter((t) => 
+      const monthTransactions = analyticsData.filter((t) =>
         t.date && isWithinInterval(t.date, { start: monthStart, end: monthEnd })
       );
-      
+
       const monthIncome = monthTransactions.filter((t) => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
       const monthExpense = monthTransactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
-      
+
       monthlyTrend.push({
         month: format(monthStart, "MMM yyyy"),
         income: monthIncome,
@@ -130,10 +140,11 @@ const TransactionAnalytics = () => {
     }
 
     // 3. Averages
-    const avgTransactionAmount = filteredTransactions.length > 0
+    const avgTransactionAmount =
+      filteredTransactions.length > 0
         ? filteredTransactions.reduce((sum, t) => sum + t.amount, 0) / filteredTransactions.length
         : 0;
-    
+
     // Savings Rate
     const savingsRate = stats.totalIncome > 0 ? ((stats.totalIncome - stats.totalExpense) / stats.totalIncome) * 100 : 0;
 
@@ -143,10 +154,9 @@ const TransactionAnalytics = () => {
       monthlyTrend,
       avgTransactionAmount,
       savingsRate,
-      filteredTransactions // Needed for export
+      filteredTransactions, // Needed for export
     };
   }, [analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t]);
-
 
   const exportCsv = () => {
     if (!extendedStats?.filteredTransactions?.length) return;
@@ -187,7 +197,63 @@ const TransactionAnalytics = () => {
     );
   };
 
-  if (contextLoading || isLoadingAnalyticsData) { // Use local loading state
+  // Shared chart theme values
+  const axisColor = isDarkMode ? "#94a3b8" : "#64748b";
+  const gridColor = isDarkMode ? "#334155" : "#e2e8f0";
+  const tooltipBg = isDarkMode ? "#1e293b" : "#ffffff";
+  const tooltipBorder = isDarkMode ? "#334155" : "#e2e8f0";
+  const tooltipTextColor = isDarkMode ? "#f1f5f9" : "#0f172a";
+
+  const CustomAreaTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div
+        className="rounded-lg border px-3 py-2 text-sm shadow-lg"
+        style={{ background: tooltipBg, borderColor: tooltipBorder, color: tooltipTextColor }}
+      >
+        <p className="font-semibold mb-1">{label}</p>
+        {payload.map((entry, i) => (
+          <p key={i} style={{ color: entry.color }}>
+            {entry.name}: {formatCurrency(entry.value)}
+          </p>
+        ))}
+      </div>
+    );
+  };
+
+  const CustomPieTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null;
+    const { name, value, payload: inner } = payload[0];
+    return (
+      <div
+        className="rounded-lg border px-3 py-2 text-sm shadow-lg"
+        style={{ background: tooltipBg, borderColor: tooltipBorder, color: tooltipTextColor }}
+      >
+        <p className="font-semibold">{name}</p>
+        <p>{formatCurrency(value)}</p>
+        <p className="text-xs opacity-75">{inner.percentage.toFixed(1)}%</p>
+      </div>
+    );
+  };
+
+  const CustomBarTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div
+        className="rounded-lg border px-3 py-2 text-sm shadow-lg"
+        style={{ background: tooltipBg, borderColor: tooltipBorder, color: tooltipTextColor }}
+      >
+        <p className="font-semibold mb-1">{label}</p>
+        {payload.map((entry, i) => (
+          <p key={i} style={{ color: entry.color }}>
+            {entry.name}: {formatCurrency(entry.value)}
+          </p>
+        ))}
+      </div>
+    );
+  };
+
+  if (contextLoading || isLoadingAnalyticsData) {
     return (
       <div className="space-y-4">
         <Skeleton height={48} />
@@ -249,15 +315,21 @@ const TransactionAnalytics = () => {
         </div>
         {isDemo && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary flex items-center gap-2">
-            <Badge variant="secondary">{recentTransactions.filter(t => !t.isSample).length}/{maxTransactions}</Badge>
-            <span>{t("analytics.demoDescription", { current: recentTransactions.filter(t => !t.isSample).length, max: maxTransactions })}
-          </span></div>
+            <Badge variant="secondary">{recentTransactions.filter((t) => !t.isSample).length}/{maxTransactions}</Badge>
+            <span>
+              {t("analytics.demoDescription", {
+                current: recentTransactions.filter((t) => !t.isSample).length,
+                max: maxTransactions,
+              })}
+            </span>
+          </div>
         )}
       </motion.div>
 
+      {/* Stat cards */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[ 
+          {[
             { title: t("analytics.totalIncome"), value: stats.totalIncome, icon: <FiTrendingUp />, color: "text-emerald-600" },
             { title: t("analytics.totalExpense"), value: stats.totalExpense, icon: <FiTrendingDown />, color: "text-rose-600" },
             { title: t("analytics.balance"), value: stats.balance, icon: <FiBarChart />, color: "text-primary" },
@@ -280,31 +352,75 @@ const TransactionAnalytics = () => {
         </div>
       </motion.div>
 
+      {/* Category distribution: donut chart + progress bars */}
       <div className="grid gap-4 md:grid-cols-2">
+        {/* Expense categories */}
         <Card>
           <CardHeader>
             <CardTitle>{t("analytics.topExpenseCategories")}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {extendedStats.topExpenseCategories?.length ? (
-              extendedStats.topExpenseCategories.map((cat, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{cat.label}</span>
+              <>
+                {/* Donut chart */}
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={extendedStats.topExpenseCategories}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={65}
+                      outerRadius={105}
+                      paddingAngle={3}
+                      dataKey="amount"
+                      nameKey="label"
+                    >
+                      {extendedStats.topExpenseCategories.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                    <Legend
+                      formatter={(value) => (
+                        <span style={{ color: axisColor, fontSize: 12 }}>{value}</span>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Progress bars */}
+                <div className="space-y-3">
+                  {extendedStats.topExpenseCategories.map((cat, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full"
+                            style={{ background: CHART_COLORS[idx % CHART_COLORS.length] }}
+                          />
+                          <span className="font-semibold">{cat.label}</span>
+                        </div>
+                        <span className="text-rose-600 font-semibold">{formatCurrency(cat.amount)}</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-muted">
+                        <div
+                          className="h-2 rounded-full"
+                          style={{
+                            width: `${cat.percentage.toFixed(1)}%`,
+                            background: CHART_COLORS[idx % CHART_COLORS.length],
+                          }}
+                        />
+                      </div>
                     </div>
-                    <span className="text-rose-600 font-semibold">{formatCurrency(cat.amount)}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted">
-                    <div className="h-2 rounded-full bg-rose-500" style={{ width: `${cat.percentage.toFixed(1)}%` }} />
-                  </div>
+                  ))}
                 </div>
-              ))
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">{t("analytics.noExpenseData")}</p>
             )}
           </CardContent>
         </Card>
+
+        {/* Income categories */}
         <Card>
           <CardHeader>
             <CardTitle>{t("analytics.topIncomeCategories")}</CardTitle>
@@ -331,37 +447,168 @@ const TransactionAnalytics = () => {
         </Card>
       </div>
 
+      {/* Monthly trend: area chart + card grid */}
       <Card>
         <CardHeader>
           <CardTitle>{t("analytics.monthlyTrend")}</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        <CardContent className="space-y-4">
           {extendedStats.monthlyTrend?.length ? (
-            extendedStats.monthlyTrend.map((month, idx) => (
-              <div
-                key={idx}
-                className={`rounded-xl border border-border p-3 ${ 
-                  month.balance >= 0 ? "bg-emerald-500/5" : "bg-rose-500/5"
-                }`}
-              >
-                <p className="text-sm font-semibold">{month.month}</p>
-                <div className="flex items-center gap-1 text-xs text-emerald-600">
-                  <FiArrowUp /> {formatCurrency(month.income)}
-                </div>
-                <div className="flex items-center gap-1 text-xs text-rose-600">
-                  <FiArrowDown /> {formatCurrency(month.expense)}
-                </div>
-                <p className={`text-sm font-semibold ${month.balance >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                  {formatCurrency(month.balance)}
-                </p>
+            <>
+              {/* Area chart */}
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={extendedStats.monthlyTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fill: axisColor, fontSize: 12 }}
+                    axisLine={{ stroke: gridColor }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={(v) => formatCurrency(v)}
+                    tick={{ fill: axisColor, fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={80}
+                  />
+                  <Tooltip content={<CustomAreaTooltip />} />
+                  <Legend
+                    formatter={(value) => (
+                      <span style={{ color: axisColor, fontSize: 12 }}>{value}</span>
+                    )}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="income"
+                    name={t("analytics.totalIncome")}
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fill="url(#incomeGrad)"
+                    dot={{ r: 3, fill: "#10b981" }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="expense"
+                    name={t("analytics.totalExpense")}
+                    stroke="#f43f5e"
+                    strokeWidth={2}
+                    fill="url(#expenseGrad)"
+                    dot={{ r: 3, fill: "#f43f5e" }}
+                    activeDot={{ r: 5 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+
+              {/* Card grid with balance */}
+              <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+                {extendedStats.monthlyTrend.map((month, idx) => (
+                  <div
+                    key={idx}
+                    className={`rounded-xl border border-border p-3 ${
+                      month.balance >= 0 ? "bg-emerald-500/5" : "bg-rose-500/5"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold">{month.month}</p>
+                    <div className="flex items-center gap-1 text-xs text-emerald-600">
+                      <FiArrowUp /> {formatCurrency(month.income)}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-rose-600">
+                      <FiArrowDown /> {formatCurrency(month.expense)}
+                    </div>
+                    <p className={`text-sm font-semibold ${month.balance >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                      {formatCurrency(month.balance)}
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">{t("analytics.insufficientData")}</p>
           )}
         </CardContent>
       </Card>
 
+      {/* Period income vs expense bar chart + savings rate */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("analytics.incomeVsExpense", { defaultValue: "Income vs Expense" })}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart
+                data={[
+                  {
+                    name: t("analytics.selectedPeriod", { defaultValue: "Period" }),
+                    [t("analytics.totalIncome")]: stats.totalIncome,
+                    [t("analytics.totalExpense")]: stats.totalExpense,
+                  },
+                ]}
+                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis dataKey="name" tick={{ fill: axisColor, fontSize: 12 }} axisLine={{ stroke: gridColor }} tickLine={false} />
+                <YAxis
+                  tickFormatter={(v) => formatCurrency(v)}
+                  tick={{ fill: axisColor, fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={80}
+                />
+                <Tooltip content={<CustomBarTooltip />} />
+                <Legend
+                  formatter={(value) => (
+                    <span style={{ color: axisColor, fontSize: 12 }}>{value}</span>
+                  )}
+                />
+                <Bar dataKey={t("analytics.totalIncome")} fill="#10b981" radius={[6, 6, 0, 0]} />
+                <Bar dataKey={t("analytics.totalExpense")} fill="#f43f5e" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Savings rate */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("analytics.savingsRate", { defaultValue: "Savings Rate" })}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col justify-center h-[calc(100%-4rem)] space-y-4">
+            {stats.totalIncome > 0 ? (
+              <>
+                <p className={`text-4xl font-bold ${(extendedStats.savingsRate ?? 0) >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                  {(extendedStats.savingsRate ?? 0).toFixed(1)}%
+                </p>
+                <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-3 rounded-full transition-all duration-700 ${
+                      (extendedStats.savingsRate ?? 0) >= 0 ? "bg-emerald-500" : "bg-rose-500"
+                    }`}
+                    style={{ width: `${Math.min(Math.abs(extendedStats.savingsRate ?? 0), 100).toFixed(1)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">{t("analytics.inSelectedPeriod")}</p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("analytics.insufficientData")}</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Metric cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
