@@ -3,7 +3,8 @@ name: Delete Merged Branches
 on:
   push:
     branches:
-      - copilot/delete-merged-branches
+      - main
+  workflow_dispatch:
 
 jobs:
   delete-merged-branches:
@@ -21,35 +22,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          PROTECTED="main gh-pages copilot/delete-merged-branches"
-
           # Fetch all remote branches
           git fetch --all --prune
 
-          # Find branches merged into main
-          MERGED=$(git branch -r --merged origin/main \
+          # Find branches merged into main, strip the "origin/" prefix
+          git branch -r --merged origin/main \
             | grep -v 'origin/HEAD' \
-            | sed 's|origin/||' \
-            | tr -d ' ')
-
-          echo "Branches merged into main:"
-          echo "$MERGED"
-
-          for branch in $MERGED; do
-            skip=false
-            for protected in $PROTECTED; do
-              if [ "$branch" = "$protected" ]; then
-                skip=true
-                break
-              fi
-            done
-
-            if [ "$skip" = "true" ]; then
-              echo "Skipping protected branch: $branch"
-            else
-              echo "Deleting merged branch: $branch"
-              gh api -X DELETE "repos/$REPO/git/refs/heads/$branch" \
-                && echo "  Deleted: $branch" \
-                || echo "  Failed to delete: $branch (may already be gone)"
-            fi
-          done
+            | sed 's|^\s*origin/||' \
+            | while IFS= read -r branch; do
+                case "$branch" in
+                  main|gh-pages) echo "Skipping protected branch: $branch" ;;
+                  *)
+                    echo "Deleting merged branch: $branch"
+                    gh api -X DELETE "repos/$REPO/git/refs/heads/$branch" \
+                      && echo "  Deleted: $branch" \
+                      || echo "  Failed to delete: $branch (may already be gone)"
+                    ;;
+                esac
+              done
