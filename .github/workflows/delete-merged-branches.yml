@@ -1,0 +1,55 @@
+name: Delete Merged Branches
+
+on:
+  push:
+    branches:
+      - copilot/delete-merged-branches
+
+jobs:
+  delete-merged-branches:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete branches already merged into main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          PROTECTED="main gh-pages copilot/delete-merged-branches"
+
+          # Fetch all remote branches
+          git fetch --all --prune
+
+          # Find branches merged into main
+          MERGED=$(git branch -r --merged origin/main \
+            | grep -v 'origin/HEAD' \
+            | sed 's|origin/||' \
+            | tr -d ' ')
+
+          echo "Branches merged into main:"
+          echo "$MERGED"
+
+          for branch in $MERGED; do
+            skip=false
+            for protected in $PROTECTED; do
+              if [ "$branch" = "$protected" ]; then
+                skip=true
+                break
+              fi
+            done
+
+            if [ "$skip" = "true" ]; then
+              echo "Skipping protected branch: $branch"
+            else
+              echo "Deleting merged branch: $branch"
+              gh api -X DELETE "repos/$REPO/git/refs/heads/$branch" \
+                && echo "  Deleted: $branch" \
+                || echo "  Failed to delete: $branch (may already be gone)"
+            fi
+          done
