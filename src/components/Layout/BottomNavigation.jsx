@@ -8,8 +8,6 @@ import {
   FiUser,
   FiLogIn,
   FiUserPlus,
-  FiTarget,
-  FiPieChart,
 } from "react-icons/fi";
 import { Badge } from "../ui/badge";
 import { useTranslation } from "react-i18next";
@@ -28,8 +26,6 @@ const BottomNavigation = ({ navVisible }) => {
     { key: "/dashboard", icon: <FiHome size={20} />, label: t("navbar.dashboard"), path: "/dashboard" },
     { key: "/transactions", icon: <FiList size={20} />, label: t("navbar.transactions"), path: "/transactions", badge: isDemo ? `${transactions.length}/${maxTransactions}` : null },
     { key: "/analytics", icon: <FiBarChart size={20} />, label: t("navbar.analytics"), path: "/analytics" },
-    { key: "/goals", icon: <FiTarget size={20} />, label: t("navbar.goals"), path: "/goals" },
-    { key: "/insights", icon: <FiPieChart size={20} />, label: t("navbar.insights"), path: "/insights" },
     ...(currentUser
       ? [{ key: "/profile", icon: <FiUser size={20} />, label: t("navbar.profile"), path: "/profile" }]
       : [
