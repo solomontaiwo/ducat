@@ -56,13 +56,13 @@ const AppLayout = ({ children }) => {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {showNavigation && !isMobile && <Navbar />}
 
-      <main
-        className={`flex-1 relative overflow-x-hidden transition-all ${
-          showNavigation
-            ? "pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pt-20 md:pb-6 px-4 md:px-8"
-            : "p-0"
-        }`}
-      >
+        <main
+          className={`flex-1 relative overflow-x-hidden transition-all ${
+            showNavigation
+              ? "pt-[calc(env(safe-area-inset-top)+1.5rem)] app-content-safe-mobile md:pt-20 md:pb-6 px-4 md:px-8"
+              : "p-0"
+          }`}
+        >
         <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>
       </main>
 
