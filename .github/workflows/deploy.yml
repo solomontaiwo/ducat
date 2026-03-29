@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 25.2.1
           cache: npm
 
       - name: Install dependencies
@@ -27,6 +27,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Postbuild
+        run: npm run postbuild
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
