@@ -232,7 +232,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-1">
+      <div className="grid gap-4">
         <Card className="glass">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
