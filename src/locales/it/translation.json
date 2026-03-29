@@ -118,6 +118,9 @@
     "dashboard": "Dashboard",
     "transactions": "Transazioni",
     "analytics": "Analytics",
+    "insights": "Insight",
+    "goals": "Obiettivi",
+    "cashflow": "Flusso cassa",
     "profile": "Profilo",
     "logout": "Logout",
     "register": "Registrati",
@@ -274,6 +277,46 @@
       "tryFilters": "Prova a modificare i filtri di ricerca",
       "addFirst": "Inizia aggiungendo la tua prima transazione"
     }
+  },
+  "budgets": {
+    "title": "Budget",
+    "subtitle": "Controlla le spese con limiti intelligenti per categoria",
+    "add": "Aggiungi budget",
+    "addSubtitle": "Imposta un tetto mensile per categoria",
+    "empty": "Nessun budget impostato. Creane uno per iniziare.",
+    "manage": "Gestisci budget",
+    "limit": "Limite budget",
+    "remaining": "Residuo",
+    "alertThreshold": "Soglia avviso (%)",
+    "suggestions": "Suggerimenti intelligenti",
+    "suggestionsSubtitle": "Basati sulle tue spese recenti",
+    "suggestedLimit": "Limite suggerito"
+  },
+  "goals": {
+    "title": "Obiettivi",
+    "subtitle": "Monitora i tuoi obiettivi di risparmio e automatizza i progressi",
+    "add": "Aggiungi obiettivo",
+    "addSubtitle": "Crea un obiettivo di risparmio con scadenza",
+    "empty": "Nessun obiettivo presente. Aggiungine uno per pianificare.",
+    "manage": "Gestisci obiettivi",
+    "targetAmount": "Importo obiettivo",
+    "startAmount": "Importo iniziale",
+    "due": "Scadenza",
+    "dueDate": "Data scadenza",
+    "autoContribute": "Abilita contributo automatico",
+    "autoContributeAmount": "Importo contributo automatico",
+    "applyAuto": "Applica auto"
+  },
+  "insights": {
+    "title": "Insight",
+    "subtitle": "Suggerimenti azionabili dalla tua attività finanziaria",
+    "empty": "Nessun insight disponibile al momento.",
+    "open": "Apri insight"
+  },
+  "cashflow": {
+    "title": "Timeline flusso di cassa",
+    "subtitle": "Visualizza l'andamento del saldo nel tempo",
+    "empty": "Aggiungi transazioni per vedere il trend del flusso cassa."
   },
   "pdf": {
     "reportTitle": "Report Statistiche Finanziarie",
