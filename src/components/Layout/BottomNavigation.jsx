@@ -9,10 +9,6 @@ import PropTypes from "prop-types";
 export const BOTTOM_NAV_HEIGHT_PX = 70;
 
 const BottomNavigation = ({ navVisible }) => {
-  BottomNavigation.propTypes = {
-    navVisible: PropTypes.bool.isRequired,
-  };
-
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
@@ -86,6 +82,10 @@ const BottomNavigation = ({ navVisible }) => {
       )}
     </div>
   );
+};
+
+BottomNavigation.propTypes = {
+  navVisible: PropTypes.bool.isRequired,
 };
 
 export default BottomNavigation;

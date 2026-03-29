@@ -10,10 +10,6 @@ import PropTypes from "prop-types";
 import { FiPlus } from "react-icons/fi";
 
 const AppLayout = ({ children }) => {
-  AppLayout.propTypes = {
-    children: PropTypes.node.isRequired,
-  };
-
   const location = useLocation();
   const { currentUser } = useAuth();
   const { isDemo, canAddMoreTransactions } = useUnifiedTransactions();
@@ -91,6 +87,10 @@ const AppLayout = ({ children }) => {
       )}
     </div>
   );
+};
+
+AppLayout.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export default AppLayout;
