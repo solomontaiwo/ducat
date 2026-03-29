@@ -63,9 +63,10 @@ const BottomNavigation = ({ navVisible }) => {
             <button
               key={item.key}
               onClick={() => handleNavigation(item)}
-              className={`relative flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition ${
+              className={`relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
+              style={{ minHeight: `${BOTTOM_NAV_HEIGHT_PX - 16}px` }}
             >
               <div
                 className={`flex h-9 w-9 items-center justify-center rounded-full ${
@@ -76,7 +77,7 @@ const BottomNavigation = ({ navVisible }) => {
               >
                 {item.icon}
               </div>
-              <span className="max-w-[58px] truncate leading-none">{item.label}</span>
+              <span className="w-full truncate text-center leading-none">{item.label}</span>
               {item.badge && (
                 <Badge variant="secondary" className="absolute -top-1 -right-2">
                   {item.badge}
