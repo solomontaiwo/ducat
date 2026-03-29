@@ -102,11 +102,19 @@ export const TransactionService = {
     const isFresh = cache?.cachedAt && Date.now() - cache.cachedAt < ttlMs;
 
     const fetchFromNetwork = async () => {
-      const q = query(
-        collection(firestore, COLLECTION_NAME),
-        where("userId", "==", userId),
-        orderBy("createdAt", "desc")
-      );
+      const q =
+        type === "all"
+          ? query(
+              collection(firestore, COLLECTION_NAME),
+              where("userId", "==", userId),
+              orderBy("createdAt", "desc")
+            )
+          : query(
+              collection(firestore, COLLECTION_NAME),
+              where("userId", "==", userId),
+              where("type", "==", type),
+              orderBy("createdAt", "desc")
+            );
       
       const snapshot = await getDocs(q);
       const transactions = snapshot.docs.map((doc) => {
@@ -119,13 +127,11 @@ export const TransactionService = {
         };
       });
 
-      const filtered = transactions.filter((item) => (type === "all" ? true : item.type === type));
-
       try {
         localStorage.setItem(
           scopedCacheKey,
           JSON.stringify({
-            data: filtered,
+            data: transactions,
             cacheUserId: userId,
             cachedAt: Date.now(),
           })
@@ -134,7 +140,7 @@ export const TransactionService = {
         console.warn("Cache write error", e);
       }
 
-      return filtered;
+      return transactions;
     };
 
     const shouldRevalidateInBackground = cache && (!isFresh || revalidateIfFresh);

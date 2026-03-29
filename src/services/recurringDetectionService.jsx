@@ -1,4 +1,9 @@
 const normalizeDescription = (value = "") => value.trim().toLowerCase();
+const AMOUNT_BUCKET_SIZE = 5;
+const VARIANCE_THRESHOLD = 120;
+const MIN_CONFIDENCE_THRESHOLD = 0.45;
+const normalizeAmountBucket = (value) =>
+  Math.round(Number(value) / AMOUNT_BUCKET_SIZE) * AMOUNT_BUCKET_SIZE;
 
 const dayDiff = (a, b) => {
   const oneDay = 1000 * 60 * 60 * 24;
@@ -6,6 +11,8 @@ const dayDiff = (a, b) => {
 };
 
 const estimateFrequency = (interval) => {
+  // Approximate ranges for recurring household charges:
+  // <=8d weekly, <=16d biweekly, <=40d monthly, else irregular cadence.
   if (interval <= 8) return "weekly";
   if (interval <= 16) return "biweekly";
   if (interval <= 40) return "monthly";
@@ -20,7 +27,7 @@ export const RecurringDetectionService = {
 
     const groups = new Map();
     expenses.forEach((transaction) => {
-      const amountBucket = Math.round(transaction.amount);
+      const amountBucket = normalizeAmountBucket(transaction.amount);
       const key = `${normalizeDescription(transaction.description)}|${transaction.category}|${amountBucket}`;
       const current = groups.get(key) || [];
       current.push(transaction);
@@ -40,7 +47,7 @@ export const RecurringDetectionService = {
         const variance =
           intervals.reduce((sum, n) => sum + (n - avgInterval) ** 2, 0) /
           (intervals.length || 1);
-        const confidence = Math.max(0, Math.min(1, 1 - variance / 120));
+        const confidence = Math.max(0, Math.min(1, 1 - variance / VARIANCE_THRESHOLD));
         const lastDate = group[group.length - 1].date;
         const nextDate = new Date(lastDate);
         nextDate.setDate(nextDate.getDate() + Math.round(avgInterval || 30));
@@ -58,7 +65,7 @@ export const RecurringDetectionService = {
           nextDueDate: nextDate,
         };
       })
-      .filter((pattern) => pattern.confidence >= 0.45)
+      .filter((pattern) => pattern.confidence >= MIN_CONFIDENCE_THRESHOLD)
       .sort((a, b) => b.confidence - a.confidence);
   },
 };
