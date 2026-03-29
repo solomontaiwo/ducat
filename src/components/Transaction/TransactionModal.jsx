@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useCategories } from "../../utils/categories.jsx";
 import { useNotification } from "../../utils/notificationUtils.jsx";
@@ -33,6 +33,8 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
   const { t } = useTranslation();
 
   const [categories, setCategories] = useState([]);
+  const quickAmounts = useMemo(() => [5, 10, 20, 50, 100], []);
+  const QUICK_ADD_PREF_KEY = "soldi-sotto-quick-add-preferences";
   const [formData, setFormData] = useState({
     type: transaction?.type || "expense",
     amount: transaction?.amount?.toString() || "",
@@ -63,12 +65,24 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
 
   useEffect(() => {
     if (show && !isEdit) {
+      let preferredCategory = expenseCategories[0]?.value || "";
+      let preferredType = "expense";
+      try {
+        const raw = localStorage.getItem(QUICK_ADD_PREF_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          preferredType = parsed.type || "expense";
+          preferredCategory = parsed.category || preferredCategory;
+        }
+      } catch {
+        // ignore malformed local preference
+      }
       setFormData({
-        type: "expense",
+        type: preferredType,
         amount: "",
         description: "",
         date: new Date().toISOString().split("T")[0],
-        category: expenseCategories[0]?.value || "",
+        category: preferredCategory,
       });
     }
     if (show && isEdit && transaction) {
@@ -117,6 +131,10 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
           }));
     }
     if (success) {
+      localStorage.setItem(
+        QUICK_ADD_PREF_KEY,
+        JSON.stringify({ type: formData.type, category: formData.category })
+      );
       navigator.vibrate?.(50);
       onClose();
     }
@@ -182,6 +200,24 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
                 required
                 className="w-full"
               />
+              <div className="flex flex-wrap gap-2 pt-1">
+                {quickAmounts.map((value) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        amount: String(value),
+                      }))
+                    }
+                  >
+                    €{value}
+                  </Button>
+                ))}
+              </div>
             </div>
             <div className="space-y-2">
               <Label>{t("transactionModal.date")}</Label>
