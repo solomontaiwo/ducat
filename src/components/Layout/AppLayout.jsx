@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import Navbar from "../Navbar/Navbar";
@@ -9,12 +9,23 @@ import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
 import { FiPlus } from "react-icons/fi";
 
+// Base swipe routes for authenticated users
+const BASE_SWIPE_ROUTES = ["/dashboard", "/transactions", "/analytics", "/profile"];
+const SWIPE_THRESHOLD = 60; // px minimum horizontal swipe distance
+const SWIPE_MAX_VERTICAL = 80; // px maximum vertical movement to count as horizontal swipe
+
 const AppLayout = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { isDemo, canAddMoreTransactions } = useUnifiedTransactions();
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const [showFabModal, setShowFabModal] = useState(false);
+
+  // Only include /profile in swipe routes when authenticated
+  const swipeRoutes = currentUser
+    ? BASE_SWIPE_ROUTES
+    : BASE_SWIPE_ROUTES.filter((r) => r !== "/profile");
 
   // Scroll-visibility state lives here so the FAB can react to it
   const [navVisible, setNavVisible] = useState(true);
@@ -36,6 +47,36 @@ const AppLayout = ({ children }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Swipe gesture navigation (mobile only)
+  const touchStartRef = useRef(null);
+  const handleTouchStart = useCallback((e) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }, []);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (!touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+
+    // Only treat as a horizontal swipe if vertical movement is small
+    if (Math.abs(dy) > SWIPE_MAX_VERTICAL) return;
+    if (Math.abs(dx) < SWIPE_THRESHOLD) return;
+
+    const currentIndex = swipeRoutes.indexOf(location.pathname);
+    if (currentIndex === -1) return;
+
+    if (dx < 0 && currentIndex < swipeRoutes.length - 1) {
+      // Swipe left → next page
+      navigate(swipeRoutes[currentIndex + 1]);
+    } else if (dx > 0 && currentIndex > 0) {
+      // Swipe right → previous page
+      navigate(swipeRoutes[currentIndex - 1]);
+    }
+  }, [swipeRoutes, location.pathname, navigate]);
+
   // Define public routes where navigation is not shown
   const publicRoutes = ["/", "/login", "/register"];
   const isPublicRoute = publicRoutes.includes(location.pathname);
@@ -56,6 +97,8 @@ const AppLayout = ({ children }) => {
     <div
       className="min-h-screen bg-background text-foreground flex flex-col"
       style={{ "--mobile-nav-height": `${BOTTOM_NAV_HEIGHT_PX}px` }}
+      onTouchStart={isMobile && showNavigation ? handleTouchStart : undefined}
+      onTouchEnd={isMobile && showNavigation ? handleTouchEnd : undefined}
     >
       {showNavigation && !isMobile && <Navbar />}
 
@@ -77,7 +120,7 @@ const AppLayout = ({ children }) => {
             onClick={() => setShowFabModal(true)}
             disabled={isDemo && !canAddMoreTransactions}
             aria-label="Add transaction"
-            style={{ bottom: fabBottom, right: "1rem", transition: "bottom 0.3s ease" }}
+            style={{ bottom: fabBottom, right: "1rem", transition: "bottom 0.3s ease", touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             className="fixed z-50 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl h-14 w-14 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FiPlus className="h-6 w-6" />

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval } from "date-fns";
 import formatCurrency from "../../utils/formatCurrency.jsx";
 import { useCategories } from "../../utils/categories.jsx";
-import Skeleton from "react-loading-skeleton";
+import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
@@ -254,16 +254,20 @@ const TransactionAnalytics = () => {
   };
 
   if (contextLoading || isLoadingAnalyticsData) {
+    const skeletonBase = isDarkMode ? "#1e293b" : "#e2e8f0";
+    const skeletonHighlight = isDarkMode ? "#334155" : "#f1f5f9";
     return (
-      <div className="space-y-4">
-        <Skeleton height={48} />
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} height={120} borderRadius={18} />
-          ))}
+      <SkeletonTheme baseColor={skeletonBase} highlightColor={skeletonHighlight}>
+        <div className="space-y-4">
+          <Skeleton height={48} />
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} height={120} borderRadius={18} />
+            ))}
+          </div>
+          <Skeleton height={220} borderRadius={18} />
         </div>
-        <Skeleton height={220} borderRadius={18} />
-      </div>
+      </SkeletonTheme>
     );
   }
 
