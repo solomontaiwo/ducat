@@ -59,7 +59,7 @@ const AppLayout = ({ children }) => {
         <main
           className={`flex-1 relative overflow-x-hidden transition-all ${
             showNavigation
-              ? "pt-[calc(env(safe-area-inset-top)+1.5rem)] app-content-safe-mobile md:pt-20 md:pb-6 px-4 md:px-8"
+              ? `pt-[calc(env(safe-area-inset-top)+1.5rem)] ${isMobile ? "app-content-safe-mobile" : ""} md:pt-20 md:pb-6 px-4 md:px-8`
               : "p-0"
           }`}
         >
