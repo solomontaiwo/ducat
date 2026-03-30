@@ -16,6 +16,7 @@ import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
 const PERIOD_OPTIONS = ["daily", "weekly", "monthly", "last3Months", "all"];
+const DASHBOARD_PERIOD_STORAGE_KEY = "dashboard-period";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -31,10 +32,13 @@ const Dashboard = () => {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [dashboardData, setDashboardData] = useState([]);
   const [periodPref, setPeriodPref] = useState(() => {
-    const saved = localStorage.getItem("analytics-period");
+    const saved = localStorage.getItem(DASHBOARD_PERIOD_STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return PERIOD_OPTIONS.includes(parsed?.period)
+          ? parsed
+          : { period: "monthly" };
       } catch {
         return { period: "monthly" };
       }
@@ -59,7 +63,7 @@ const Dashboard = () => {
   }, [isDemo, transactions, currentUser, fetchAllTransactions]);
 
   useEffect(() => {
-    localStorage.setItem("analytics-period", JSON.stringify(periodPref));
+    localStorage.setItem(DASHBOARD_PERIOD_STORAGE_KEY, JSON.stringify(periodPref));
   }, [periodPref]);
 
   const { start: periodStart, end: periodEnd } = getPeriodRange(periodPref.period || "monthly", periodPref.customRange);

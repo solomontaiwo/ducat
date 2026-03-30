@@ -53,7 +53,10 @@ const AppLayout = ({ children }) => {
     : "1.5rem";
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div
+      className="min-h-screen bg-background text-foreground flex flex-col"
+      style={{ "--mobile-nav-height": `${BOTTOM_NAV_HEIGHT_PX}px` }}
+    >
       {showNavigation && !isMobile && <Navbar />}
 
         <main
