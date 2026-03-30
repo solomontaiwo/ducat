@@ -18,7 +18,7 @@ import {
 } from "../ui/dialog";
 import { FiTrendingUp, FiTrendingDown, FiSave, FiPlus } from "react-icons/fi";
 
-const MODAL_SCROLLABLE_BODY_MAX_HEIGHT = "calc(92vh - 8.5rem)";
+const MODAL_SCROLLABLE_BODY_MAX_HEIGHT = "auto";
 
 const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
   TransactionModal.propTypes = {
