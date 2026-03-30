@@ -5,17 +5,18 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import TransactionModal from "../Transaction/TransactionModal.jsx";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { FiBarChart2, FiList, FiPlus, FiPieChart, FiTarget, FiTrendingUp } from "react-icons/fi";
+import { FiBarChart2, FiList, FiPlus, FiTrendingUp } from "react-icons/fi";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import RecentTransactions from "./RecentTransactions";
 import formatCurrency from "../../utils/formatCurrency.jsx";
 import { calculateStats, getPeriodRange } from "../../utils/statsUtils.jsx";
 import { useBudget } from "../../hooks/useBudgets.jsx";
-import { useGoal } from "../../hooks/useGoals.jsx";
-import { InsightsService } from "../../services/insightsService.jsx";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+
+const PERIOD_OPTIONS = ["daily", "weekly", "monthly", "last3Months", "all"];
+const DASHBOARD_PERIOD_STORAGE_KEY = "dashboard-period";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -30,9 +31,22 @@ const Dashboard = () => {
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [dashboardData, setDashboardData] = useState([]);
+  const [periodPref, setPeriodPref] = useState(() => {
+    const saved = localStorage.getItem(DASHBOARD_PERIOD_STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return PERIOD_OPTIONS.includes(parsed?.period)
+          ? parsed
+          : { period: "monthly" };
+      } catch {
+        return { period: "monthly" };
+      }
+    }
+    return { period: "monthly" };
+  });
   const { t } = useTranslation();
   const { budgets, getBudgetStatus } = useBudget();
-  const { goals } = useGoal();
 
   useEffect(() => {
     const load = async () => {
@@ -48,17 +62,9 @@ const Dashboard = () => {
     load();
   }, [isDemo, transactions, currentUser, fetchAllTransactions]);
 
-  const periodPref = useMemo(() => {
-    const saved = localStorage.getItem("analytics-period");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return { period: "monthly" };
-      }
-    }
-    return { period: "monthly" };
-  }, []);
+  useEffect(() => {
+    localStorage.setItem(DASHBOARD_PERIOD_STORAGE_KEY, JSON.stringify(periodPref));
+  }, [periodPref]);
 
   const { start: periodStart, end: periodEnd } = getPeriodRange(periodPref.period || "monthly", periodPref.customRange);
   
@@ -101,26 +107,25 @@ const Dashboard = () => {
         action: () => navigate("/analytics"),
       },
       {
-        key: "view-insights",
-        title: t("navbar.insights"),
-        subtitle: t("insights.subtitle"),
-        icon: <FiPieChart />,
-        action: () => navigate("/insights"),
+        key: "view-cashflow",
+        title: t("navbar.cashflow"),
+        subtitle: t("cashflow.subtitle"),
+        icon: <FiTrendingUp />,
+        action: () => navigate("/cashflow"),
       },
     ],
     [isDemo, canAddMoreTransactions, navigate, t]
   );
 
-  const budgetStatus = useMemo(() => getBudgetStatus(), [getBudgetStatus]);
-  const topBudgetAlert = useMemo(
-    () => budgetStatus.sort((a, b) => b.percentage - a.percentage)[0],
-    [budgetStatus]
-  );
-  const topGoal = useMemo(() => goals[0], [goals]);
-  const topInsight = useMemo(
-    () => InsightsService.generate({ transactions: dashboardData, budgets, goals })[0],
-    [dashboardData, budgets, goals]
-  );
+  const topBudgetAlert = useMemo(() => {
+    if (!budgets.length) return null;
+    const budgetStatuses = getBudgetStatus();
+    if (!budgetStatuses.length) return null;
+    return budgetStatuses.reduce(
+      (top, budget) => (budget.percentage > top.percentage ? budget : top),
+      budgetStatuses[0]
+    );
+  }, [budgets, getBudgetStatus]);
 
   return (
     <div className="page-shell">
@@ -131,10 +136,29 @@ const Dashboard = () => {
             {currentUser ? "👋" : "👋"} {t("welcome")}
           </h2>
           <p className="text-sm text-muted-foreground max-w-2xl">{t("motivationalQuote")}</p>
+          <div className="flex flex-wrap gap-2 pt-2">
+            {PERIOD_OPTIONS.map((period) => {
+              const isActivePeriod = (periodPref.period || "monthly") === period;
+              return (
+                <button
+                  key={period}
+                  type="button"
+                  onClick={() => setPeriodPref((prev) => ({ ...prev, period }))}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                    isActivePeriod
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card/70 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t(`periods.${period}`, { defaultValue: period })}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 md:gap-3">
           <Button variant="outline" size="lg" onClick={() => navigate("/analytics")} className="gap-2 px-4">
-            <FiPieChart className="h-4 w-4" />
+            <FiBarChart2 className="h-4 w-4" />
             {t("navbar.analytics")}
           </Button>
           <Button size="lg" onClick={() => setShowQuickAdd(true)} disabled={isDemo && !canAddMoreTransactions} className="gap-2 px-4">
@@ -215,7 +239,7 @@ const Dashboard = () => {
             <CardTitle>{t("quickActions")}</CardTitle>
             <CardDescription>{t("whatToRegister")}</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-4">
+          <CardContent className="grid gap-3 md:grid-cols-2">
             {quickActions.map((action) => (
               <button
                 key={action.key}
@@ -247,81 +271,30 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="glass">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FiTrendingUp /> {t("budgets.title")}
-            </CardTitle>
-            <CardDescription>{t("budgets.subtitle")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {topBudgetAlert ? (
-              <>
-                <p className="text-sm capitalize">{t(`categories.${topBudgetAlert.category}`, { defaultValue: topBudgetAlert.category })}</p>
-                <p className="text-2xl font-bold">{Math.round(topBudgetAlert.percentage)}%</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(topBudgetAlert.spent)} / {formatCurrency(topBudgetAlert.limit)}
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("budgets.empty")}</p>
-            )}
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/budgets")}>
-              {t("budgets.manage")}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="glass">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FiTarget /> {t("goals.title")}
-            </CardTitle>
-            <CardDescription>{t("goals.subtitle")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {topGoal ? (
-              <>
-                <p className="text-sm">{topGoal.name}</p>
-                <p className="text-2xl font-bold">
-                  {Math.round((topGoal.currentAmount / topGoal.targetAmount) * 100 || 0)}%
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(topGoal.currentAmount)} / {formatCurrency(topGoal.targetAmount)}
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("goals.empty")}</p>
-            )}
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/goals")}>
-              {t("goals.manage")}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="glass">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FiPieChart /> {t("insights.title")}
-            </CardTitle>
-            <CardDescription>{t("insights.subtitle")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {topInsight ? (
-              <>
-                <p className="text-sm font-medium">{topInsight.title}</p>
-                <p className="text-xs text-muted-foreground">{topInsight.description}</p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("insights.empty")}</p>
-            )}
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/insights")}>
-              {t("insights.open")}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="glass">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FiTrendingUp /> {t("budgets.title")}
+          </CardTitle>
+          <CardDescription>{t("budgets.subtitle")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {topBudgetAlert ? (
+            <>
+              <p className="text-sm capitalize">{t(`categories.${topBudgetAlert.category}`, { defaultValue: topBudgetAlert.category })}</p>
+              <p className="text-2xl font-bold">{Math.round(topBudgetAlert.percentage)}%</p>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(topBudgetAlert.spent)} / {formatCurrency(topBudgetAlert.limit)}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("budgets.empty")}</p>
+          )}
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/budgets")}>
+            {t("budgets.manage")}
+          </Button>
+        </CardContent>
+      </Card>
 
       <TransactionModal show={showQuickAdd} onClose={() => setShowQuickAdd(false)} transaction={null} />
     </div>
