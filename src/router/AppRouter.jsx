@@ -85,19 +85,18 @@ const pageTransition = {
 
 const AppRouter = () => {
   const location = useLocation();
+  const { currentUser } = useAuth();
 
   useEffect(() => {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connection?.saveData) return undefined;
+
+    const likelyNextRoutes = currentUser
+      ? [loadDashboard, loadTransactionList, loadAnalytics]
+      : [loadLogin, loadRegister, loadLandingPage];
+
     const preload = () => {
-      Promise.allSettled([
-        loadDashboard(),
-        loadTransactionList(),
-        loadAnalytics(),
-        loadStats(),
-        loadProfile(),
-        loadBudgetList(),
-        loadCashflowTimeline(),
-        loadLandingPage(),
-      ]);
+      Promise.allSettled(likelyNextRoutes.map((loadRoute) => loadRoute()));
     };
 
     if ("requestIdleCallback" in window) {
@@ -107,7 +106,7 @@ const AppRouter = () => {
 
     const timeoutId = window.setTimeout(preload, 300);
     return () => window.clearTimeout(timeoutId);
-  }, []);
+  }, [currentUser]);
 
   const routes = [
     { path: "/", element: <Home /> },
