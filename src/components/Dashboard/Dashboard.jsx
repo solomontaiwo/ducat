@@ -53,7 +53,10 @@ const Dashboard = () => {
       if (isDemo) {
         setDashboardData(transactions);
       } else if (currentUser) {
-        const data = await fetchAllTransactions({ onRevalidated: setDashboardData });
+        const data = await fetchAllTransactions({
+          revalidateIfFresh: false,
+          onRevalidated: setDashboardData,
+        });
         setDashboardData(data);
       } else {
         setDashboardData([]);
@@ -129,47 +132,51 @@ const Dashboard = () => {
 
   return (
     <div className="page-shell">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between rounded-2xl border border-border bg-card/70 p-5">
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Soldi Sotto</p>
-          <h2 className="text-3xl font-bold flex items-center gap-2">
-            {currentUser ? "👋" : "👋"} {t("welcome")}
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-2xl">{t("motivationalQuote")}</p>
-          <div className="flex flex-wrap gap-2 pt-2">
-            {PERIOD_OPTIONS.map((period) => {
-              const isActivePeriod = (periodPref.period || "monthly") === period;
-              return (
-                <button
-                  key={period}
-                  type="button"
-                  onClick={() => setPeriodPref((prev) => ({ ...prev, period }))}
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                    isActivePeriod
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-card/70 text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {t(`periods.${period}`, { defaultValue: period })}
-                </button>
-              );
-            })}
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-card/80 p-5 shadow-[0_20px_80px_rgba(37,99,235,0.08)]">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
+        <div className="pointer-events-none absolute -left-8 -bottom-12 h-40 w-40 rounded-full bg-emerald-400/10 blur-2xl" />
+        <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Soldi Sotto</p>
+            <h2 className="text-3xl font-bold flex items-center gap-2">
+              {currentUser ? "👋" : "👋"} {t("welcome")}
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-2xl">{t("motivationalQuote")}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 md:gap-3">
+            <Button variant="outline" size="lg" onClick={() => navigate("/analytics")} className="gap-2 px-4">
+              <FiBarChart2 className="h-4 w-4" />
+              {t("navbar.analytics")}
+            </Button>
+            <Button size="lg" onClick={() => setShowQuickAdd(true)} disabled={isDemo && !canAddMoreTransactions} className="gap-2 px-4">
+              <FiPlus className="h-4 w-4" /> {t("addTransaction")}
+            </Button>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 md:gap-3">
-          <Button variant="outline" size="lg" onClick={() => navigate("/analytics")} className="gap-2 px-4">
-            <FiBarChart2 className="h-4 w-4" />
-            {t("navbar.analytics")}
-          </Button>
-          <Button size="lg" onClick={() => setShowQuickAdd(true)} disabled={isDemo && !canAddMoreTransactions} className="gap-2 px-4">
-            <FiPlus className="h-4 w-4" /> {t("addTransaction")}
-          </Button>
+        <div className="relative mt-4 flex flex-wrap gap-2">
+          {PERIOD_OPTIONS.map((period) => {
+            const isActivePeriod = (periodPref.period || "monthly") === period;
+            return (
+              <button
+                key={period}
+                type="button"
+                onClick={() => setPeriodPref((prev) => ({ ...prev, period }))}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                  isActivePeriod
+                    ? "border-primary bg-primary text-primary-foreground shadow-md"
+                    : "border-border bg-background/80 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t(`periods.${period}`, { defaultValue: period })}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="glass">
-          <CardHeader>
+        <Card className="glass border-primary/20">
+          <CardHeader className="pb-2">
             <CardTitle>{t("financialOverview.balance")}</CardTitle>
             <CardDescription>{t("financialOverview.totalTransactions")}</CardDescription>
           </CardHeader>
@@ -193,8 +200,8 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
-        <Card className="glass">
-          <CardHeader>
+        <Card className="glass border-emerald-500/20">
+          <CardHeader className="pb-2">
             <CardTitle>{t("financialOverview.totalIncome")}</CardTitle>
             <CardDescription>{t(`periods.${periodPref.period}`)}</CardDescription>
           </CardHeader>
@@ -212,8 +219,8 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
-        <Card className="glass">
-          <CardHeader>
+        <Card className="glass border-rose-500/20">
+          <CardHeader className="pb-2">
             <CardTitle>{t("financialOverview.totalExpense")}</CardTitle>
             <CardDescription>{t(`periods.${periodPref.period}`)}</CardDescription>
           </CardHeader>
