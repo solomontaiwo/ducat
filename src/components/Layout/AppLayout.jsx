@@ -50,12 +50,35 @@ const AppLayout = ({ children }) => {
   // Swipe gesture navigation (mobile only)
   const touchStartRef = useRef(null);
   const handleTouchStart = useCallback((e) => {
+    // Ignore multi-touch gestures
+    if (!e.touches || e.touches.length !== 1) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    // Ignore touches that start on interactive elements or elements opting out
+    const target = e.target;
+    if (target instanceof HTMLElement) {
+      const interactiveSelector =
+        'input, textarea, select, button, [contenteditable="true"], [data-swipe-ignore="true"]';
+      if (target.closest(interactiveSelector)) {
+        touchStartRef.current = null;
+        return;
+      }
+    }
+
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
   }, []);
 
   const handleTouchEnd = useCallback((e) => {
     if (!touchStartRef.current) return;
+
+    // Only handle single-touch end events
+    if (!e.changedTouches || e.changedTouches.length !== 1) {
+      touchStartRef.current = null;
+      return;
+    }
     const touch = e.changedTouches[0];
     const dx = touch.clientX - touchStartRef.current.x;
     const dy = touch.clientY - touchStartRef.current.y;
