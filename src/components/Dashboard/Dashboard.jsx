@@ -134,7 +134,7 @@ const Dashboard = () => {
     <div className="page-shell">
       <div className="relative overflow-hidden rounded-3xl border border-border bg-card/80 p-5 shadow-[0_20px_80px_rgba(37,99,235,0.08)]">
         <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
-        <div className="pointer-events-none absolute -left-8 -bottom-12 h-40 w-40 rounded-full bg-emerald-400/10 blur-2xl" />
+        <div className="pointer-events-none absolute -left-8 -bottom-12 h-40 w-40 rounded-full bg-accent/15 blur-2xl" />
         <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Soldi Sotto</p>

@@ -134,7 +134,7 @@ const AppRouter = () => {
 
   return (
     <AppLayout>
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           {routes.map(({ path, element }) => (
             <Route
