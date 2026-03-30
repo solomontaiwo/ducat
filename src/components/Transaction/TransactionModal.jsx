@@ -157,7 +157,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto px-5 pb-5 space-y-5" style={{ maxHeight: MODAL_SCROLLABLE_BODY_MAX_HEIGHT }}>
+        <form onSubmit={handleSubmit} className="overflow-y-auto px-5 pb-24 space-y-5" style={{ maxHeight: MODAL_SCROLLABLE_BODY_MAX_HEIGHT }}>
           <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/50 p-1">
             <Button
               type="button"
