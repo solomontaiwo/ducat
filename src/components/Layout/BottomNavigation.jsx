@@ -23,14 +23,14 @@ const BottomNavigation = ({ navVisible }) => {
   const { t } = useTranslation();
 
   const navigationItems = [
-    { key: "/dashboard", icon: <FiHome size={22} />, path: "/dashboard" },
-    { key: "/transactions", icon: <FiList size={22} />, path: "/transactions", badge: isDemo ? `${transactions.length}/${maxTransactions}` : null },
-    { key: "/analytics", icon: <FiBarChart size={22} />, path: "/analytics" },
+    { key: "/dashboard", icon: <FiHome size={22} />, label: t("navbar.dashboard"), path: "/dashboard" },
+    { key: "/transactions", icon: <FiList size={22} />, label: t("navbar.transactions"), path: "/transactions", badge: isDemo ? `${transactions.length}/${maxTransactions}` : null },
+    { key: "/analytics", icon: <FiBarChart size={22} />, label: t("navbar.analytics"), path: "/analytics" },
     ...(currentUser
-      ? [{ key: "/profile", icon: <FiUser size={22} />, path: "/profile" }]
+      ? [{ key: "/profile", icon: <FiUser size={22} />, label: t("navbar.profile"), path: "/profile" }]
       : [
-          { key: "login", icon: <FiLogIn size={22} />, action: () => navigate("/login") },
-          { key: "register", icon: <FiUserPlus size={22} />, action: () => navigate("/register") },
+          { key: "login", icon: <FiLogIn size={22} />, label: t("navLogin"), action: () => navigate("/login") },
+          { key: "register", icon: <FiUserPlus size={22} />, label: t("navRegister"), action: () => navigate("/register") },
         ]),
   ];
 
@@ -58,6 +58,7 @@ const BottomNavigation = ({ navVisible }) => {
           return (
             <button
               key={item.key}
+              aria-label={item.label}
               onClick={() => handleNavigation(item)}
               className={`relative flex flex-col items-center justify-center rounded-2xl px-2 py-2 ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
