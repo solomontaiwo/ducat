@@ -89,7 +89,7 @@ const AppRouter = () => {
 
   useEffect(() => {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (connection?.saveData) return undefined;
+    if (connection?.saveData) return () => {};
 
     const likelyNextRoutes = currentUser
       ? [loadDashboard, loadTransactionList, loadAnalytics]
