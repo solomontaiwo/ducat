@@ -142,25 +142,25 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
 
   return (
     <Dialog open={show} onOpenChange={(open) => (!open ? onClose() : null)}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto bg-card/95 text-foreground border border-border shadow-2xl">
+      <DialogContent className="w-[96vw] max-w-lg p-0 max-h-[92vh] overflow-hidden rounded-3xl border border-border bg-card/95 text-foreground shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 text-2xl">
+          <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl px-5 pt-5">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
               {isEdit ? "✏️" : "⚡"}
             </span>
             {isEdit ? t("transactionModal.editTitle") : t("transactionModal.newTitle")}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="px-5">
             {isEdit ? t("transactionModal.editSubtitle") : t("transactionModal.newSubtitle")}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="max-h-[calc(92vh-8.5rem)] overflow-y-auto px-5 pb-5 space-y-5">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/50 p-1">
             <Button
               type="button"
               variant={formData.type === "expense" ? "destructive" : "outline"}
-              className="w-full justify-center"
+              className="w-full justify-center rounded-xl"
               onClick={() => setFormData((prev) => ({ ...prev, type: "expense" }))}
             >
               <FiTrendingDown className="mr-2 h-4 w-4" />
@@ -169,7 +169,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
             <Button
               type="button"
               variant={formData.type === "income" ? "default" : "outline"}
-              className="w-full justify-center"
+              className="w-full justify-center rounded-xl"
               onClick={() => setFormData((prev) => ({ ...prev, type: "income" }))}
             >
               <FiTrendingUp className="mr-2 h-4 w-4" />
@@ -199,14 +199,16 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
                 }}
                 required
                 className="w-full"
+                autoFocus
               />
-              <div className="flex flex-wrap gap-2 pt-1">
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 {quickAmounts.map((value) => (
                   <Button
                     key={value}
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="shrink-0"
                     onClick={() =>
                       setFormData((prev) => ({
                         ...prev,
@@ -261,13 +263,13 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
             </Select>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <DialogFooter className="gap-2 sticky bottom-0 bg-card/95 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
               {t("transactionModal.cancel")}
             </Button>
             <Button
               type="submit"
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
               disabled={!formData.amount || !formData.description || !formData.category}
             >
               {isEdit ? <FiSave className="h-4 w-4" /> : <FiPlus className="h-4 w-4" />}
