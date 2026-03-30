@@ -108,13 +108,6 @@ const Dashboard = () => {
         icon: <FiBarChart2 />,
         action: () => navigate("/analytics"),
       },
-      {
-        key: "view-cashflow",
-        title: t("navbar.cashflow"),
-        subtitle: t("cashflow.subtitle"),
-        icon: <FiTrendingUp />,
-        action: () => navigate("/cashflow"),
-      },
     ],
     [isDemo, canAddMoreTransactions, navigate, t]
   );

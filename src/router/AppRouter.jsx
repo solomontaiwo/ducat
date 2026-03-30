@@ -12,7 +12,6 @@ const loadAnalytics = () => import("../components/Analytics/TransactionAnalytics
 const loadStats = () => import("../components/Stats/Stats");
 const loadProfile = () => import("../components/Profile/Profile");
 const loadBudgetList = () => import("../components/Budgets/BudgetList");
-const loadCashflowTimeline = () => import("../components/Cashflow/CashflowTimeline");
 const loadHome = () => import("../components/Home/Home");
 const loadLandingPage = () => import("../components/Home/LandingPage");
 
@@ -22,7 +21,6 @@ const Analytics = lazy(loadAnalytics);
 const Stats = lazy(loadStats);
 const Profile = lazy(loadProfile);
 const BudgetList = lazy(loadBudgetList);
-const CashflowTimeline = lazy(loadCashflowTimeline);
 const Home = lazy(loadHome);
 const LandingPage = lazy(loadLandingPage);
 
@@ -126,7 +124,6 @@ const AppRouter = () => {
     { path: "/stats", element: <Stats /> },
     { path: "/profile", element: <Profile /> },
     { path: "/budgets", element: <BudgetList /> },
-    { path: "/cashflow", element: <CashflowTimeline /> },
     { path: "/landing", element: <LandingPage /> },
     { path: "*", element: <Navigate to="/" replace /> },
   ];
