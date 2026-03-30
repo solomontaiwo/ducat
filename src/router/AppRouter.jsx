@@ -1,24 +1,37 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PropTypes from "prop-types";
 import { useAuth } from "../context/AuthProvider";
 import AppLayout from "../components/Layout/AppLayout";
 
 // Lazy load all main pages for better performance
-const Dashboard = lazy(() => import("../components/Dashboard/Dashboard"));
-const TransactionList = lazy(() => import("../components/Transaction/TransactionList"));
-const Analytics = lazy(() => import("../components/Analytics/TransactionAnalytics"));
-const Stats = lazy(() => import("../components/Stats/Stats"));
-const Profile = lazy(() => import("../components/Profile/Profile"));
-const BudgetList = lazy(() => import("../components/Budgets/BudgetList"));
-const CashflowTimeline = lazy(() => import("../components/Cashflow/CashflowTimeline"));
-const Home = lazy(() => import("../components/Home/Home"));
-const LandingPage = lazy(() => import("../components/Home/LandingPage"));
+const loadDashboard = () => import("../components/Dashboard/Dashboard");
+const loadTransactionList = () => import("../components/Transaction/TransactionList");
+const loadAnalytics = () => import("../components/Analytics/TransactionAnalytics");
+const loadStats = () => import("../components/Stats/Stats");
+const loadProfile = () => import("../components/Profile/Profile");
+const loadBudgetList = () => import("../components/Budgets/BudgetList");
+const loadCashflowTimeline = () => import("../components/Cashflow/CashflowTimeline");
+const loadHome = () => import("../components/Home/Home");
+const loadLandingPage = () => import("../components/Home/LandingPage");
+
+const Dashboard = lazy(loadDashboard);
+const TransactionList = lazy(loadTransactionList);
+const Analytics = lazy(loadAnalytics);
+const Stats = lazy(loadStats);
+const Profile = lazy(loadProfile);
+const BudgetList = lazy(loadBudgetList);
+const CashflowTimeline = lazy(loadCashflowTimeline);
+const Home = lazy(loadHome);
+const LandingPage = lazy(loadLandingPage);
 
 // Lazy load components for better performance
-const Login = lazy(() => import("../components/Auth/Login"));
-const Register = lazy(() => import("../components/Auth/Register"));
+const loadLogin = () => import("../components/Auth/Login");
+const loadRegister = () => import("../components/Auth/Register");
+
+const Login = lazy(loadLogin);
+const Register = lazy(loadRegister);
 
 // Loading component
 const PageLoader = () => (
@@ -67,11 +80,33 @@ const pageVariants = {
 const pageTransition = {
   type: "tween",
   ease: [0.22, 1, 0.36, 1],
-  duration: 0.35
+  duration: 0.18
 };
 
 const AppRouter = () => {
   const location = useLocation();
+  const { currentUser } = useAuth();
+
+  useEffect(() => {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (connection?.saveData) return () => {};
+
+    const likelyNextRoutes = currentUser
+      ? [loadDashboard, loadTransactionList, loadAnalytics]
+      : [loadLogin, loadRegister, loadLandingPage];
+
+    const preload = () => {
+      Promise.allSettled(likelyNextRoutes.map((loadRoute) => loadRoute()));
+    };
+
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(preload, { timeout: 1500 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = window.setTimeout(preload, 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [currentUser]);
 
   const routes = [
     { path: "/", element: <Home /> },
