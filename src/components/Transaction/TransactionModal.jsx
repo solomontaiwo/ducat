@@ -18,6 +18,8 @@ import {
 } from "../ui/dialog";
 import { FiTrendingUp, FiTrendingDown, FiSave, FiPlus } from "react-icons/fi";
 
+const MODAL_SCROLLABLE_BODY_MAX_HEIGHT = "calc(92vh - 8.5rem)";
+
 const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
   TransactionModal.propTypes = {
     show: PropTypes.bool.isRequired,
@@ -155,7 +157,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="max-h-[calc(92vh-8.5rem)] overflow-y-auto px-5 pb-5 space-y-5">
+        <form onSubmit={handleSubmit} className="overflow-y-auto px-5 pb-5 space-y-5" style={{ maxHeight: MODAL_SCROLLABLE_BODY_MAX_HEIGHT }}>
           <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/50 p-1">
             <Button
               type="button"
@@ -263,7 +265,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
             </Select>
           </div>
 
-          <DialogFooter className="gap-2 sticky bottom-0 bg-card/95 pt-2">
+          <DialogFooter className="gap-2 sticky bottom-0 bg-card pt-2 border-t border-border">
             <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
               {t("transactionModal.cancel")}
             </Button>
