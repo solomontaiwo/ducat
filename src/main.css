@@ -97,6 +97,35 @@
   border-color: hsl(var(--border));
 }
 
+/* ── OS-aware scrollbar ──────────────────────────────────────────────────────
+   Firefox: thin scrollbar using the current theme palette.
+   WebKit (Chrome/Safari/Edge): 6 px overlay-style thumb, transparent track.
+   iOS/macOS already uses overlay scrollbars by default; these rules only
+   apply on platforms that show persistent scrollbars.
+   -------------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.55);
+}
+
 @layer base {
   /* Keep native date pickers aligned on mobile */
   input[type="date"],

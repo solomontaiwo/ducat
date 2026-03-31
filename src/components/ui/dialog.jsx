@@ -35,19 +35,18 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
       className={cn(
         // ── sheet variant ──────────────────────────────────────────────────
         variant === "sheet" && [
-          // Mobile: full-width bottom sheet anchored to viewport bottom
-          "fixed inset-x-0 bottom-0 z-50 w-full",
-          "rounded-t-3xl rounded-b-none border-t border-x border-border",
+          // Mobile: full-screen modal covering the entire viewport
+          "fixed inset-0 z-50 w-full rounded-none border-0",
           "bg-background text-foreground shadow-2xl",
           // Mobile enter/exit: slide up / slide down
           "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-8",
           "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-8",
           "duration-300",
           // Desktop (sm+): switch to centred modal
-          "sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:bottom-auto",
+          "sm:inset-x-auto sm:inset-y-auto sm:left-1/2 sm:top-1/2",
           "sm:-translate-x-1/2 sm:-translate-y-1/2",
           "sm:w-[92vw] sm:max-w-lg",
-          "sm:rounded-2xl sm:border",
+          "sm:rounded-2xl sm:border sm:border-border",
           "sm:data-[state=open]:zoom-in-90 sm:data-[state=open]:slide-in-from-top-8",
           "sm:data-[state=closed]:zoom-out-90 sm:data-[state=closed]:slide-out-to-top-8",
         ],
