@@ -48,8 +48,8 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
           "sm:-translate-x-1/2 sm:-translate-y-1/2",
           "sm:w-[92vw] sm:max-w-lg",
           "sm:rounded-2xl sm:border",
-          "sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-90 sm:data-[state=open]:slide-in-from-top-8",
-          "sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=closed]:zoom-out-90 sm:data-[state=closed]:slide-out-to-top-8",
+          "sm:data-[state=open]:zoom-in-90 sm:data-[state=open]:slide-in-from-top-8",
+          "sm:data-[state=closed]:zoom-out-90 sm:data-[state=closed]:slide-out-to-top-8",
         ],
         // ── default variant ────────────────────────────────────────────────
         variant === "default" && [
