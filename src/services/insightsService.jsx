@@ -1,40 +1,8 @@
 import { RecurringDetectionService } from "./recurringDetectionService.jsx";
 
-const startOfMonth = (date = new Date()) => new Date(date.getFullYear(), date.getMonth(), 1);
-
 export const InsightsService = {
-  generate({ transactions, budgets = [], goals = [] }) {
+  generate({ transactions, goals = [] }) {
     const insights = [];
-
-    const monthStart = startOfMonth();
-    const monthExpenses = transactions.filter(
-      (t) => t.type === "expense" && (t.date instanceof Date ? t.date : new Date(t.date)) >= monthStart
-    );
-
-    budgets.forEach((budget) => {
-      const spent = monthExpenses
-        .filter((t) => t.category === budget.category)
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      if (budget.limit <= 0) return;
-
-      const usage = (spent / budget.limit) * 100;
-      if (usage >= 100) {
-        insights.push({
-          type: "budget_exceeded",
-          priority: 100,
-          title: `Budget ${budget.category} exceeded`,
-          description: `You've spent ${spent.toFixed(2)} / ${budget.limit.toFixed(2)} this period.`,
-        });
-      } else if (usage >= budget.alertThreshold) {
-        insights.push({
-          type: "budget_alert",
-          priority: 80,
-          title: `Budget ${budget.category} nearing limit`,
-          description: `You are at ${usage.toFixed(0)}% of your ${budget.limit.toFixed(2)} budget.`,
-        });
-      }
-    });
 
     goals.forEach((goal) => {
       const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
