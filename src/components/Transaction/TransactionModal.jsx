@@ -18,8 +18,6 @@ import {
 } from "../ui/dialog";
 import { FiTrendingUp, FiTrendingDown, FiSave, FiPlus } from "react-icons/fi";
 
-const MODAL_SCROLLABLE_BODY_MAX_HEIGHT = "auto";
-
 const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
   TransactionModal.propTypes = {
     show: PropTypes.bool.isRequired,
@@ -144,128 +142,137 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
 
   return (
     <Dialog open={show} onOpenChange={(open) => (!open ? onClose() : null)}>
-      <DialogContent className="w-[96vw] max-w-lg p-0 max-h-[92vh] overflow-hidden rounded-3xl border border-border bg-card/95 text-foreground shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl px-5 pt-5">
+      {/* variant="sheet": bottom-sheet on mobile, centred modal on sm+ */}
+      <DialogContent
+        variant="sheet"
+        className="flex flex-col p-0 bg-card/95 text-foreground max-h-[92dvh] sm:max-h-[90vh] overflow-hidden"
+      >
+        {/* ── Sticky header ─────────────────────────────────────────────── */}
+        <DialogHeader className="shrink-0 px-5 pt-5 pb-4 border-b border-border bg-card/95">
+          <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl pr-8">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
               {isEdit ? "✏️" : "⚡"}
             </span>
             {isEdit ? t("transactionModal.editTitle") : t("transactionModal.newTitle")}
           </DialogTitle>
-          <DialogDescription className="px-5">
+          <DialogDescription>
             {isEdit ? t("transactionModal.editSubtitle") : t("transactionModal.newSubtitle")}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="overflow-y-auto px-5 pb-24 space-y-5" style={{ maxHeight: MODAL_SCROLLABLE_BODY_MAX_HEIGHT }}>
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/50 p-1">
-            <Button
-              type="button"
-              variant={formData.type === "expense" ? "destructive" : "outline"}
-              className="w-full justify-center rounded-xl"
-              onClick={() => setFormData((prev) => ({ ...prev, type: "expense" }))}
-            >
-              <FiTrendingDown className="mr-2 h-4 w-4" />
-              {t("transactionModal.expense")}
-            </Button>
-            <Button
-              type="button"
-              variant={formData.type === "income" ? "default" : "outline"}
-              className="w-full justify-center rounded-xl"
-              onClick={() => setFormData((prev) => ({ ...prev, type: "income" }))}
-            >
-              <FiTrendingUp className="mr-2 h-4 w-4" />
-              {t("transactionModal.income")}
-            </Button>
-          </div>
-
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("transactionModal.amount")}</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                placeholder={t("transactionModal.amountPlaceholder")}
-                value={formData.amount}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9.,]/g, "");
-                  const parts = value.split(/[,.]/);
-                  if (parts.length <= 2) setFormData((prev) => ({ ...prev, amount: value }));
-                }}
-                onBlur={(e) => {
-                  const value = e.target.value;
-                  if (value && value.includes(",")) {
-                    const normalizedValue = value.replace(",", ".");
-                    setFormData((prev) => ({ ...prev, amount: normalizedValue }));
-                  }
-                }}
-                required
-                className="w-full"
-                autoFocus
-              />
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {quickAmounts.map((value) => (
-                  <Button
-                    key={value}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        amount: String(value),
-                      }))
-                    }
-                  >
-                    €{value}
-                  </Button>
-                ))}
-              </div>
+        {/* ── Scrollable form body + sticky footer ──────────────────────── */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/50 p-1">
+              <Button
+                type="button"
+                variant={formData.type === "expense" ? "destructive" : "outline"}
+                className="w-full justify-center rounded-xl"
+                onClick={() => setFormData((prev) => ({ ...prev, type: "expense" }))}
+              >
+                <FiTrendingDown className="mr-2 h-4 w-4" />
+                {t("transactionModal.expense")}
+              </Button>
+              <Button
+                type="button"
+                variant={formData.type === "income" ? "default" : "outline"}
+                className="w-full justify-center rounded-xl"
+                onClick={() => setFormData((prev) => ({ ...prev, type: "income" }))}
+              >
+                <FiTrendingUp className="mr-2 h-4 w-4" />
+                {t("transactionModal.income")}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label>{t("transactionModal.date")}</Label>
-              <div className="relative">
+
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("transactionModal.amount")}</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={t("transactionModal.amountPlaceholder")}
+                  value={formData.amount}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9.,]/g, "");
+                    const parts = value.split(/[,.]/);
+                    if (parts.length <= 2) setFormData((prev) => ({ ...prev, amount: value }));
+                  }}
+                  onBlur={(e) => {
+                    const value = e.target.value;
+                    if (value && value.includes(",")) {
+                      const normalizedValue = value.replace(",", ".");
+                      setFormData((prev) => ({ ...prev, amount: normalizedValue }));
+                    }
+                  }}
+                  required
+                  className="w-full"
+                  autoFocus
+                />
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {quickAmounts.map((value) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          amount: String(value),
+                        }))
+                      }
+                    >
+                      €{value}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("transactionModal.date")}</Label>
                 <Input
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
                   required
                   className="block w-full appearance-none"
-                  style={{ minHeight: "2.75rem" }} 
+                  style={{ minHeight: "2.75rem" }}
                 />
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label>{t("transactionModal.description")}</Label>
+              <Input
+                type="text"
+                placeholder={t("transactionModal.descriptionPlaceholder")}
+                value={formData.description}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                required
+                enterKeyHint="next"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("transactionModal.category")}</Label>
+              <Select
+                value={formData.category}
+                onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
+                required
+              >
+                <option value="">{t("transactionModal.selectCategory")}</option>
+                {categories.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>{t("transactionModal.description")}</Label>
-            <Input
-              type="text"
-              placeholder={t("transactionModal.descriptionPlaceholder")}
-              value={formData.description}
-              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t("transactionModal.category")}</Label>
-            <Select
-              value={formData.category}
-              onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
-              required
-            >
-              <option value="">{t("transactionModal.selectCategory")}</option>
-              {categories.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <DialogFooter className="gap-2 sticky bottom-0 bg-card pt-2 border-t border-border">
+          {/* ── Sticky footer ──────────────────────────────────────────────── */}
+          <DialogFooter className="shrink-0 gap-2 px-5 py-4 border-t border-border bg-card/95 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
               {t("transactionModal.cancel")}
             </Button>
@@ -275,7 +282,14 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
               disabled={!formData.amount || !formData.description || !formData.category}
             >
               {isEdit ? <FiSave className="h-4 w-4" /> : <FiPlus className="h-4 w-4" />}
-              {isEdit ? t("transactionModal.saveChanges") : t("transactionModal.addButton", { type: formData.type === "expense" ? t("transactionModal.expense") : t("transactionModal.income") })}
+              {isEdit
+                ? t("transactionModal.saveChanges")
+                : t("transactionModal.addButton", {
+                    type:
+                      formData.type === "expense"
+                        ? t("transactionModal.expense")
+                        : t("transactionModal.income"),
+                  })}
             </Button>
           </DialogFooter>
         </form>
