@@ -25,7 +25,7 @@ DialogOverlay.propTypes = { className: PropTypes.string };
 /**
  * DialogContent supports an optional `variant` prop:
  *   - "default"  – centered modal (existing behaviour)
- *   - "sheet"    – bottom-sheet on mobile, centered modal on sm+
+ *   - "sheet"    – full-screen on mobile (fixed inset-0), centered modal on sm+
  */
 const DialogContent = React.forwardRef(({ className, children, variant = "default", ...props }, ref) => (
   <DialogPortal>
@@ -35,8 +35,9 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
       className={cn(
         // ── sheet variant ──────────────────────────────────────────────────
         variant === "sheet" && [
-          // Mobile: full-screen modal covering the entire viewport
+          // Mobile: full-screen modal covering the entire viewport; pad top for iOS notch/status bar
           "fixed inset-0 z-50 w-full rounded-none border-0",
+          "[padding-top:env(safe-area-inset-top)] sm:pt-0",
           "bg-background text-foreground shadow-2xl",
           // Mobile enter/exit: slide up / slide down
           "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-8",
