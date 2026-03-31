@@ -2,6 +2,7 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
+import PropTypes from "prop-types";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -19,17 +20,45 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   />
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+DialogOverlay.propTypes = { className: PropTypes.string };
 
-const DialogContent = React.forwardRef(({ className, children, ...props }, ref) => (
+/**
+ * DialogContent supports an optional `variant` prop:
+ *   - "default"  – centered modal (existing behaviour)
+ *   - "sheet"    – bottom-sheet on mobile, centered modal on sm+
+ */
+const DialogContent = React.forwardRef(({ className, children, variant = "default", ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 grid w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 gap-4 border border-border bg-background p-4 sm:p-6 shadow-lg text-foreground",
-        "duration-200 rounded-2xl",
-        "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-90 data-[state=open]:slide-in-from-top-8",
-        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-90 data-[state=closed]:slide-out-to-top-8",
+        // ── sheet variant ──────────────────────────────────────────────────
+        variant === "sheet" && [
+          // Mobile: full-width bottom sheet anchored to viewport bottom
+          "fixed inset-x-0 bottom-0 z-50 w-full",
+          "rounded-t-3xl rounded-b-none border-t border-x border-border",
+          "bg-background text-foreground shadow-2xl",
+          // Mobile enter/exit: slide up / slide down
+          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-8",
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-8",
+          "duration-300",
+          // Desktop (sm+): switch to centred modal
+          "sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:bottom-auto",
+          "sm:-translate-x-1/2 sm:-translate-y-1/2",
+          "sm:w-[92vw] sm:max-w-lg",
+          "sm:rounded-2xl sm:border",
+          "sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-90 sm:data-[state=open]:slide-in-from-top-8",
+          "sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=closed]:zoom-out-90 sm:data-[state=closed]:slide-out-to-top-8",
+        ],
+        // ── default variant ────────────────────────────────────────────────
+        variant === "default" && [
+          "fixed left-1/2 top-1/2 z-50 grid w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 gap-4",
+          "border border-border bg-background p-4 sm:p-6 shadow-lg text-foreground",
+          "duration-200 rounded-2xl",
+          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-90 data-[state=open]:slide-in-from-top-8",
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-90 data-[state=closed]:slide-out-to-top-8",
+        ],
         className
       )}
       {...props}
@@ -43,16 +72,23 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
   </DialogPortal>
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
+DialogContent.propTypes = {
+  className: PropTypes.string,
+  children: PropTypes.node,
+  variant: PropTypes.oneOf(["default", "sheet"]),
+};
 
 const DialogHeader = ({ className, ...props }) => (
   <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
+DialogHeader.propTypes = { className: PropTypes.string };
 
 const DialogFooter = ({ className, ...props }) => (
   <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
 );
 DialogFooter.displayName = "DialogFooter";
+DialogFooter.propTypes = { className: PropTypes.string };
 
 const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
@@ -62,6 +98,7 @@ const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   />
 ));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
+DialogTitle.propTypes = { className: PropTypes.string };
 
 const DialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
@@ -71,6 +108,7 @@ const DialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   />
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
+DialogDescription.propTypes = { className: PropTypes.string };
 
 export {
   Dialog,

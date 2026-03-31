@@ -284,20 +284,6 @@
       "addFirst": "Start by adding your first transaction"
     }
   },
-  "budgets": {
-    "title": "Budgets",
-    "subtitle": "Control spending with smart category limits",
-    "add": "Add budget",
-    "addSubtitle": "Set a monthly cap for a spending category",
-    "empty": "No budgets yet. Create one to start tracking limits.",
-    "manage": "Manage budgets",
-    "limit": "Budget limit",
-    "remaining": "Remaining",
-    "alertThreshold": "Alert threshold (%)",
-    "suggestions": "Smart suggestions",
-    "suggestionsSubtitle": "Based on your recent spending patterns",
-    "suggestedLimit": "Suggested limit"
-  },
   "goals": {
     "title": "Goals",
     "subtitle": "Track your savings goals and automate progress",

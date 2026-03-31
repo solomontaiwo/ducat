@@ -5,13 +5,12 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import TransactionModal from "../Transaction/TransactionModal.jsx";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { FiBarChart2, FiList, FiPlus, FiTrendingUp } from "react-icons/fi";
+import { FiBarChart2, FiList, FiPlus } from "react-icons/fi";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import RecentTransactions from "./RecentTransactions";
 import formatCurrency from "../../utils/formatCurrency.jsx";
 import { calculateStats, getPeriodRange } from "../../utils/statsUtils.jsx";
-import { useBudget } from "../../hooks/useBudgets.jsx";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
@@ -46,7 +45,6 @@ const Dashboard = () => {
     return { period: "monthly" };
   });
   const { t } = useTranslation();
-  const { budgets, getBudgetStatus } = useBudget();
 
   useEffect(() => {
     const load = async () => {
@@ -111,16 +109,6 @@ const Dashboard = () => {
     ],
     [isDemo, canAddMoreTransactions, navigate, t]
   );
-
-  const topBudgetAlert = useMemo(() => {
-    if (!budgets.length) return null;
-    const budgetStatuses = getBudgetStatus();
-    if (!budgetStatuses.length) return null;
-    return budgetStatuses.reduce(
-      (top, budget) => (budget.percentage > top.percentage ? budget : top),
-      budgetStatuses[0]
-    );
-  }, [budgets, getBudgetStatus]);
 
   return (
     <div className="page-shell">
@@ -269,31 +257,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="glass">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FiTrendingUp /> {t("budgets.title")}
-          </CardTitle>
-          <CardDescription>{t("budgets.subtitle")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {topBudgetAlert ? (
-            <>
-              <p className="text-sm capitalize">{t(`categories.${topBudgetAlert.category}`, { defaultValue: topBudgetAlert.category })}</p>
-              <p className="text-2xl font-bold">{Math.round(topBudgetAlert.percentage)}%</p>
-              <p className="text-xs text-muted-foreground">
-                {formatCurrency(topBudgetAlert.spent)} / {formatCurrency(topBudgetAlert.limit)}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t("budgets.empty")}</p>
-          )}
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/budgets")}>
-            {t("budgets.manage")}
-          </Button>
-        </CardContent>
-      </Card>
 
       <TransactionModal show={showQuickAdd} onClose={() => setShowQuickAdd(false)} transaction={null} />
     </div>

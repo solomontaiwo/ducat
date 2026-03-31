@@ -1,15 +1,12 @@
 import { useMemo } from "react";
-import { FiAlertTriangle, FiCheckCircle, FiRepeat, FiTarget } from "react-icons/fi";
+import { FiCheckCircle, FiRepeat, FiTarget } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
-import { useBudget } from "../../hooks/useBudgets.jsx";
 import { useGoal } from "../../hooks/useGoals.jsx";
 import { InsightsService } from "../../services/insightsService.jsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
 const iconByType = {
-  budget_exceeded: FiAlertTriangle,
-  budget_alert: FiAlertTriangle,
   recurring_detected: FiRepeat,
   goal_completed: FiCheckCircle,
   goal_progress: FiTarget,
@@ -19,12 +16,11 @@ const iconByType = {
 const InsightsFeed = () => {
   const { t } = useTranslation();
   const { transactions } = useUnifiedTransactions();
-  const { budgets } = useBudget();
   const { goals } = useGoal();
 
   const insights = useMemo(
-    () => InsightsService.generate({ transactions, budgets, goals }),
-    [transactions, budgets, goals]
+    () => InsightsService.generate({ transactions, goals }),
+    [transactions, goals]
   );
 
   return (
