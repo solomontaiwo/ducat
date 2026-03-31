@@ -142,10 +142,10 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
 
   return (
     <Dialog open={show} onOpenChange={(open) => (!open ? onClose() : null)}>
-      {/* variant="sheet": bottom-sheet on mobile, centred modal on sm+ */}
+      {/* variant="sheet": full-screen on mobile (fixed inset-0), centred modal on sm+ */}
       <DialogContent
         variant="sheet"
-        className="flex flex-col p-0 bg-card/95 text-foreground max-h-[92dvh] sm:max-h-[90vh] overflow-hidden"
+        className="flex flex-col p-0 bg-card/95 text-foreground h-full sm:h-auto sm:max-h-[90vh] overflow-hidden"
       >
         {/* ── Sticky header ─────────────────────────────────────────────── */}
         <DialogHeader className="shrink-0 px-5 pt-5 pb-4 border-b border-border bg-card/95">
