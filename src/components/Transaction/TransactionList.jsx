@@ -205,7 +205,7 @@ const TransactionList = () => {
   // Let's implement a manual "Load Full History" for now to solve the "search/filter" issue 
   // or just rely on the 'recent' list for default view.
   
-  const handleLoadMore = async () => {
+  const handleLoadMore = useCallback(async () => {
     setIsLoadingMore(true);
     // Fetch full history with stale-while-revalidate; update state when fresh data arrives
     const fullHistory = await fetchAllTransactions({ onRevalidated: setAllLoadedTransactions });
@@ -213,7 +213,7 @@ const TransactionList = () => {
     setTotalTransactionCount(fullHistory.length); // Update total count to actual fetched count
     setHasMore(false); // Assumes we fetched everything
     setIsLoadingMore(false);
-  };
+  }, [fetchAllTransactions]);
 
   const sentinelRef = useRef(null);
 

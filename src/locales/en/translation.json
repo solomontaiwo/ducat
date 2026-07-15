@@ -121,6 +121,7 @@
     "insights": "Insights",
     "goals": "Goals",
     "cashflow": "Cashflow",
+    "planner": "Planner",
     "profile": "Profile",
     "logout": "Logout",
     "register": "Register",
@@ -284,6 +285,26 @@
       "addFirst": "Start by adding your first transaction"
     }
   },
+  "budgets": {
+    "title": "Budgets",
+    "subtitle": "Control spending with smart category limits",
+    "add": "Add budget",
+    "addSubtitle": "Set a monthly cap for a spending category",
+    "empty": "No budgets yet. Create one to start tracking limits.",
+    "manage": "Manage budgets",
+    "limit": "Budget limit",
+    "period": "Period",
+    "periods": {
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "yearly": "Yearly"
+    },
+    "remaining": "Remaining",
+    "alertThreshold": "Alert threshold (%)",
+    "suggestions": "Smart suggestions",
+    "suggestionsSubtitle": "Based on your recent spending patterns",
+    "suggestedLimit": "Suggested limit"
+  },
   "goals": {
     "title": "Goals",
     "subtitle": "Track your savings goals and automate progress",
@@ -309,6 +330,42 @@
     "title": "Cashflow timeline",
     "subtitle": "Visualize your running balance over time",
     "empty": "Add transactions to see your cashflow trend."
+  },
+  "planner": {
+    "title": "Due-date planner",
+    "subtitle": "Forecast the next 60 days from confirmed recurring income and expenses.",
+    "addRule": "Add recurring item",
+    "addRuleHelp": "Recurring items forecast your balance; they do not create transactions until you record them.",
+    "currentBalance": "Current balance",
+    "endingBalance": "Forecast balance in 60 days",
+    "nextEvents": "Forecast events",
+    "negativeWarning": "Your forecast balance goes below zero on {{date}}.",
+    "openingBalance": "Opening tracking balance",
+    "openingBalanceHelp": "Use this to align the app with your account balance when you started tracking transactions.",
+    "invalidBalance": "Enter a valid balance.",
+    "balanceSaved": "Opening balance saved.",
+    "balanceSaveError": "Could not save the opening balance.",
+    "forecast": "Balance forecast",
+    "forecastHelp": "The line includes only recurring items you have confirmed.",
+    "detectedTitle": "Detected recurring items",
+    "detectedHelp": "Confirm only the correct patterns before using them in your forecast.",
+    "rules": "Your recurring items",
+    "rulesHelp": "You can remove a recurring item at any time.",
+    "noRules": "No confirmed recurring items. Add one or use a suggestion.",
+    "upcoming": "Upcoming due dates",
+    "upcomingHelp": "Record a due date only when the transaction has actually happened.",
+    "noUpcoming": "There are no due dates in the next 60 days.",
+    "frequency": "Frequency",
+    "nextDue": "Next due date",
+    "dueOn": "next: {{date}}",
+    "register": "Record",
+    "ruleAdded": "Recurring item added to the forecast.",
+    "occurrenceRegistered": "Transaction recorded and next due date updated.",
+    "frequencies": {
+      "weekly": "Weekly",
+      "biweekly": "Biweekly",
+      "monthly": "Monthly"
+    }
   },
   "pdf": {
     "reportTitle": "Financial Statistics Report",
