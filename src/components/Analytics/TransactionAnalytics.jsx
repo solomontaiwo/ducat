@@ -20,13 +20,17 @@ import { useDateRange } from "../../hooks/useDateRange.jsx";
 import { calculateStats } from "../../utils/statsUtils.jsx";
 import { useTheme } from "../../utils/ThemeProvider.jsx";
 import {
-  PieChart, Pie, Cell,
+  PieChart, Pie, Sector,
   AreaChart, Area,
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 
 const CHART_COLORS = ["#f43f5e", "#fb923c", "#facc15", "#4ade80", "#60a5fa", "#a78bfa", "#f472b6", "#34d399"];
+
+const renderExpensePieSector = (props) => (
+  <Sector {...props} fill={CHART_COLORS[(props.index || 0) % CHART_COLORS.length]} />
+);
 
 const TransactionAnalytics = () => {
   const { isDemo, transactions: recentTransactions, maxTransactions, loading: contextLoading, fetchAllTransactions } = useUnifiedTransactions();
@@ -405,11 +409,8 @@ const TransactionAnalytics = () => {
                       paddingAngle={3}
                       dataKey="amount"
                       nameKey="label"
-                    >
-                      {extendedStats.topExpenseCategories.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
+                      shape={renderExpensePieSector}
+                    />
                     <Tooltip content={<CustomPieTooltip />} />
                     <Legend
                       formatter={(value) => (

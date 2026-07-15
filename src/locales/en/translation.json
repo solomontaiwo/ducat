@@ -76,8 +76,6 @@
   "emptyState": "No data available.",
   "loading": "Loading...",
   "error": "An error occurred.",
-  "register": "Register",
-  "login": "Login",
   "logoutConfirm": "Are you sure you want to logout?",
   "dashboard": {
     "title": "Dashboard",
@@ -228,12 +226,6 @@
     "ofExpenses": "of expenses",
     "emptyTitle": "No transactions found",
     "emptySubtitle": "There are no transactions for this period. Try another range or add new transactions."
-  },
-  "notifications": {
-    "success": "Success",
-    "error": "Error",
-    "warning": "Warning",
-    "info": "Info"
   },
   "transactionModal": {
     "editTitle": "Edit Transaction",
@@ -434,6 +426,7 @@
     "deleteSuccess": "Transaction deleted successfully!",
     "deleteError": "Error deleting transaction",
     "success": "Success",
+    "error": "Error",
     "warning": "Warning",
     "info": "Info"
   },

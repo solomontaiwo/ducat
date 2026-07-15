@@ -76,8 +76,6 @@
   "emptyState": "Nessun dato disponibile.",
   "loading": "Caricamento...",
   "error": "Si è verificato un errore.",
-  "register": "Registrati",
-  "login": "Accedi",
   "logoutConfirm": "Sei sicuro di voler uscire?",
   "dashboard": {
     "title": "Dashboard",
@@ -451,7 +449,6 @@
     "username": "Username",
     "usernamePlaceholder": "scegli un username",
     "newUsername": "Nuovo Nome Utente",
-    "usernamePlaceholder": "Inserisci nuovo nome utente",
     "usernameHelp": "Il nome utente deve avere almeno 3 caratteri e la disponibilità verrà verificata.",
     "updating": "Aggiornamento in corso...",
     "usernameMin": "Min. 3 caratteri",
