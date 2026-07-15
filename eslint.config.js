@@ -35,4 +35,11 @@ export default [
       ],
     },
   },
+  {
+    files: ['src/context/**/*.{js,jsx}', 'src/utils/notificationUtils.jsx'],
+    rules: {
+      // Context providers intentionally export their matching hooks from the same module.
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ]

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { FiArrowUpRight, FiBarChart2, FiFileText, FiPlay, FiShield, FiStar, FiUserPlus, FiZap } from "react-icons/fi";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
@@ -47,14 +46,9 @@ const LandingPage = () => {
               <FiZap className="h-4 w-4" />
               {t("appName")}
             </Badge>
-            <motion.h1
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="text-4xl font-bold leading-tight sm:text-5xl lg:text-5xl"
-            >
+            <h1 className="animate-page-in text-4xl font-bold leading-tight sm:text-5xl lg:text-5xl">
               {t("landing.heroSubtitle")}
-            </motion.h1>
+            </h1>
             <p className="text-lg text-muted-foreground sm:text-xl">
               {t("landing.heroBody")}
             </p>
@@ -88,12 +82,7 @@ const LandingPage = () => {
             </div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="flex-1"
-          >
+          <div className="animate-page-in flex-1">
             <div className="rounded-3xl border border-border bg-card/70 p-5 shadow-xl backdrop-blur-xl lg:p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -117,7 +106,7 @@ const LandingPage = () => {
                 </Card>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
 
         <div className="mx-auto max-w-6xl px-4 pb-8 lg:pb-4">

@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
-import { AnimatePresence, motion } from "framer-motion";
 
 const NotificationContext = createContext();
 
@@ -68,15 +67,10 @@ export const NotificationProvider = ({ children }) => {
     <NotificationContext.Provider value={{ success, error, warning, info, addToast }}>
       {children}
       <div className="fixed left-1/2 top-6 z-50 flex w-80 max-w-[90vw] -translate-x-1/2 flex-col gap-2">
-        <AnimatePresence>
           {toasts.map((toast) => (
-            <motion.div
+            <div
               key={toast.id}
-              layout
-              initial={{ opacity: 0, y: -20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className={`rounded-xl border px-4 py-3 shadow-lg backdrop-blur ${getToastStyles(toast.type)}`}
+              className={`animate-toast-in rounded-xl border px-4 py-3 shadow-lg backdrop-blur ${getToastStyles(toast.type)}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1 text-sm">
@@ -95,9 +89,8 @@ export const NotificationProvider = ({ children }) => {
                   ×
                 </button>
               </div>
-            </motion.div>
+            </div>
           ))}
-        </AnimatePresence>
       </div>
     </NotificationContext.Provider>
   );

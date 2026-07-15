@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useAuth } from "./AuthProvider.jsx";
-import { GoalService } from "../services/goalService.jsx";
 import { useUnifiedTransactions } from "./UnifiedTransactionProvider.jsx";
 
 const GoalContext = createContext({
@@ -30,6 +29,7 @@ export const GoalProvider = ({ children }) => {
 
     setLoading(true);
     try {
+      const { GoalService } = await import("../services/goalService.jsx");
       const data = await GoalService.fetchAll(currentUser.uid);
       setGoals(data);
     } finally {
@@ -46,6 +46,7 @@ export const GoalProvider = ({ children }) => {
   const addGoal = useCallback(
     async (payload) => {
       if (!currentUser || isDemo) return false;
+      const { GoalService } = await import("../services/goalService.jsx");
       await GoalService.add(currentUser.uid, payload);
       await loadGoals();
       return true;
@@ -56,6 +57,7 @@ export const GoalProvider = ({ children }) => {
   const updateGoal = useCallback(
     async (id, payload) => {
       if (!currentUser || isDemo) return false;
+      const { GoalService } = await import("../services/goalService.jsx");
       await GoalService.update(id, payload);
       await loadGoals();
       return true;
@@ -66,6 +68,7 @@ export const GoalProvider = ({ children }) => {
   const deleteGoal = useCallback(
     async (id) => {
       if (!currentUser || isDemo) return false;
+      const { GoalService } = await import("../services/goalService.jsx");
       await GoalService.delete(id);
       await loadGoals();
       return true;
@@ -107,6 +110,7 @@ export const GoalProvider = ({ children }) => {
 
       const nextAmount = Math.min(goal.autoContributeAmount, remainingPool);
       const currentAmount = Math.min(goal.targetAmount, goal.currentAmount + nextAmount);
+      const { GoalService } = await import("../services/goalService.jsx");
       await GoalService.update(goal.id, { currentAmount });
       allocated += nextAmount;
     }

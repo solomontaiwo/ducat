@@ -2,8 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import { useMediaQuery } from "react-responsive";
-import { motion } from "framer-motion";
-import { FiBarChart, FiHome, FiList, FiLogOut, FiZap } from "react-icons/fi";
+import { FiBarChart, FiCalendar, FiHome, FiList, FiLogOut, FiPieChart, FiTarget, FiTrendingUp, FiZap } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -32,15 +31,14 @@ const Navbar = () => {
     { label: t("navbar.dashboard"), path: "/dashboard", icon: <FiHome /> },
     { label: t("navbar.transactions"), path: "/transactions", icon: <FiList /> },
     { label: t("navbar.analytics"), path: "/analytics", icon: <FiBarChart /> },
+    { label: t("navbar.insights"), path: "/insights", icon: <FiPieChart /> },
+    { label: t("navbar.goals"), path: "/goals", icon: <FiTarget /> },
+    { label: t("navbar.cashflow"), path: "/cashflow", icon: <FiTrendingUp /> },
+    { label: t("navbar.planner"), path: "/planner", icon: <FiCalendar /> },
   ];
 
   return (
-    <motion.nav
-      initial={{ y: -24 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="fixed left-0 right-0 top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl"
-    >
+    <nav className="fixed left-0 right-0 top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 lg:px-6">
         <Link to="/" className="flex items-center gap-2 font-semibold text-lg">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
@@ -101,7 +99,7 @@ const Navbar = () => {
           </div>
         )}
       </div>
-    </motion.nav>
+    </nav>
   );
 };
 

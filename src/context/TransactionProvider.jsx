@@ -7,7 +7,6 @@ import {
 } from "react";
   import { useAuth } from "./AuthProvider";
   import PropTypes from "prop-types";
-  import { TransactionService } from "../services/transactionService.jsx";
   
   const TransactionContext = createContext();
 export const useTransactions = () => useContext(TransactionContext);
@@ -31,31 +30,30 @@ export const TransactionProvider = ({ children }) => {
     setLoading(true);
     
     // Use service to subscribe to recent transactions
-    const unsubscribe = TransactionService.subscribeToRecent(
-      currentUser.uid, 
-      50, // Limit to 50 for performance
-      (data) => {
-        setTransactions(data);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching transactions:", error);
-        setLoading(false);
-      }
-    );
+    let unsubscribe = () => {};
+    let cancelled = false;
+    import("../services/transactionService.jsx").then(({ TransactionService }) => {
+      if (cancelled) return;
+      unsubscribe = TransactionService.subscribeToRecent(currentUser.uid, 50,
+        (data) => { setTransactions(data); setLoading(false); },
+        (error) => { console.error("Error fetching transactions:", error); setLoading(false); }
+      );
+    }).catch((error) => { console.error("Error loading transaction service:", error); setLoading(false); });
 
-    return () => unsubscribe();
+    return () => { cancelled = true; unsubscribe(); };
   }, [currentUser]);
 
   // Expose a way to fetch all transactions for analytics if needed
   const fetchAllTransactions = useCallback(async (options = {}) => {
     if (!currentUser) return [];
-    return await TransactionService.fetchAll(currentUser.uid, options);
+    const { TransactionService } = await import("../services/transactionService.jsx");
+    return TransactionService.fetchAll(currentUser.uid, options);
   }, [currentUser]);
 
   const getTotalTransactionCount = useCallback(async (options = {}) => {
     if (!currentUser) return 0;
-    return await TransactionService.getTotalCount(currentUser.uid, options);
+    const { TransactionService } = await import("../services/transactionService.jsx");
+    return TransactionService.getTotalCount(currentUser.uid, options);
   }, [currentUser]);
 
   return (

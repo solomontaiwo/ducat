@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import PropTypes from "prop-types";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { motion } from "framer-motion";
@@ -220,6 +221,15 @@ const TransactionAnalytics = () => {
       </div>
     );
   };
+  CustomAreaTooltip.propTypes = {
+    active: PropTypes.bool,
+    label: PropTypes.string,
+    payload: PropTypes.arrayOf(PropTypes.shape({
+      color: PropTypes.string,
+      name: PropTypes.string,
+      value: PropTypes.number,
+    })),
+  };
 
   const CustomPieTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null;
@@ -234,6 +244,14 @@ const TransactionAnalytics = () => {
         <p className="text-xs opacity-75">{inner.percentage.toFixed(1)}%</p>
       </div>
     );
+  };
+  CustomPieTooltip.propTypes = {
+    active: PropTypes.bool,
+    payload: PropTypes.arrayOf(PropTypes.shape({
+      name: PropTypes.string,
+      value: PropTypes.number,
+      payload: PropTypes.shape({ percentage: PropTypes.number }),
+    })),
   };
 
   const CustomBarTooltip = ({ active, payload, label }) => {
@@ -251,6 +269,15 @@ const TransactionAnalytics = () => {
         ))}
       </div>
     );
+  };
+  CustomBarTooltip.propTypes = {
+    active: PropTypes.bool,
+    label: PropTypes.string,
+    payload: PropTypes.arrayOf(PropTypes.shape({
+      color: PropTypes.string,
+      name: PropTypes.string,
+      value: PropTypes.number,
+    })),
   };
 
   if (contextLoading || isLoadingAnalyticsData) {

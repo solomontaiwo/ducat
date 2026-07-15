@@ -121,6 +121,7 @@
     "insights": "Insight",
     "goals": "Obiettivi",
     "cashflow": "Flusso cassa",
+    "planner": "Pianificatore",
     "profile": "Profilo",
     "logout": "Logout",
     "register": "Registrati",
@@ -278,6 +279,26 @@
       "addFirst": "Inizia aggiungendo la tua prima transazione"
     }
   },
+  "budgets": {
+    "title": "Budget",
+    "subtitle": "Controlla le spese con limiti intelligenti per categoria",
+    "add": "Aggiungi budget",
+    "addSubtitle": "Imposta un tetto mensile per categoria",
+    "empty": "Nessun budget impostato. Creane uno per iniziare.",
+    "manage": "Gestisci budget",
+    "limit": "Limite budget",
+    "period": "Periodo",
+    "periods": {
+      "weekly": "Settimanale",
+      "monthly": "Mensile",
+      "yearly": "Annuale"
+    },
+    "remaining": "Residuo",
+    "alertThreshold": "Soglia avviso (%)",
+    "suggestions": "Suggerimenti intelligenti",
+    "suggestionsSubtitle": "Basati sulle tue spese recenti",
+    "suggestedLimit": "Limite suggerito"
+  },
   "goals": {
     "title": "Obiettivi",
     "subtitle": "Monitora i tuoi obiettivi di risparmio e automatizza i progressi",
@@ -303,6 +324,42 @@
     "title": "Timeline flusso di cassa",
     "subtitle": "Visualizza l'andamento del saldo nel tempo",
     "empty": "Aggiungi transazioni per vedere il trend del flusso cassa."
+  },
+  "planner": {
+    "title": "Pianificatore delle scadenze",
+    "subtitle": "Prevedi il saldo dei prossimi 60 giorni usando entrate e uscite ricorrenti confermate.",
+    "addRule": "Aggiungi ricorrenza",
+    "addRuleHelp": "Le ricorrenze pianificano il saldo ma non creano movimenti finché non li registri.",
+    "currentBalance": "Saldo attuale",
+    "endingBalance": "Saldo previsto a 60 giorni",
+    "nextEvents": "Scadenze previste",
+    "negativeWarning": "Il saldo previsto scende sotto zero il {{date}}.",
+    "openingBalance": "Saldo iniziale di tracciamento",
+    "openingBalanceHelp": "Usalo per allineare l'app al saldo del conto quando hai iniziato a registrare le transazioni.",
+    "invalidBalance": "Inserisci un saldo valido.",
+    "balanceSaved": "Saldo iniziale salvato.",
+    "balanceSaveError": "Non è stato possibile salvare il saldo iniziale.",
+    "forecast": "Previsione del saldo",
+    "forecastHelp": "La linea include solo le ricorrenze che hai confermato.",
+    "detectedTitle": "Ricorrenze rilevate",
+    "detectedHelp": "Conferma solo i pattern corretti prima di usarli nella previsione.",
+    "rules": "Le tue ricorrenze",
+    "rulesHelp": "Puoi rimuovere una ricorrenza in qualsiasi momento.",
+    "noRules": "Nessuna ricorrenza confermata. Aggiungine una o usa un suggerimento.",
+    "upcoming": "Prossime scadenze",
+    "upcomingHelp": "Registra una scadenza quando il movimento è realmente avvenuto.",
+    "noUpcoming": "Non ci sono scadenze nei prossimi 60 giorni.",
+    "frequency": "Frequenza",
+    "nextDue": "Prossima scadenza",
+    "dueOn": "prossima: {{date}}",
+    "register": "Registra",
+    "ruleAdded": "Ricorrenza aggiunta alla previsione.",
+    "occurrenceRegistered": "Movimento registrato e prossima scadenza aggiornata.",
+    "frequencies": {
+      "weekly": "Settimanale",
+      "biweekly": "Quindicinale",
+      "monthly": "Mensile"
+    }
   },
   "pdf": {
     "reportTitle": "Report Statistiche Finanziarie",

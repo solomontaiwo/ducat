@@ -11,7 +11,6 @@ import { DemoProvider, useDemo, MAX_DEMO_TRANSACTIONS } from "./DemoProvider.jsx
 import { useNotification } from "../utils/notificationUtils.jsx";
 import PropTypes from "prop-types";
 import { useTranslation } from 'react-i18next';
-import { TransactionService } from "../services/transactionService.jsx";
 
 const UnifiedTransactionContext = createContext({
   transactions: [],
@@ -51,6 +50,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
     
     setIsProcessing(true);
     try {
+      const { TransactionService } = await import("../services/transactionService.jsx");
       await TransactionService.add(currentUser.uid, transactionData);
       notification.success(t('notifications.addSuccess'));
       return true;
@@ -66,7 +66,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
     } finally {
       setIsProcessing(false);
     }
-  }, [currentUser, t]);
+  }, [currentUser, notification, t]);
 
   // Updates Firebase transaction
   const updateTransaction = useCallback(async (transactionId, updatedData) => {
@@ -74,6 +74,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
     
     setIsProcessing(true);
     try {
+      const { TransactionService } = await import("../services/transactionService.jsx");
       await TransactionService.update(transactionId, updatedData);
       notification.success(t('notifications.updateSuccess'));
       return true;
@@ -84,7 +85,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
     } finally {
       setIsProcessing(false);
     }
-  }, [currentUser, t]);
+  }, [currentUser, notification, t]);
 
   // Deletes Firebase transaction
   const deleteTransaction = useCallback(async (transactionId) => {
@@ -92,6 +93,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
     
     setIsProcessing(true);
     try {
+      const { TransactionService } = await import("../services/transactionService.jsx");
       await TransactionService.delete(transactionId);
       notification.success(t('notifications.deleteSuccess'));
       return true;
@@ -102,7 +104,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
     } finally {
       setIsProcessing(false);
     }
-  }, [currentUser, t]);
+  }, [currentUser, notification, t]);
 
   // Firebase Statistics
   const getStats = useCallback(() => {
@@ -170,19 +172,18 @@ const DemoTransactionWrapper = ({ children, startDemo, seedDemo, stopDemo }) => 
     updateTransaction,
     deleteTransaction,
     canAddMoreTransactions,
-    maxTransactions,
     getDemoStats,
     generateSampleTransactions,
     clearTransactions,
   } = useDemo();
 
   // Mock fetchAllTransactions for demo (just returns what we have)
-  const fetchAllTransactions = useCallback(async (_options = {}) => {
+  const fetchAllTransactions = useCallback(async () => {
     return transactions;
   }, [transactions]);
 
   // Mock getTotalTransactionCount for demo
-  const getTotalTransactionCount = useCallback(async (_options = {}) => {
+  const getTotalTransactionCount = useCallback(async () => {
     return transactions.length;
   }, [transactions]);
 
@@ -269,7 +270,7 @@ export const UnifiedTransactionProvider = ({ children }) => {
           isAuthenticated: false,
           startDemo,
           stopDemo,
-          fetchAllTransactions: async (_options = {}) => [],
+          fetchAllTransactions: async () => [],
           getTotalTransactionCount: async () => 0,
         }}
       >
@@ -325,7 +326,7 @@ export const UnifiedTransactionProvider = ({ children }) => {
         startDemo,
         seedOnMount: false,
         stopDemo,
-        fetchAllTransactions: async (_options = {}) => [],
+        fetchAllTransactions: async () => [],
         getTotalTransactionCount: async () => 0,
       }}
     >
