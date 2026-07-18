@@ -18,13 +18,15 @@ import { useDateRange } from "../../hooks/useDateRange.jsx";
 import { calculateStats } from "../../utils/statsUtils.jsx";
 import { useTheme } from "../../utils/ThemeProvider.jsx";
 import {
-  PieChart, Pie, Cell,
+  PieChart, Pie, Sector,
   AreaChart, Area,
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 
-const CHART_COLORS = ["#f43f5e", "#fb923c", "#facc15", "#4ade80", "#60a5fa", "#a78bfa", "#f472b6", "#34d399"];
+const EXPENSE_CHART_COLORS = ["#f43f5e", "#fb923c", "#facc15", "#f97316", "#fb7185", "#ef4444"];
+const INCOME_CHART_COLORS = ["#059669", "#0d9488", "#0284c7", "#2563eb", "#7c3aed", "#c026d3"];
+const CategoryPieSector = (props) => <Sector {...props} />;
 
 const TransactionAnalytics = () => {
   const { isDemo, transactions: recentTransactions, maxTransactions, loading: contextLoading, fetchAllTransactions } = useUnifiedTransactions();
@@ -168,6 +170,22 @@ const TransactionAnalytics = () => {
       filteredTransactions, // Needed for export
     };
   }, [analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t]);
+
+  const expensePieData = useMemo(
+    () => (extendedStats.topExpenseCategories || []).map((category, index) => ({
+      ...category,
+      fill: EXPENSE_CHART_COLORS[index % EXPENSE_CHART_COLORS.length],
+    })),
+    [extendedStats.topExpenseCategories]
+  );
+
+  const incomePieData = useMemo(
+    () => (extendedStats.topIncomeCategories || []).map((category, index) => ({
+      ...category,
+      fill: INCOME_CHART_COLORS[index % INCOME_CHART_COLORS.length],
+    })),
+    [extendedStats.topIncomeCategories]
+  );
 
   const exportCsv = async () => {
     if (!extendedStats?.filteredTransactions?.length) return;
@@ -410,7 +428,7 @@ const TransactionAnalytics = () => {
                 <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie
-                      data={extendedStats.topExpenseCategories}
+                      data={expensePieData}
                       cx="50%"
                       cy="50%"
                       innerRadius={65}
@@ -418,12 +436,9 @@ const TransactionAnalytics = () => {
                       paddingAngle={3}
                       dataKey="amount"
                       nameKey="label"
-                    >
-                      {extendedStats.topExpenseCategories.map((category, index) => (
-                        <Cell key={category.category} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomPieTooltip />} />
+                      shape={CategoryPieSector}
+                    />
+                    <Tooltip content={<CustomPieTooltip />} isAnimationActive={false} />
                     <Legend
                       formatter={(value) => (
                         <span style={{ color: axisColor, fontSize: 12 }}>{value}</span>
@@ -439,7 +454,7 @@ const TransactionAnalytics = () => {
                         <div className="flex items-center gap-2">
                           <span
                             className="inline-block h-2.5 w-2.5 rounded-full"
-                            style={{ background: CHART_COLORS[idx % CHART_COLORS.length] }}
+                            style={{ background: EXPENSE_CHART_COLORS[idx % EXPENSE_CHART_COLORS.length] }}
                           />
                           <span className="font-semibold">{cat.label}</span>
                         </div>
@@ -450,7 +465,7 @@ const TransactionAnalytics = () => {
                           className="h-2 rounded-full"
                           style={{
                             width: `${cat.percentage.toFixed(1)}%`,
-                            background: CHART_COLORS[idx % CHART_COLORS.length],
+                            background: EXPENSE_CHART_COLORS[idx % EXPENSE_CHART_COLORS.length],
                           }}
                         />
                       </div>
@@ -475,7 +490,7 @@ const TransactionAnalytics = () => {
                 <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie
-                      data={extendedStats.topIncomeCategories}
+                      data={incomePieData}
                       cx="50%"
                       cy="50%"
                       innerRadius={65}
@@ -483,12 +498,9 @@ const TransactionAnalytics = () => {
                       paddingAngle={3}
                       dataKey="amount"
                       nameKey="label"
-                    >
-                      {extendedStats.topIncomeCategories.map((category, index) => (
-                        <Cell key={category.category} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomPieTooltip />} />
+                      shape={CategoryPieSector}
+                    />
+                    <Tooltip content={<CustomPieTooltip />} isAnimationActive={false} />
                     <Legend
                       formatter={(value) => (
                         <span style={{ color: axisColor, fontSize: 12 }}>{value}</span>
@@ -503,7 +515,7 @@ const TransactionAnalytics = () => {
                         <div className="flex items-center gap-2">
                           <span
                             className="inline-block h-2.5 w-2.5 rounded-full"
-                            style={{ background: CHART_COLORS[idx % CHART_COLORS.length] }}
+                            style={{ background: INCOME_CHART_COLORS[idx % INCOME_CHART_COLORS.length] }}
                           />
                           <span className="font-semibold">{cat.label}</span>
                         </div>
@@ -514,7 +526,7 @@ const TransactionAnalytics = () => {
                           className="h-2 rounded-full"
                           style={{
                             width: `${cat.percentage.toFixed(1)}%`,
-                            background: CHART_COLORS[idx % CHART_COLORS.length],
+                            background: INCOME_CHART_COLORS[idx % INCOME_CHART_COLORS.length],
                           }}
                         />
                       </div>
