@@ -16,9 +16,9 @@ import { Label } from "../ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 
 const Profile = () => {
-  const { currentUser, loading: userLoading, logout } = useAuth();
+  const { currentUser, loading: userLoading, logout, profileName, profileNameLoading, refreshProfileName } = useAuth();
   const { loading: transactionsLoading } = useUnifiedTransactions();
-  const loading = userLoading || transactionsLoading;
+  const loading = userLoading || transactionsLoading || profileNameLoading;
   const { theme, toggleTheme } = useTheme();
   const notification = useNotification();
   const navigate = useNavigate();
@@ -28,22 +28,8 @@ const Profile = () => {
   const { t, i18n } = useTranslation();
 
   useEffect(() => {
-    const loadCurrentUsername = async () => {
-      if (currentUser?.uid) {
-        try {
-          const userDoc = await getDoc(doc(firestore, "users", currentUser.uid));
-          if (userDoc.exists()) {
-            setCurrentUsername(userDoc.data().username || currentUser.displayName || currentUser.email?.split("@")[0] || "");
-          } else {
-            setCurrentUsername(currentUser.displayName || currentUser.email?.split("@")[0] || "");
-          }
-        } catch (error) {
-          console.error("Errore nel caricamento username:", error);
-        }
-      }
-    };
-    loadCurrentUsername();
-  }, [currentUser]);
+    if (profileName) setCurrentUsername(profileName);
+  }, [profileName]);
 
   const handleLogout = async () => {
     await logout();
@@ -107,7 +93,8 @@ const Profile = () => {
         }
       }
 
-      setCurrentUsername(newUsername);
+      const updatedProfileName = await refreshProfileName(currentUser);
+      setCurrentUsername(updatedProfileName || newUsername);
       setNewUsername("");
       notification.success(t("profile.usernameSuccess"));
     } catch (error) {
@@ -164,7 +151,7 @@ const Profile = () => {
           <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary text-xl">
-                {currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : "?"}
+                {(currentUsername || "?").charAt(0).toUpperCase()}
               </div>
               <div>
                 <CardTitle className="text-2xl">{currentUsername || currentUser?.email}</CardTitle>

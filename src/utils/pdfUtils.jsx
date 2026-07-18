@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import JsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   format,
@@ -14,7 +14,7 @@ import {
 import { it, enUS } from "date-fns/locale";
 import i18n from "./i18n.jsx"; // Import i18n instance
 import formatCurrency from "./formatCurrency.jsx";
-import { generateExportFileName } from "./downloadUtils.jsx";
+import { generateExportFileName, getCurrentProfileName } from "./downloadUtils.jsx";
 
 const getPdfStrings = (lang = "it") => {
   // Use i18n.t with the specific language if needed, or just allow i18n to handle it if the global state matches.
@@ -90,9 +90,10 @@ export const generatePDF = async (
   endDate,
   lang = "it"
 ) => {
+  const profileName = await getCurrentProfileName(currentUser);
   const strings = getPdfStrings(lang);
   const locale = lang?.startsWith("en") ? enUS : it;
-  const doc = new jsPDF();
+  const doc = new JsPDF();
   const now = new Date();
   const centerX = 105;
 
@@ -260,7 +261,7 @@ export const generatePDF = async (
   }
 
   // Save PDF file using generateExportFileName
-  const filename = generateExportFileName(periodText, startDate, endDate, currentUser, "pdf");
+  const filename = generateExportFileName(periodText, startDate, endDate, profileName, "pdf");
   doc.save(filename);
 };
 
@@ -268,7 +269,7 @@ export const generatePDFReport = async (transactions = [], lang = "it", user = "
   try {
     const strings = getPdfStrings(lang);
     const locale = lang?.startsWith("en") ? enUS : it;
-    const doc = new jsPDF();
+    const doc = new JsPDF();
     const currentDate = new Date();
     
     // Generate filename with current date and username if not overridden
@@ -421,6 +422,7 @@ export const generatePDFReport = async (transactions = [], lang = "it", user = "
 // Function to generate a report for a specific period
 export const generatePeriodPDFReport = async (transactions = [], startDate, endDate, periodLabel = "Custom Period", lang = "it", user = "user") => {
   try {
+    const profileName = await getCurrentProfileName(user);
     const strings = getPdfStrings(lang);
     const locale = lang?.startsWith("en") ? enUS : it;
     // Filter transactions by period (assuming date objects)
@@ -428,12 +430,12 @@ export const generatePeriodPDFReport = async (transactions = [], startDate, endD
       return transaction.date >= startDate && transaction.date <= endDate;
     });
     
-    const doc = new jsPDF();
+    const doc = new JsPDF();
     const currentDate = new Date();
     
     // Generate correct filename for custom period using the new utility
     // We pass "custom" as periodText so it uses startDate and endDate for the name
-    const filename = generateExportFileName("custom", startDate, endDate, user, "pdf");
+    const filename = generateExportFileName("custom", startDate, endDate, profileName, "pdf");
     
     // Header
     doc.setFontSize(20);
@@ -466,7 +468,7 @@ export const generatePeriodPDFReport = async (transactions = [], startDate, endD
     // I will assume generatePDFReport is mainly used for "Current View" snapshot.
     // Since I am rewriting the file, I will add an optional 'filenameOverride' to generatePDFReport.
     
-    return await generatePDFReport(filteredTransactions, lang, user, filename);
+    return await generatePDFReport(filteredTransactions, lang, profileName, filename);
   } catch (error) {
     console.error("Error generating PDF for period:", error);
     throw new Error("Unable to generate PDF for period");

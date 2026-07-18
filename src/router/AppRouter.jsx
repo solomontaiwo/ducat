@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { useAuth } from "../context/AuthProvider";
 import AppLayout from "../components/Layout/AppLayout";
 
-const BudgetList = lazy(() => import("../components/Budgets/BudgetList"));
 // Lazy load all main pages for better performance.
 const loadDashboard = () => import("../components/Dashboard/Dashboard");
 const loadTransactionList = () => import("../components/Transaction/TransactionList");
@@ -95,7 +94,6 @@ const AppRouter = () => {
     { path: "/analytics", element: <Analytics /> },
     { path: "/stats", element: <Stats /> },
     { path: "/profile", element: <Profile /> },
-    { path: "/budgets", element: <BudgetList /> },
     { path: "/landing", element: <LandingPage /> },
     { path: "*", element: <Navigate to="/" replace /> },
   ];

@@ -34,8 +34,8 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="fixed left-0 right-0 top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 lg:px-6">
+    <nav className="fixed left-0 right-0 top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 lg:px-6">
         <Link to="/" className="flex items-center gap-2 font-semibold text-lg">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
             <FiZap />
@@ -49,13 +49,13 @@ const Navbar = () => {
         )}
 
         {!isMobile && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-card/70 p-1 shadow-sm">
             {(currentUser || isDemo) &&
               navigationItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition ${
                     location.pathname === item.path
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -68,7 +68,7 @@ const Navbar = () => {
             {currentUser && (
               <Link
                 to="/profile"
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                className={`rounded-xl px-3 py-2 text-sm font-medium transition ${
                   location.pathname === "/profile"
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"

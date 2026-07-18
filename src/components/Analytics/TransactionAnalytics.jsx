@@ -15,7 +15,7 @@ import { Select } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { FiBarChart, FiTrendingUp, FiTrendingDown, FiActivity, FiArrowUp, FiArrowDown } from "react-icons/fi";
 import { generatePeriodPDFReport } from "../../utils/pdfUtils.jsx";
-import { generateExportFileName } from "../../utils/downloadUtils.jsx"; // Using unified filename generator
+import { generateExportFileName, getCurrentProfileName } from "../../utils/downloadUtils.jsx";
 import { useDateRange } from "../../hooks/useDateRange.jsx";
 import { calculateStats } from "../../utils/statsUtils.jsx";
 import { useTheme } from "../../utils/ThemeProvider.jsx";
@@ -171,7 +171,7 @@ const TransactionAnalytics = () => {
     };
   }, [analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t]);
 
-  const exportCsv = () => {
+  const exportCsv = async () => {
     if (!extendedStats?.filteredTransactions?.length) return;
     const headers = ["Data", "Tipo", "Descrizione", "Categoria", "Importo"];
     const rows = extendedStats.filteredTransactions.map((t) => {
@@ -188,7 +188,8 @@ const TransactionAnalytics = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    const filename = generateExportFileName(period, startDate, endDate, currentUser, "csv");
+    const profileName = await getCurrentProfileName(currentUser);
+    const filename = generateExportFileName(period, startDate, endDate, profileName, "csv");
     link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
@@ -198,6 +199,7 @@ const TransactionAnalytics = () => {
 
   const exportPdf = async () => {
     if (!extendedStats?.filteredTransactions?.length || !startDate || !endDate) return;
+    const profileName = await getCurrentProfileName(currentUser);
     await generatePeriodPDFReport(
       extendedStats.filteredTransactions,
       startDate,
@@ -206,7 +208,7 @@ const TransactionAnalytics = () => {
         ? `${t("analytics.custom")} (${customRange.from} - ${customRange.to})`
         : period,
       i18n.language,
-      currentUser // Pass current user for filename generation
+      profileName
     );
   };
 

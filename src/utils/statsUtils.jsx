@@ -50,6 +50,7 @@ export const calculateStats = (transactions = [], startDate, endDate) => {
   const categories = {};
   const incomeTrend = [];
   const expenseTrend = [];
+  let largestExpense = null;
 
   // Filter transactions within range (assuming dates are normalized)
   const normalizedTransactions = transactions.filter((tx) => 
@@ -63,6 +64,9 @@ export const calculateStats = (transactions = [], startDate, endDate) => {
     } else if (tx.type === "expense") {
       totalExpense += tx.amount;
       expenseTrend.push({ x: tx.date, y: tx.amount });
+      if (!largestExpense || tx.amount > largestExpense.amount) {
+        largestExpense = tx;
+      }
       if (tx.category) {
         categories[tx.category] = (categories[tx.category] || 0) + tx.amount;
       }
@@ -87,5 +91,6 @@ export const calculateStats = (transactions = [], startDate, endDate) => {
     topCategories: sortedCategories,
     incomeTrend,
     expenseTrend,
+    largestExpense,
   };
 };
