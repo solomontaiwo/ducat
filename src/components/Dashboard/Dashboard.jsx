@@ -87,7 +87,7 @@ const Dashboard = () => {
     const remainingAmount = categories.slice(4).reduce((sum, [, amount]) => sum + amount, 0);
 
     if (remainingAmount > 0) {
-      topCategories.push({ category: "other", label: t("dashboard.other"), amount: remainingAmount });
+      topCategories.push({ category: "remaining", label: t("dashboard.remainingCategories"), amount: remainingAmount });
     }
 
     return topCategories.map((category, index) => ({

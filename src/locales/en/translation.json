@@ -97,6 +97,7 @@
     "largestExpense": "Largest expense",
     "topExpenseCategory": "Top expense category",
     "other": "Other",
+    "remainingCategories": "Remaining categories",
     "noExpenses": "No expenses in the selected period",
     "motivationalQuotes": [
       "Every euro saved is a euro earned.",
