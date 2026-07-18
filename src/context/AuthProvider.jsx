@@ -38,6 +38,12 @@ export const AuthProvider = ({ children }) => {
         import("firebase/auth"),
       ]);
       await signOut(auth);
+      try {
+        const { TransactionService } = await import("../services/transactionService.jsx");
+        TransactionService.invalidateCache();
+      } catch (cacheError) {
+        console.warn("Unable to clear the transaction cache on logout", cacheError);
+      }
     } catch (error) {
       console.error("Errore durante il logout:", error);
       throw error;

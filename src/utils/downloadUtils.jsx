@@ -1,14 +1,6 @@
-import { format } from "date-fns";
+import { generateExportFileName, getUserName } from "./exportFilename.js";
 
-export const sanitizeFilename = (str) => {
-  if (!str) return "user";
-  return str.replace(/[^a-z0-9_.-]/gi, "_").toLowerCase();
-};
-
-export const getUserName = (user) => {
-  if (typeof user === "string") return user;
-  return user?.displayName || user?.username || user?.email?.split("@")[0] || "user";
-};
+export { generateExportFileName, getUserName, sanitizeFilename } from "./exportFilename.js";
 
 // The profile document is the source of truth for the username shown in the app.
 export const getCurrentProfileName = async (user) => {
@@ -28,18 +20,6 @@ export const getCurrentProfileName = async (user) => {
   }
 };
 
-// Single source of truth for filename generation
-export const generateExportFileName = (periodText, startDate, endDate, user, extension) => {
-  const now = new Date();
-  const userName = sanitizeFilename(getUserName(user));
-  
-  const timestamp = format(now, "yyyyMMdd-HHmm");
-  const prefix = "report-soldisotto";
-  
-  // Format: report-soldisotto-[username]-[timestamp].[ext]
-  
-  return `${prefix}-${userName}-${timestamp}.${extension}`;
-};
 // Deprecated: generateExportFileName is used
 export const generateCsvFileName = (periodText, startDate, endDate, user) => {
   return generateExportFileName(periodText, startDate, endDate, user, "csv");

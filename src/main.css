@@ -162,3 +162,14 @@ body::-webkit-scrollbar-thumb:hover {
 
 .animate-page-in { animation: page-in 180ms ease-out both; }
 .animate-toast-in { animation: toast-in 180ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

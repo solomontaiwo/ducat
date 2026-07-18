@@ -107,7 +107,7 @@ const AppRouter = () => {
               path={path}
               element={
                 <Suspense fallback={<PageLoader />}>
-                  <div className="animate-page-in" style={{ width: "100%", minHeight: "100vh" }}>
+                  <div style={{ width: "100%", minHeight: "100vh" }}>
                     {element}
                   </div>
                 </Suspense>

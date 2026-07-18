@@ -77,10 +77,17 @@
   "loading": "Loading...",
   "error": "An error occurred.",
   "logoutConfirm": "Are you sure you want to logout?",
+  "security": {
+    "emailVerificationRequired": "Verify your email to protect your account and unlock financial operations.",
+    "resendVerification": "Send again",
+    "sendingVerification": "Sending..."
+  },
   "dashboard": {
     "title": "Dashboard",
     "addTransaction": "Add Transaction",
-    "greeting": "Good morning, {{name}}",
+    "greetingMorning": "Good morning, {{name}}",
+    "greetingAfternoon": "Good afternoon, {{name}}",
+    "greetingEvening": "Good evening, {{name}}",
     "overviewSubtitle": "Here is your position for the selected period",
     "cashflow": "Overall cashflow",
     "periodSummary": "Period summary",
@@ -269,6 +276,12 @@
     "transactions": "transactions",
     "deleteConfirm": "Delete Permanently",
     "loadMore": "Load full history",
+    "actions": {
+      "description": "Choose what to do with this transaction.",
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "delete": "Delete"
+    },
     "filters": {
       "label": "Filters",
       "show": "Show Filters",
@@ -373,9 +386,9 @@
   "register": {
     "title": "Create Account",
     "subtitle": "Start your financial journey",
-    "username": "Username",
-    "usernamePlaceholder": "choose a username",
-    "usernameHelp": "Min. 3 characters",
+    "username": "Profile name",
+    "usernamePlaceholder": "choose a profile name",
+    "usernameHelp": "Your profile name must contain at least 3 characters.",
     "usernameMin": "Min. 3 characters",
     "email": "Email",
     "emailPlaceholder": "your email",
@@ -391,7 +404,6 @@
   "errors": {
     "loginError": "Error during login",
     "emailNotFound": "Email not found",
-    "usernameNotFound": "Username not found",
     "wrongPassword": "Incorrect password",
     "invalidEmail": "Invalid email",
     "tooManyRequests": "Too many attempts. Try again later",
@@ -400,7 +412,6 @@
     "emailAlreadyInUse": "Email already in use",
     "weakPassword": "Password too weak",
     "operationNotAllowed": "Operation not allowed",
-    "usernameTaken": "Username already taken, choose another one",
     "accountCreatedSuccess": "Account created successfully!"
   },
   "of": "of",

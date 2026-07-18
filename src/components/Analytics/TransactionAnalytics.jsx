@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useAuth } from "../../context/AuthProvider.jsx";
-import { motion } from "framer-motion";
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval } from "date-fns";
 import formatCurrency from "../../utils/formatCurrency.jsx";
 import { useCategories } from "../../utils/categories.jsx";
@@ -14,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Select } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { FiBarChart, FiTrendingUp, FiTrendingDown, FiActivity, FiArrowUp, FiArrowDown } from "react-icons/fi";
-import { generatePeriodPDFReport } from "../../utils/pdfUtils.jsx";
 import { generateExportFileName, getCurrentProfileName } from "../../utils/downloadUtils.jsx";
 import { useDateRange } from "../../hooks/useDateRange.jsx";
 import { calculateStats } from "../../utils/statsUtils.jsx";
@@ -200,6 +198,7 @@ const TransactionAnalytics = () => {
   const exportPdf = async () => {
     if (!extendedStats?.filteredTransactions?.length || !startDate || !endDate) return;
     const profileName = await getCurrentProfileName(currentUser);
+    const { generatePeriodPDFReport } = await import("../../utils/pdfUtils.jsx");
     await generatePeriodPDFReport(
       extendedStats.filteredTransactions,
       startDate,
@@ -314,7 +313,7 @@ const TransactionAnalytics = () => {
 
   return (
     <div className="page-shell">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+      <div className="space-y-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-3xl font-bold flex items-center gap-2">
@@ -369,10 +368,10 @@ const TransactionAnalytics = () => {
             </span>
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Stat cards */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[
             { title: t("analytics.totalIncome"), value: stats.totalIncome, icon: <FiTrendingUp />, color: "text-emerald-600" },
@@ -395,7 +394,7 @@ const TransactionAnalytics = () => {
             </Card>
           ))}
         </div>
-      </motion.div>
+      </div>
 
       {/* Category distribution: donut chart + progress bars */}
       <div className="grid gap-4 md:grid-cols-2">

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { auth, firestore } from "../../utils/firebase";
 import { useNotification } from "../../utils/notificationUtils";
 import { motion } from "framer-motion";
@@ -48,37 +48,32 @@ const Register = () => {
     }
 
     try {
-      const usernameLower = username.trim().toLowerCase();
-      const usernameDoc = await getDoc(doc(firestore, "usernames", usernameLower));
-      if (usernameDoc.exists()) {
-        setError(t("errors.usernameTaken"));
-        setLoading(false);
-        return;
-      }
+      const usernameTrimmed = username.trim();
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      await updateProfile(user, { displayName: username });
+      await updateProfile(user, { displayName: usernameTrimmed });
 
       await setDoc(doc(firestore, "users", user.uid), {
-        username: usernameLower,
+        username: usernameTrimmed,
         email: email.toLowerCase(),
-        displayName: username,
+        displayName: usernameTrimmed,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
 
-      await setDoc(doc(firestore, "usernames", usernameLower), {
-        uid: user.uid,
-        createdAt: new Date(),
-      });
+      try {
+        await sendEmailVerification(user);
+      } catch (verificationError) {
+        console.warn("Unable to send verification email during registration", verificationError);
+      }
 
       notification.success(t("errors.accountCreatedSuccess"));
       navigate("/dashboard");
     } catch (err) {
       console.error("Errore durante la registrazione:", err);
-      let errorMessage = t("errors.registrationError");
+      let errorMessage;
       switch (err.code) {
         case "auth/email-already-in-use":
           errorMessage = t("errors.emailAlreadyInUse");
