@@ -1,4 +1,3 @@
-import { FiArrowRight } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { useMediaQuery } from "react-responsive";
 import formatCurrency from "../../utils/formatCurrency";
@@ -6,6 +5,7 @@ import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import { FiArrowRight } from "react-icons/fi";
 import { Button } from "../ui/button";
 
 const RecentTransactions = ({ transactions = [], loading = false }) => {
@@ -105,10 +105,10 @@ const RecentTransactions = ({ transactions = [], loading = false }) => {
           </div>
         </div>
       ))}
-      <div className="flex justify-end">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/transactions")} className="gap-1 text-primary">
+      <div className="flex justify-end pt-1">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/transactions")}>
           {t("recentTransactions.viewAll")}
-          <FiArrowRight className="h-4 w-4" />
+          <FiArrowRight className="ml-2" aria-hidden="true" />
         </Button>
       </div>
     </div>

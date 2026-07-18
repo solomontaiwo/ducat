@@ -80,6 +80,17 @@
   "dashboard": {
     "title": "Dashboard",
     "addTransaction": "Add Transaction",
+    "greeting": "Good morning, {{name}}",
+    "overviewSubtitle": "Here is your position for the selected period",
+    "cashflow": "Overall cashflow",
+    "periodSummary": "Period summary",
+    "periodActivity": "Period activity",
+    "spendingOverview": "Spending overview",
+    "ofExpenses": "of expenses",
+    "largestExpense": "Largest expense",
+    "topExpenseCategory": "Top expense category",
+    "other": "Other",
+    "noExpenses": "No expenses in the selected period",
     "motivationalQuotes": [
       "Every euro saved is a euro earned.",
       "The best investment is you.",
@@ -274,26 +285,6 @@
       "tryFilters": "Try modifying your search filters",
       "addFirst": "Start by adding your first transaction"
     }
-  },
-  "budgets": {
-    "title": "Budgets",
-    "subtitle": "Control spending with smart category limits",
-    "add": "Add budget",
-    "addSubtitle": "Set a monthly cap for a spending category",
-    "empty": "No budgets yet. Create one to start tracking limits.",
-    "manage": "Manage budgets",
-    "limit": "Budget limit",
-    "period": "Period",
-    "periods": {
-      "weekly": "Weekly",
-      "monthly": "Monthly",
-      "yearly": "Yearly"
-    },
-    "remaining": "Remaining",
-    "alertThreshold": "Alert threshold (%)",
-    "suggestions": "Smart suggestions",
-    "suggestionsSubtitle": "Based on your recent spending patterns",
-    "suggestedLimit": "Suggested limit"
   },
   "pdf": {
     "reportTitle": "Financial Statistics Report",

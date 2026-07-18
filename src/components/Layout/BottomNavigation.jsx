@@ -13,7 +13,7 @@ import { Badge } from "../ui/badge";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 
-export const BOTTOM_NAV_HEIGHT_PX = 62;
+export const BOTTOM_NAV_HEIGHT_PX = 72;
 
 const BottomNavigation = ({ navVisible }) => {
   const location = useLocation();
@@ -60,7 +60,7 @@ const BottomNavigation = ({ navVisible }) => {
               key={item.key}
               aria-label={item.label}
               onClick={() => handleNavigation(item)}
-              className={`relative flex flex-col items-center justify-center rounded-2xl px-2 py-2 ${
+              className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 ${
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
               style={{ minHeight: `${BOTTOM_NAV_HEIGHT_PX - 12}px`, touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
@@ -74,6 +74,7 @@ const BottomNavigation = ({ navVisible }) => {
               >
                 {item.icon}
               </div>
+              <span className="max-w-full truncate text-[10px] font-medium leading-none">{item.label}</span>
               {item.badge && (
                 <Badge variant="secondary" className="absolute -top-1 -right-2">
                   {item.badge}

@@ -80,6 +80,17 @@
   "dashboard": {
     "title": "Dashboard",
     "addTransaction": "Aggiungi Transazione",
+    "greeting": "Buongiorno, {{name}}",
+    "overviewSubtitle": "Ecco la tua situazione nel periodo selezionato",
+    "cashflow": "Cashflow complessivo",
+    "periodSummary": "Riepilogo del periodo",
+    "periodActivity": "Attività del periodo",
+    "spendingOverview": "Panoramica spese",
+    "ofExpenses": "delle uscite",
+    "largestExpense": "Uscita più alta",
+    "topExpenseCategory": "Categoria di spesa principale",
+    "other": "Altro",
+    "noExpenses": "Nessuna uscita nel periodo selezionato",
     "motivationalQuotes": [
       "Ogni euro risparmiato è un euro guadagnato.",
       "Il miglior investimento sei tu.",
@@ -274,26 +285,6 @@
       "tryFilters": "Prova a modificare i filtri di ricerca",
       "addFirst": "Inizia aggiungendo la tua prima transazione"
     }
-  },
-  "budgets": {
-    "title": "Budget",
-    "subtitle": "Controlla le spese con limiti intelligenti per categoria",
-    "add": "Aggiungi budget",
-    "addSubtitle": "Imposta un tetto mensile per categoria",
-    "empty": "Nessun budget impostato. Creane uno per iniziare.",
-    "manage": "Gestisci budget",
-    "limit": "Limite budget",
-    "period": "Periodo",
-    "periods": {
-      "weekly": "Settimanale",
-      "monthly": "Mensile",
-      "yearly": "Annuale"
-    },
-    "remaining": "Residuo",
-    "alertThreshold": "Soglia avviso (%)",
-    "suggestions": "Suggerimenti intelligenti",
-    "suggestionsSubtitle": "Basati sulle tue spese recenti",
-    "suggestedLimit": "Limite suggerito"
   },
   "pdf": {
     "reportTitle": "Report Statistiche Finanziarie",

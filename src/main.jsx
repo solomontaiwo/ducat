@@ -6,7 +6,6 @@ import { ThemeProvider } from "./utils/ThemeProvider";
 import { NotificationProvider } from "./utils/notificationUtils";
 import { AuthProvider } from "./context/AuthProvider";
 import UnifiedTransactionProvider from "./context/UnifiedTransactionProvider";
-import { BudgetProvider } from "./context/BudgetProvider";
 import './utils/i18n';
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -14,11 +13,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <NotificationProvider>
       <AuthProvider>
         <UnifiedTransactionProvider>
-          <BudgetProvider>
-            <BrowserRouter basename="/soldi-sotto">
-              <App />
-            </BrowserRouter>
-          </BudgetProvider>
+          <BrowserRouter basename="/soldi-sotto">
+            <App />
+          </BrowserRouter>
         </UnifiedTransactionProvider>
       </AuthProvider>
     </NotificationProvider>

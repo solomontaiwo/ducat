@@ -1,59 +1,42 @@
-import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthProvider.jsx";
-import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
-import TransactionModal from "../Transaction/TransactionModal.jsx";
+import { useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { FiBarChart2, FiList, FiPieChart, FiPlus } from "react-icons/fi";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+import { useAuth } from "../../context/AuthProvider.jsx";
+import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import RecentTransactions from "./RecentTransactions";
 import formatCurrency from "../../utils/formatCurrency.jsx";
 import { calculateStats, getPeriodRange } from "../../utils/statsUtils.jsx";
-import Skeleton from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
 const PERIOD_OPTIONS = ["daily", "weekly", "monthly", "last3Months", "all"];
 const DASHBOARD_PERIOD_STORAGE_KEY = "dashboard-period";
+const SPENDING_COLORS = ["#3b82f6", "#8b5cf6", "#f97316", "#10b981", "#ec4899"];
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const { currentUser } = useAuth();
-  const {
-    transactions,
-    isDemo,
-    canAddMoreTransactions,
-    loading: transactionsLoading,
-    fetchAllTransactions,
-  } = useUnifiedTransactions();
-
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const { currentUser, profileName, profileNameLoading } = useAuth();
+  const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions } = useUnifiedTransactions();
+  const { t } = useTranslation();
   const [dashboardData, setDashboardData] = useState([]);
   const [periodPref, setPeriodPref] = useState(() => {
     const saved = localStorage.getItem(DASHBOARD_PERIOD_STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return PERIOD_OPTIONS.includes(parsed?.period)
-          ? parsed
-          : { period: "monthly" };
-      } catch {
-        return { period: "monthly" };
-      }
+    if (!saved) return { period: "monthly" };
+
+    try {
+      const parsed = JSON.parse(saved);
+      return PERIOD_OPTIONS.includes(parsed?.period) ? parsed : { period: "monthly" };
+    } catch {
+      return { period: "monthly" };
     }
-    return { period: "monthly" };
   });
-  const { t } = useTranslation();
 
   useEffect(() => {
     const load = async () => {
       if (isDemo) {
         setDashboardData(transactions);
       } else if (currentUser) {
-        const data = await fetchAllTransactions({
-          onRevalidated: setDashboardData,
-        });
+        const data = await fetchAllTransactions({ onRevalidated: setDashboardData });
         setDashboardData(data);
       } else {
         setDashboardData([]);
@@ -67,91 +50,75 @@ const Dashboard = () => {
   }, [periodPref]);
 
   const { start: periodStart, end: periodEnd } = getPeriodRange(periodPref.period || "monthly", periodPref.customRange);
-  
-  const filtered = useMemo(
-    () =>
-      dashboardData.filter((t) => {
-        const date = t.date;
-        return date >= periodStart && date <= periodEnd;
-      }),
-    [dashboardData, periodStart, periodEnd]
-  );
 
   const stats = useMemo(() => {
     if (transactionsLoading) return null;
-    return filtered.length ? calculateStats(filtered, periodStart, periodEnd) : { totalIncome: 0, totalExpense: 0, balance: 0 };
-  }, [filtered, periodStart, periodEnd, transactionsLoading]);
+    return calculateStats(dashboardData, periodStart, periodEnd);
+  }, [dashboardData, periodStart, periodEnd, transactionsLoading]);
 
-  const quickActions = useMemo(
-    () => [
-      {
-        key: "add-transaction",
-        title: t("addTransaction"),
-        subtitle: t("whatToRegister"),
-        icon: <FiPlus />,
-        action: () => setShowQuickAdd(true),
-        disabled: isDemo && !canAddMoreTransactions,
-      },
-      {
-        key: "view-transactions",
-        title: t("manageAll"),
-        subtitle: t("yourTransactions"),
-        icon: <FiList />,
-        action: () => navigate("/transactions"),
-      },
-      {
-        key: "view-analytics",
-        title: t("navbar.analytics"),
-        subtitle: t("landing.mainFeatures"),
-        icon: <FiBarChart2 />,
-        action: () => navigate("/analytics"),
-      },
-      {
-        key: "view-budgets",
-        title: t("budgets.title"),
-        subtitle: t("budgets.subtitle"),
-        icon: <FiPieChart />,
-        action: () => navigate("/budgets"),
-      },
-    ],
-    [isDemo, canAddMoreTransactions, navigate, t]
-  );
+  const spendingCategories = useMemo(() => {
+    const categories = Object.entries(stats?.categoryBreakdown || {})
+      .sort(([, first], [, second]) => second - first);
+    const topCategories = categories.slice(0, 4).map(([category, amount]) => ({
+      category,
+      label: t(`categories.${category}`, { defaultValue: category }),
+      amount,
+    }));
+    const remainingAmount = categories.slice(4).reduce((sum, [, amount]) => sum + amount, 0);
+
+    if (remainingAmount > 0) {
+      topCategories.push({ category: "other", label: t("dashboard.other"), amount: remainingAmount });
+    }
+
+    return topCategories.map((category, index) => ({
+      ...category,
+      color: SPENDING_COLORS[index % SPENDING_COLORS.length],
+      percentage: stats?.totalExpense ? (category.amount / stats.totalExpense) * 100 : 0,
+    }));
+  }, [stats, t]);
+
+  const spendingGradient = useMemo(() => {
+    if (!spendingCategories.length) return "conic-gradient(hsl(var(--muted)) 0 100%)";
+
+    let currentStop = 0;
+    return `conic-gradient(${spendingCategories.map((category) => {
+      const nextStop = currentStop + category.percentage;
+      const segment = `${category.color} ${currentStop.toFixed(2)}% ${nextStop.toFixed(2)}%`;
+      currentStop = nextStop;
+      return segment;
+    }).join(", ")})`;
+  }, [spendingCategories]);
+
+  const isLoading = transactionsLoading;
 
   return (
-    <div className="page-shell">
-      <div className="relative overflow-hidden rounded-3xl border border-border bg-card/80 p-5 shadow-[0_20px_80px_rgba(37,99,235,0.08)]">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
-        <div className="pointer-events-none absolute -left-8 -bottom-12 h-40 w-40 rounded-full bg-accent/15 blur-2xl" />
-        <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Soldi Sotto</p>
-            <h2 className="text-3xl font-bold flex items-center gap-2">
-              {currentUser ? "👋" : "👋"} {t("welcome")}
-            </h2>
-            <p className="text-sm text-muted-foreground max-w-2xl">{t("motivationalQuote")}</p>
+    <div className="page-shell space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-lg font-semibold text-primary">
+            {profileNameLoading ? <Skeleton circle height={24} width={24} /> : (profileName || "?").charAt(0).toUpperCase()}
           </div>
-          <div className="flex flex-wrap gap-2 md:gap-3">
-            <Button variant="outline" size="lg" onClick={() => navigate("/analytics")} className="gap-2 px-4">
-              <FiBarChart2 className="h-4 w-4" />
-              {t("navbar.analytics")}
-            </Button>
-            <Button size="lg" onClick={() => setShowQuickAdd(true)} disabled={isDemo && !canAddMoreTransactions} className="gap-2 px-4">
-              <FiPlus className="h-4 w-4" /> {t("addTransaction")}
-            </Button>
+          <div>
+            {profileNameLoading ? (
+              <Skeleton height={32} width={260} />
+            ) : (
+              <h2 className="text-2xl font-bold sm:text-3xl">{t("dashboard.greeting", { name: profileName || t("profile.user") })}</h2>
+            )}
+            <p className="text-sm text-muted-foreground">{t("dashboard.overviewSubtitle")}</p>
           </div>
         </div>
-        <div className="relative mt-4 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" aria-label="Periodo dashboard">
           {PERIOD_OPTIONS.map((period) => {
-            const isActivePeriod = (periodPref.period || "monthly") === period;
+            const isActive = (periodPref.period || "monthly") === period;
             return (
               <button
                 key={period}
                 type="button"
-                onClick={() => setPeriodPref((prev) => ({ ...prev, period }))}
-                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                  isActivePeriod
-                    ? "border-primary bg-primary text-primary-foreground shadow-md"
-                    : "border-border bg-background/80 text-muted-foreground hover:text-foreground"
+                onClick={() => setPeriodPref((previous) => ({ ...previous, period }))}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  isActive
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {t(`periods.${period}`, { defaultValue: period })}
@@ -159,113 +126,139 @@ const Dashboard = () => {
             );
           })}
         </div>
-      </div>
+      </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="glass border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle>{t("financialOverview.balance")}</CardTitle>
-            <CardDescription>{t("financialOverview.totalTransactions")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {transactionsLoading || !stats ? (
-              <div className="space-y-2">
-                <Skeleton height={36} width="60%" />
-                <Skeleton height={20} width="40%" />
-                <Skeleton height={20} width="40%" />
-              </div>
-            ) : (
-              <>
-                <p className="text-3xl font-bold text-primary">{formatCurrency(stats.balance || 0)}</p>
-                <p className="text-sm text-muted-foreground">
-                  {t("financialOverview.totalIncome")}: {formatCurrency(stats.totalIncome || 0)}
+      <Card
+        className="relative overflow-hidden border-0 shadow-xl"
+        style={{
+          backgroundColor: "#1d4ed8",
+          backgroundImage: "linear-gradient(135deg, #1d4ed8 0%, #2563eb 52%, #4338ca 100%)",
+          color: "#ffffff",
+        }}
+      >
+        <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
+        <CardContent className="relative p-6 pt-8 sm:p-8">
+          {isLoading || !stats ? (
+            <Skeleton height={110} baseColor="rgba(255,255,255,0.16)" highlightColor="rgba(255,255,255,0.28)" />
+          ) : (
+            <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left">
+              <div>
+                <p className="text-sm font-medium text-white/75">{t("dashboard.cashflow")}</p>
+                <p className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">{formatCurrency(stats.balance || 0)}</p>
+                <p className="mt-2 text-sm text-white/80">
+                  {t("dashboard.periodSummary")} · {stats.transactionCount} {t("financialOverview.totalTransactions").toLowerCase()}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {t("financialOverview.totalExpense")}: {formatCurrency(stats.totalExpense || 0)}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="glass border-emerald-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle>{t("financialOverview.totalIncome")}</CardTitle>
-            <CardDescription>{t(`periods.${periodPref.period}`)}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {transactionsLoading || !stats ? (
-              <div className="space-y-2">
-                <Skeleton height={36} width="50%" />
-                <Skeleton height={20} width="30%" />
               </div>
-            ) : (
-              <>
-                <p className="text-3xl font-bold text-emerald-600">{formatCurrency(stats.totalIncome || 0)}</p>
-                <p className="text-sm text-muted-foreground">{t("recentTransactions.title")}</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        <Card className="glass border-rose-500/20">
-          <CardHeader className="pb-2">
-            <CardTitle>{t("financialOverview.totalExpense")}</CardTitle>
-            <CardDescription>{t(`periods.${periodPref.period}`)}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {transactionsLoading || !stats ? (
-              <div className="space-y-2">
-                <Skeleton height={36} width="50%" />
-                <Skeleton height={20} width="30%" />
-              </div>
-            ) : (
-              <>
-                <p className="text-3xl font-bold text-rose-600">{formatCurrency(stats.totalExpense || 0)}</p>
-                <p className="text-sm text-muted-foreground">{t("recentTransactions.title")}</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2 glass">
-          <CardHeader>
-            <CardTitle>{t("quickActions")}</CardTitle>
-            <CardDescription>{t("whatToRegister")}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2">
-            {quickActions.map((action) => (
-              <button
-                key={action.key}
-                onClick={() => !action.disabled && action.action()}
-                className={`flex items-center gap-3 rounded-xl border border-border bg-card/80 p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
-                  action.disabled ? "opacity-60 cursor-not-allowed" : ""
-                }`}
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  {action.icon}
-                </span>
-                <div>
-                  <div className="font-semibold">{action.title}</div>
-                  <div className="text-xs text-muted-foreground">{action.subtitle}</div>
+              <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-64">
+                <div className="border-r border-white/25 px-3 text-center">
+                  <p className="text-white/70">{t("financialOverview.totalIncome")}</p>
+                  <p className="mt-1 text-lg font-semibold">{formatCurrency(stats.totalIncome || 0)}</p>
                 </div>
-              </button>
-            ))}
+                <div className="px-3 text-center">
+                  <p className="text-white/70">{t("financialOverview.totalExpense")}</p>
+                  <p className="mt-1 text-lg font-semibold">{formatCurrency(stats.totalExpense || 0)}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.65fr)]">
+        <Card>
+          <CardHeader className="items-start justify-between space-y-0" style={{ flexDirection: "row" }}>
+            <div>
+              <CardTitle className="text-left">{t("dashboard.spendingOverview")}</CardTitle>
+              <span className="text-sm text-muted-foreground">{t(`periods.${periodPref.period}`)}</span>
+            </div>
+            {!isLoading && stats && spendingCategories.length > 0 && (
+              <div className="text-right">
+                <p className="text-lg font-bold">{formatCurrency(stats.totalExpense)}</p>
+                <p className="text-xs text-muted-foreground">{t("dashboard.ofExpenses")}</p>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            {isLoading || !stats ? (
+              <Skeleton height={180} />
+            ) : spendingCategories.length ? (
+              <div className="space-y-4">
+                <div className="relative">
+                  <div className="space-y-3 sm:pr-44">
+                    {spendingCategories.map((category) => (
+                      <div key={category.category} className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <span className="flex min-w-0 items-center gap-2 font-medium">
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: category.color }} />
+                            <span className="truncate">{category.label}</span>
+                          </span>
+                          <span className="shrink-0 text-muted-foreground">{category.percentage.toFixed(0)}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full" style={{ width: `${category.percentage}%`, background: category.color }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="absolute right-0 top-1/2 hidden h-36 w-36 -translate-y-1/2 rounded-full sm:block" style={{ background: spendingGradient }} aria-label={t("dashboard.spendingOverview")}>
+                    <div className="absolute inset-7 rounded-full bg-card" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="py-10 text-center text-sm text-muted-foreground">{t("dashboard.noExpenses")}</p>
+            )}
           </CardContent>
         </Card>
 
-        <Card className="glass">
+        <Card>
           <CardHeader>
-            <CardTitle>{t("recentTransactions.title")}</CardTitle>
-            <CardDescription>{t("recentTransactions.viewAll")}</CardDescription>
+            <CardTitle>{t("dashboard.periodActivity")}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <RecentTransactions transactions={transactions} loading={transactionsLoading} />
+          <CardContent className="space-y-5">
+            {isLoading || !stats ? (
+              <Skeleton height={150} />
+            ) : (
+              <>
+                <div className="flex items-center justify-between border-b border-border pb-4">
+                  <span className="text-sm text-muted-foreground">{t("dashboard.largestExpense")}</span>
+                  {stats.largestExpense ? (
+                    <div className="min-w-0 text-right">
+                      <p className="max-w-32 truncate font-semibold">{stats.largestExpense.description}</p>
+                      <p className="text-sm font-semibold text-rose-600">{formatCurrency(stats.largestExpense.amount)}</p>
+                    </div>
+                  ) : (
+                    <span className="font-semibold text-muted-foreground">—</span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between border-b border-border pb-4">
+                  <span className="text-sm text-muted-foreground">{t("dashboard.topExpenseCategory")}</span>
+                  {stats.topCategories[0] ? (
+                    <span className="text-right font-semibold">
+                      {t(`categories.${stats.topCategories[0].category}`, { defaultValue: stats.topCategories[0].category })}
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-muted-foreground">—</span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{t("financialOverview.totalTransactions")}</span>
+                  <span className="text-xl font-bold">{stats.transactionCount}</span>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      <TransactionModal show={showQuickAdd} onClose={() => setShowQuickAdd(false)} transaction={null} />
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("recentTransactions.title")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RecentTransactions transactions={dashboardData} loading={isLoading} />
+        </CardContent>
+      </Card>
     </div>
   );
 };
