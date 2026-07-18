@@ -148,7 +148,7 @@ const AppLayout = ({ children }) => {
               : "p-0"
           }`}
         >
-        <div className="mx-auto w-full max-w-6xl space-y-6">
+        <div className="w-full space-y-6">
           {showNavigation && currentUser && !currentUser.emailVerified && (
             <div className="flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
               <p>{t("security.emailVerificationRequired")}</p>
