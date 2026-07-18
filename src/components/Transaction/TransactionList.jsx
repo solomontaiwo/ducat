@@ -406,9 +406,9 @@ const TransactionList = () => {
             </Select>
             <Button
               variant={showFilters ? "default" : "outline"}
-              size="sm"
+              size="icon"
               onClick={() => setShowFilters(!showFilters)}
-              className="relative h-11 w-11 shrink-0 p-0 sm:w-auto sm:px-3"
+              className="relative shrink-0 sm:w-auto sm:px-3"
               aria-label={showFilters ? t("transactions.filters.hide") : t("transactions.filters.show")}
             >
               <FiFilter />
