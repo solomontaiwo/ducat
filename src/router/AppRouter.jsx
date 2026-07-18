@@ -1,5 +1,5 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import { lazy, Suspense, useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
 import PropTypes from "prop-types";
 import { useAuth } from "../context/AuthProvider";
 import AppLayout from "../components/Layout/AppLayout";
@@ -34,6 +34,16 @@ const PageLoader = () => (
     <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
   </div>
 );
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
 
 // Route guards
 const PublicRoute = ({ children }) => {
@@ -100,6 +110,7 @@ const AppRouter = () => {
 
   return (
     <AppLayout>
+        <ScrollToTop />
         <Routes>
           {routes.map(({ path, element }) => (
             <Route
