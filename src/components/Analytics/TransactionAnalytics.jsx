@@ -20,17 +20,13 @@ import { useDateRange } from "../../hooks/useDateRange.jsx";
 import { calculateStats } from "../../utils/statsUtils.jsx";
 import { useTheme } from "../../utils/ThemeProvider.jsx";
 import {
-  PieChart, Pie, Sector,
+  PieChart, Pie, Cell,
   AreaChart, Area,
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 
 const CHART_COLORS = ["#f43f5e", "#fb923c", "#facc15", "#4ade80", "#60a5fa", "#a78bfa", "#f472b6", "#34d399"];
-
-const renderExpensePieSector = (props) => (
-  <Sector {...props} fill={CHART_COLORS[(props.index || 0) % CHART_COLORS.length]} />
-);
 
 const TransactionAnalytics = () => {
   const { isDemo, transactions: recentTransactions, maxTransactions, loading: contextLoading, fetchAllTransactions } = useUnifiedTransactions();
@@ -123,6 +119,16 @@ const TransactionAnalytics = () => {
     const topExpenseCategories = processCategories(expenseByCategory, stats.totalExpense, expenseCategories);
     const topIncomeCategories = processCategories(incomeByCategory, stats.totalIncome, incomeCategories);
 
+    // Largest individual movements in the selected period, rather than category totals.
+    const getTopTransactions = (type) =>
+      filteredTransactions
+        .filter((transaction) => transaction.type === type)
+        .sort((a, b) => b.amount - a.amount || b.date.getTime() - a.date.getTime())
+        .slice(0, 3);
+
+    const topExpenseTransactions = getTopTransactions("expense");
+    const topIncomeTransactions = getTopTransactions("income");
+
     // 2. Monthly Trend (Last 6 months)
     const now = new Date();
     const monthlyTrend = [];
@@ -156,6 +162,8 @@ const TransactionAnalytics = () => {
     return {
       topExpenseCategories,
       topIncomeCategories,
+      topExpenseTransactions,
+      topIncomeTransactions,
       monthlyTrend,
       avgTransactionAmount,
       savingsRate,
@@ -409,8 +417,11 @@ const TransactionAnalytics = () => {
                       paddingAngle={3}
                       dataKey="amount"
                       nameKey="label"
-                      shape={renderExpensePieSector}
-                    />
+                    >
+                      {extendedStats.topExpenseCategories.map((category, index) => (
+                        <Cell key={category.category} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
                     <Tooltip content={<CustomPieTooltip />} />
                     <Legend
                       formatter={(value) => (
@@ -457,26 +468,117 @@ const TransactionAnalytics = () => {
           <CardHeader>
             <CardTitle>{t("analytics.topIncomeCategories")}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {extendedStats.topIncomeCategories?.length ? (
-              extendedStats.topIncomeCategories.map((cat, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{cat.label}</span>
+              <>
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={extendedStats.topIncomeCategories}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={65}
+                      outerRadius={105}
+                      paddingAngle={3}
+                      dataKey="amount"
+                      nameKey="label"
+                    >
+                      {extendedStats.topIncomeCategories.map((category, index) => (
+                        <Cell key={category.category} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                    <Legend
+                      formatter={(value) => (
+                        <span style={{ color: axisColor, fontSize: 12 }}>{value}</span>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-3">
+                  {extendedStats.topIncomeCategories.map((cat, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full"
+                            style={{ background: CHART_COLORS[idx % CHART_COLORS.length] }}
+                          />
+                          <span className="font-semibold">{cat.label}</span>
+                        </div>
+                        <span className="text-emerald-600 font-semibold">{formatCurrency(cat.amount)}</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-muted">
+                        <div
+                          className="h-2 rounded-full"
+                          style={{
+                            width: `${cat.percentage.toFixed(1)}%`,
+                            background: CHART_COLORS[idx % CHART_COLORS.length],
+                          }}
+                        />
+                      </div>
                     </div>
-                    <span className="text-emerald-600 font-semibold">{formatCurrency(cat.amount)}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted">
-                    <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${cat.percentage.toFixed(1)}%` }} />
-                  </div>
+                  ))}
                 </div>
-              ))
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">{t("analytics.noIncomeData")}</p>
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Largest individual transactions */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {[
+          {
+            title: t("analytics.topExpenseTransactions"),
+            transactions: extendedStats.topExpenseTransactions,
+            amountClass: "text-rose-600",
+            emptyMessage: t("analytics.noExpenseData"),
+            icon: <FiArrowDown />,
+          },
+          {
+            title: t("analytics.topIncomeTransactions"),
+            transactions: extendedStats.topIncomeTransactions,
+            amountClass: "text-emerald-600",
+            emptyMessage: t("analytics.noIncomeData"),
+            icon: <FiArrowUp />,
+          },
+        ].map(({ title, transactions, amountClass, emptyMessage, icon }) => (
+          <Card key={title}>
+            <CardHeader>
+              <CardTitle>{title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {transactions?.length ? (
+                <ol className="space-y-3">
+                  {transactions.map((transaction, index) => (
+                    <li
+                      key={transaction.id || `${transaction.description}-${transaction.date}`}
+                      className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 sm:flex sm:gap-3"
+                    >
+                      <span className="row-span-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold sm:row-auto">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 sm:flex-1">
+                        <p className="truncate text-sm font-semibold">{transaction.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t(`categories.${transaction.category}`, { defaultValue: transaction.category })} · {format(transaction.date, "dd/MM/yyyy")}
+                        </p>
+                      </div>
+                      <span className={`col-start-2 flex w-fit items-center gap-1 justify-self-end text-sm font-semibold sm:ml-auto sm:shrink-0 ${amountClass}`}>
+                        {icon} {formatCurrency(transaction.amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Monthly trend: area chart + card grid */}

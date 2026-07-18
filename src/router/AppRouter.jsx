@@ -5,10 +5,6 @@ import { useAuth } from "../context/AuthProvider";
 import AppLayout from "../components/Layout/AppLayout";
 
 const BudgetList = lazy(() => import("../components/Budgets/BudgetList"));
-const GoalList = lazy(() => import("../components/Goals/GoalList"));
-const InsightsFeed = lazy(() => import("../components/Insights/InsightsFeed"));
-const CashflowTimeline = lazy(() => import("../components/Cashflow/CashflowTimeline"));
-const CashflowPlanner = lazy(() => import("../components/Cashflow/CashflowPlanner"));
 // Lazy load all main pages for better performance.
 const loadDashboard = () => import("../components/Dashboard/Dashboard");
 const loadTransactionList = () => import("../components/Transaction/TransactionList");
@@ -100,10 +96,6 @@ const AppRouter = () => {
     { path: "/stats", element: <Stats /> },
     { path: "/profile", element: <Profile /> },
     { path: "/budgets", element: <BudgetList /> },
-    { path: "/goals", element: <GoalList /> },
-    { path: "/insights", element: <InsightsFeed /> },
-    { path: "/cashflow", element: <CashflowTimeline /> },
-    { path: "/planner", element: <CashflowPlanner /> },
     { path: "/landing", element: <LandingPage /> },
     { path: "*", element: <Navigate to="/" replace /> },
   ];

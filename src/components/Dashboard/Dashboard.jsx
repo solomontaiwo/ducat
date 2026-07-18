@@ -5,7 +5,7 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import TransactionModal from "../Transaction/TransactionModal.jsx";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { FiBarChart2, FiCalendar, FiList, FiPieChart, FiPlus } from "react-icons/fi";
+import { FiBarChart2, FiList, FiPieChart, FiPlus } from "react-icons/fi";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import RecentTransactions from "./RecentTransactions";
@@ -105,13 +105,6 @@ const Dashboard = () => {
         subtitle: t("landing.mainFeatures"),
         icon: <FiBarChart2 />,
         action: () => navigate("/analytics"),
-      },
-      {
-        key: "view-planner",
-        title: t("navbar.planner"),
-        subtitle: t("planner.subtitle"),
-        icon: <FiCalendar />,
-        action: () => navigate("/planner"),
       },
       {
         key: "view-budgets",
