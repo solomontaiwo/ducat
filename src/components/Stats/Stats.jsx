@@ -20,7 +20,6 @@ import {
 import { calculateStats } from "../../utils/statsUtils";
 import LoadingWrapper from "../../utils/loadingWrapper";
 import formatCurrency from "../../utils/formatCurrency";
-import logo from "public/icon.png";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { Button } from "../ui/button";
@@ -28,6 +27,9 @@ import { Select } from "../ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+
+const logo = `${import.meta.env.BASE_URL}icon.png`;
+
 const StatPill = ({ label, value, tone }) => {
   const backgrounds = {
     emerald: "bg-emerald-500/10",
