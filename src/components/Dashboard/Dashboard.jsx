@@ -9,6 +9,7 @@ import RecentTransactions from "./RecentTransactions";
 import formatCurrency from "../../utils/formatCurrency.jsx";
 import { calculateStats, getPeriodRange } from "../../utils/statsUtils.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Select } from "../ui/select";
 
 const PERIOD_OPTIONS = ["daily", "weekly", "monthly", "last3Months", "all"];
 const DASHBOARD_PERIOD_STORAGE_KEY = "dashboard-period";
@@ -128,24 +129,19 @@ const Dashboard = () => {
             <p className="text-sm text-muted-foreground">{t("dashboard.overviewSubtitle")}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2" aria-label="Periodo dashboard">
-          {PERIOD_OPTIONS.map((period) => {
-            const isActive = (periodPref.period || "monthly") === period;
-            return (
-              <button
-                key={period}
-                type="button"
-                onClick={() => setPeriodPref((previous) => ({ ...previous, period }))}
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                  isActive
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-border bg-card text-muted-foreground hover:text-foreground"
-                }`}
-              >
+        <div className="w-full sm:w-48">
+          <label className="sr-only" htmlFor="dashboard-period">{t("dashboard.periodSummary")}</label>
+          <Select
+            id="dashboard-period"
+            value={periodPref.period || "monthly"}
+            onChange={(event) => setPeriodPref((previous) => ({ ...previous, period: event.target.value }))}
+          >
+            {PERIOD_OPTIONS.map((period) => (
+              <option key={period} value={period}>
                 {t(`periods.${period}`, { defaultValue: period })}
-              </button>
-            );
-          })}
+              </option>
+            ))}
+          </Select>
         </div>
       </header>
 

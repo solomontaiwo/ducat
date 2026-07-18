@@ -65,6 +65,12 @@
   h1, h2, h3, h4, h5 {
     @apply tracking-tight;
   }
+  button,
+  a,
+  select {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @layer components {
