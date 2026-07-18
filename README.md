@@ -98,6 +98,25 @@ Once the secrets are set, any push to `main` will trigger the workflow, build th
 
 > **Do not commit your `.env` file.** It is already excluded in `.gitignore` via `*.env`.
 
+## Security setup
+
+The repository includes `firestore.rules` and `firestore.indexes.json`. Deploy them before using the app in production:
+
+```bash
+npx firebase-tools login
+npx firebase-tools use YOUR_FIREBASE_PROJECT_ID
+npx firebase-tools deploy --only firestore:rules,firestore:indexes
+```
+
+The rules limit financial data to verified users and to the owner of each transaction. The app now signs in with email only, so the legacy `usernames` collection is deliberately inaccessible and existing username records are not used.
+
+In Firebase Console, complete these manual safeguards:
+
+1. Enable a strong password policy in **Authentication → Settings**.
+2. Register and enforce **App Check** for Firestore and Authentication.
+3. In Google Cloud Console, allow only the production site and local development origins in the Firebase API key's HTTP referrer restrictions.
+4. Confirm that the email action sender/domain is configured so verification emails can be delivered.
+
 ## Contributions
 
 Since this is one of my first projects in React, any suggestions or contributions are welcome! If you'd like to contribute, feel free to open a pull request or report any issues via the issues tab.

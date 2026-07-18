@@ -108,14 +108,14 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
       return;
     }
 
-    let success = false;
+    let success;
     if (isEdit) {
       success = await (onSubmit
         ? onSubmit(formData)
         : updateTransaction(transaction.id, {
             type: formData.type,
             amount: amountValue,
-            description: formData.description,
+            description: formData.description.trim(),
             date: new Date(formData.date),
             category: formData.category,
           }));
@@ -125,7 +125,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
         : addTransaction({
             type: formData.type,
             amount: amountValue,
-            description: formData.description,
+            description: formData.description.trim(),
             date: new Date(formData.date),
             category: formData.category,
           }));
@@ -207,7 +207,6 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
                   }}
                   required
                   className="w-full"
-                  autoFocus
                 />
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {quickAmounts.map((value) => (

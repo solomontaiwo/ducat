@@ -13,7 +13,7 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-40 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-40 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-100 motion-reduce:animate-none",
       className
     )}
     {...props}
@@ -39,25 +39,18 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
           "fixed inset-0 z-50 w-full rounded-none border-0",
           "[padding-top:env(safe-area-inset-top)] sm:pt-0",
           "bg-background text-foreground shadow-2xl",
-          // Mobile enter/exit: slide up / slide down
-          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-8",
-          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-8",
-          "duration-300",
+          // Keep the full form visible immediately; only the backdrop fades.
           // Desktop (sm+): switch to centred modal
           "sm:inset-x-auto sm:inset-y-auto sm:left-1/2 sm:top-1/2",
           "sm:-translate-x-1/2 sm:-translate-y-1/2",
           "sm:w-[92vw] sm:max-w-lg",
           "sm:rounded-2xl sm:border sm:border-border",
-          "sm:data-[state=open]:zoom-in-90 sm:data-[state=open]:slide-in-from-top-8",
-          "sm:data-[state=closed]:zoom-out-90 sm:data-[state=closed]:slide-out-to-top-8",
         ],
         // ── default variant ────────────────────────────────────────────────
         variant === "default" && [
           "fixed left-1/2 top-1/2 z-50 grid w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 gap-4",
           "border border-border bg-background p-4 sm:p-6 shadow-lg text-foreground",
-          "duration-200 rounded-2xl",
-          "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-90 data-[state=open]:slide-in-from-top-8",
-          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-90 data-[state=closed]:slide-out-to-top-8",
+          "rounded-2xl",
         ],
         className
       )}

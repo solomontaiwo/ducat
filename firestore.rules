@@ -1,0 +1,59 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasVerifiedEmail() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return hasVerifiedEmail() && request.auth.uid == userId;
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasOnly([
+          'userId', 'amount', 'description', 'date', 'category', 'type', 'createdAt'
+        ]) &&
+        data.keys().hasAll(['userId', 'amount', 'description', 'date', 'category', 'type', 'createdAt']) &&
+        data.userId is string &&
+        data.amount is number && data.amount > 0 && data.amount <= 1000000 &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 200 &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+        data.type in ['income', 'expense'] &&
+        data.date is timestamp && data.createdAt is timestamp;
+    }
+
+    match /transactions/{transactionId} {
+      allow get, list: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId) && isValidTransaction(request.resource.data);
+      allow update: if isOwner(resource.data.userId) &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        isValidTransaction(request.resource.data);
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isSignedIn() && request.auth.uid == userId &&
+        request.resource.data.keys().hasOnly(['username', 'email', 'displayName', 'createdAt', 'updatedAt']) &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.displayName is string && request.resource.data.displayName.size() >= 3 && request.resource.data.displayName.size() <= 50;
+      allow update: if isSignedIn() && request.auth.uid == userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['username', 'displayName', 'updatedAt']) &&
+        request.resource.data.displayName is string && request.resource.data.displayName.size() >= 3 && request.resource.data.displayName.size() <= 50;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Legacy username lookups are intentionally inaccessible: email-based login
+    // prevents public username and email enumeration.
+    match /usernames/{username} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -10,13 +10,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "../ui/dialog";
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useDrag } from "@use-gesture/react";
 import { format, isToday, isYesterday } from "date-fns";
 import { it, enUS } from "date-fns/locale";
-import { useMediaQuery } from "react-responsive";
 import formatCurrency from "../../utils/formatCurrency.jsx";
-import { FiPlus, FiTrash2, FiFilter, FiSearch, FiEdit2 } from "react-icons/fi";
+import { FiTrash2, FiFilter, FiSearch, FiMoreVertical, FiCopy, FiEdit2 } from "react-icons/fi";
 import { useCategories } from "../../utils/categories.jsx";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
@@ -33,7 +32,7 @@ const SWIPE_DELETE_THRESHOLD = 80;
 const SWIPE_VELOCITY_THRESHOLD = 0.5;
 const SNAP_ANIMATION = { type: "spring", stiffness: 500, damping: 40 };
 
-const SwipeableTransactionCard = ({ transaction, onEdit, onDelete, language, getCategoryLabel }) => {
+const SwipeableTransactionCard = ({ transaction, onActions, onDelete, language, getCategoryLabel }) => {
   const x = useMotionValue(0);
   const deleteOpacity = useTransform(x, [-SWIPE_DELETE_THRESHOLD, -20], [1, 0]);
 
@@ -63,57 +62,41 @@ const SwipeableTransactionCard = ({ transaction, onEdit, onDelete, language, get
       <motion.div
         style={{ x }}
         {...bind()}
-        className="relative z-10 flex items-center justify-between rounded-2xl border border-border bg-card/80 p-4 shadow-sm touch-pan-y"
+        className="relative z-10 flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-card/80 p-3 shadow-sm touch-pan-y sm:p-4"
       >
-        <div className="flex items-start gap-3">
-          <div className="space-y-1">
-            <div className="text-base font-semibold leading-tight">{transaction.description}</div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <div className="min-w-0 flex-1 space-y-1">
+            <div className="truncate text-sm font-semibold leading-tight sm:text-base">{transaction.description}</div>
+            <div className="flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground">
               <span>
                 {format(transaction.date, language === "it" ? "dd MMM yyyy" : "MMM dd, yyyy", {
                   locale: language === "it" ? it : enUS,
                 })}
               </span>
               <span>•</span>
-              <span>{getCategoryLabel(transaction.category)}</span>
+              <span className="truncate">{getCategoryLabel(transaction.category)}</span>
             </div>
-          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1">
           <div
-            className={`text-base font-bold ${
+            className={`text-right text-sm font-bold sm:text-base ${
               transaction.type === "income" ? "text-emerald-600" : "text-rose-600"
             }`}
           >
             {transaction.type === "income" ? "+" : "-"}
             {formatCurrency(transaction.amount)}
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-9 w-9 p-0"
-              aria-label="Edit transaction"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(transaction);
-              }}
-            >
-              <FiEdit2 className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-9 w-9 p-0 text-destructive hover:text-destructive"
-              aria-label="Delete transaction"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(transaction.id);
-              }}
-            >
-              <FiTrash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-9 w-9 shrink-0 p-0"
+            aria-label="Transaction actions"
+            onClick={(e) => {
+              e.stopPropagation();
+              onActions(transaction);
+            }}
+          >
+            <FiMoreVertical className="h-5 w-5" />
+          </Button>
         </div>
       </motion.div>
     </div>
@@ -129,7 +112,7 @@ SwipeableTransactionCard.propTypes = {
     type: PropTypes.oneOf(["income", "expense"]).isRequired,
     amount: PropTypes.number.isRequired,
   }).isRequired,
-  onEdit: PropTypes.func.isRequired,
+  onActions: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   language: PropTypes.string.isRequired,
   getCategoryLabel: PropTypes.func.isRequired,
@@ -144,7 +127,6 @@ const TransactionList = () => {
     addTransaction,
     updateTransaction,
     isDemo,
-    canAddMoreTransactions,
     maxTransactions,
     fetchAllTransactions, // New method to fetch more history
     getTotalTransactionCount, // New method to get total count
@@ -154,7 +136,7 @@ const TransactionList = () => {
 
   const [editTransaction, setEditTransaction] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+  const [actionTransaction, setActionTransaction] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   
   // Local state for loaded transactions (for scalability)
@@ -249,8 +231,8 @@ const TransactionList = () => {
 
   const { t, i18n } = useTranslation();
 
-  const isMobile = useMediaQuery({ maxWidth: 768 });
   const loading = authLoading || (transactionsLoading && allLoadedTransactions.length === 0);
+  const hasActiveFilters = selectedCategory !== "all" || selectedType !== "all";
 
   const motivationalQuotes = useMemo(() => t("dashboard.motivationalQuotes", { returnObjects: true }), [t]);
   const [quote, setQuote] = useState("");
@@ -303,6 +285,19 @@ const TransactionList = () => {
   const handleDeleteClick = useCallback(async (transactionId) => {
     setDeleteConfirm(transactionId);
   }, []);
+
+  const handleDuplicate = useCallback(async () => {
+    if (!actionTransaction) return;
+
+    const success = await addTransaction({
+      type: actionTransaction.type,
+      amount: actionTransaction.amount,
+      description: actionTransaction.description,
+      date: actionTransaction.date,
+      category: actionTransaction.category,
+    });
+    if (success) setActionTransaction(null);
+  }, [actionTransaction, addTransaction]);
 
   const confirmDelete = useCallback(async () => {
     if (deleteConfirm) {
@@ -387,16 +382,8 @@ const TransactionList = () => {
             <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
               💳 {t("transactions.title")}
             </h1>
-            <div className="text-primary text-sm italic">{quote}</div>
+            <div className="hidden text-primary text-sm italic md:block">{quote}</div>
           </div>
-          <Button
-            onClick={() => setShowModal(true)}
-            disabled={isDemo && !canAddMoreTransactions}
-            className="gap-2"
-          >
-            <FiPlus />
-            {!isMobile && t("addTransaction")}
-          </Button>
         </div>
 
         <div className="mt-3 flex flex-col gap-2">
@@ -409,8 +396,8 @@ const TransactionList = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex flex-col gap-2 md:flex-row">
-            <Select value={period} onChange={(e) => setPeriod(e.target.value)} className="md:flex-1">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            <Select value={period} onChange={(e) => setPeriod(e.target.value)} className="min-w-0">
               {periodOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -421,10 +408,16 @@ const TransactionList = () => {
               variant={showFilters ? "default" : "outline"}
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              className="w-full md:w-auto gap-2"
+              className="relative h-11 w-11 shrink-0 p-0 sm:w-auto sm:px-3"
+              aria-label={showFilters ? t("transactions.filters.hide") : t("transactions.filters.show")}
             >
               <FiFilter />
-              {showFilters ? t("transactions.filters.hide") : t("transactions.filters.show")}
+              <span className="hidden sm:inline">
+                {showFilters ? t("transactions.filters.hide") : t("transactions.filters.show")}
+              </span>
+              {hasActiveFilters && (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary-foreground sm:right-2" aria-hidden="true" />
+              )}
             </Button>
           </div>
 
@@ -435,14 +428,8 @@ const TransactionList = () => {
             </div>
           )}
 
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="grid gap-3 md:grid-cols-2"
-              >
+          {showFilters && (
+              <div className="grid gap-3 md:grid-cols-2">
                 <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
                   <option value="all">{t("transactions.filters.allTypes")}</option>
                   <option value="income">{t("income")}</option>
@@ -456,20 +443,16 @@ const TransactionList = () => {
                     </option>
                   ))}
                 </Select>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
         </div>
       </div>
 
       <div className="space-y-4 pb-6 pt-3">
         {groupedTransactions.length > 0 ? (
-          groupedTransactions.map((group, groupIndex) => (
-            <motion.div
+          groupedTransactions.map((group) => (
+            <div
               key={group.date.toISOString()}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: groupIndex * 0.05 }}
               className="space-y-2"
             >
               <div className="flex items-center gap-3">
@@ -481,40 +464,28 @@ const TransactionList = () => {
               </div>
               <div className="space-y-2">
                 {group.transactions.map((transaction) => (
-                  <motion.div
-                    key={transaction.id}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
+                  <div key={transaction.id}>
                     <SwipeableTransactionCard
                       transaction={transaction}
-                      onEdit={setEditTransaction}
+                      onActions={setActionTransaction}
                       onDelete={handleDeleteClick}
                       language={i18n.language}
                       getCategoryLabel={getCategoryLabel}
                     />
-                  </motion.div>
+                  </div>
                 ))}
               </div>
-            </motion.div>
+            </div>
           ))
         ) : (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="text-center py-10">
+          <div className="text-center py-10">
             <h3 className="text-xl font-semibold text-foreground">{t("transactions.empty.title")}</h3>
             <p className="text-muted-foreground">
               {searchTerm || selectedCategory !== "all" || selectedType !== "all"
                 ? t("transactions.empty.tryFilters")
                 : t("transactions.empty.addFirst")}
             </p>
-            <Button
-              className="mt-4 gap-2"
-              onClick={() => setShowModal(true)}
-              disabled={isDemo && !canAddMoreTransactions}
-            >
-              <FiPlus />
-              {t("addTransaction")}
-            </Button>
-          </motion.div>
+          </div>
         )}
         
         {/* Infinite Scroll Sentinel */}
@@ -531,14 +502,50 @@ const TransactionList = () => {
       </div>
 
       <TransactionModal
-        show={showModal || !!editTransaction}
+        show={!!editTransaction}
         onClose={() => {
-          setShowModal(false);
           setEditTransaction(null);
         }}
         onSubmit={handleModalSubmit}
         transaction={editTransaction}
       />
+
+      <Dialog open={!!actionTransaction} onOpenChange={(open) => !open && setActionTransaction(null)}>
+        <DialogContent className="max-w-sm p-5">
+          <DialogHeader>
+            <DialogTitle>{actionTransaction?.description}</DialogTitle>
+            <DialogDescription>{t("transactions.actions.description")}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 pt-2">
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => {
+                setEditTransaction(actionTransaction);
+                setActionTransaction(null);
+              }}
+            >
+              <FiEdit2 />
+              {t("transactions.actions.edit")}
+            </Button>
+            <Button variant="outline" className="justify-start" onClick={handleDuplicate}>
+              <FiCopy />
+              {t("transactions.actions.duplicate")}
+            </Button>
+            <Button
+              variant="destructive"
+              className="justify-start"
+              onClick={() => {
+                setDeleteConfirm(actionTransaction.id);
+                setActionTransaction(null);
+              }}
+            >
+              <FiTrash2 />
+              {t("transactions.actions.delete")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
         <DialogContent>

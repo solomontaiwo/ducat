@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, firestore } from "../../utils/firebase";
+import { auth } from "../../utils/firebase";
 import { useNotification } from "../../utils/notificationUtils";
 import { motion } from "framer-motion";
 import { FiArrowLeft, FiEye, FiEyeOff, FiLock, FiLogIn, FiUser } from "react-icons/fi";
@@ -13,7 +12,7 @@ import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 
 const Login = () => {
-  const [loginInput, setLoginInput] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,49 +22,21 @@ const Login = () => {
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const { t } = useTranslation();
 
-  const isEmail = (input) => input.includes("@") && input.includes(".");
-
-  const getEmailFromUsername = async (username) => {
-    try {
-      const usernameDoc = await getDoc(doc(firestore, "usernames", username.toLowerCase()));
-      if (usernameDoc.exists()) {
-        const uid = usernameDoc.data().uid;
-        const userDoc = await getDoc(doc(firestore, "users", uid));
-        if (userDoc.exists()) return userDoc.data().email;
-      }
-      return null;
-    } catch (err) {
-      console.error("Errore nella ricerca username:", err);
-      return null;
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      let emailToUse = loginInput;
-      if (!isEmail(loginInput)) {
-        const emailFromUsername = await getEmailFromUsername(loginInput);
-        if (!emailFromUsername) {
-          setError(t("errors.usernameNotFound"));
-          setLoading(false);
-          return;
-        }
-        emailToUse = emailFromUsername;
-      }
-
-      await signInWithEmailAndPassword(auth, emailToUse, password);
+      await signInWithEmailAndPassword(auth, email.trim(), password);
       notification.success(t("login.title"));
       navigate("/dashboard");
     } catch (err) {
       console.error(t("errors.loginError"), err);
-      let errorMessage = t("errors.loginError");
+      let errorMessage;
       switch (err.code) {
         case "auth/user-not-found":
-          errorMessage = isEmail(loginInput) ? t("errors.emailNotFound") : t("errors.usernameNotFound");
+          errorMessage = t("errors.invalidCredentials");
           break;
         case "auth/wrong-password":
           errorMessage = t("errors.wrongPassword");
@@ -124,17 +95,17 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="loginInput">{t("login.usernameOrEmail")}</Label>
+            <Label htmlFor="email">{t("login.usernameOrEmail")}</Label>
             <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring">
               <FiUser className="text-muted-foreground" />
               <Input
-                id="loginInput"
-                type="text"
+                id="email"
+                type="email"
                 placeholder={t("login.usernameOrEmailPlaceholder")}
-                value={loginInput}
-                onChange={(e) => setLoginInput(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="border-0 shadow-none focus-visible:ring-0"
-                autoComplete="username"
+                autoComplete="email"
               />
             </div>
             <p className="text-xs text-muted-foreground">{t("login.usernameOrEmailHelp")}</p>

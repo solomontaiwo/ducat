@@ -18,10 +18,9 @@ import {
   isEqual,
 } from "date-fns";
 import { calculateStats } from "../../utils/statsUtils";
-import { generatePDF } from "../../utils/pdfUtils";
 import LoadingWrapper from "../../utils/loadingWrapper";
 import formatCurrency from "../../utils/formatCurrency";
-import logo from "/icon.png";
+import logo from "public/icon.png";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { Button } from "../ui/button";
@@ -156,6 +155,22 @@ const Stats = () => {
     if (value !== "custom") setCustomRange(null);
   };
 
+  const handlePdfDownload = async () => {
+    const { generatePDF } = await import("../../utils/pdfUtils.jsx");
+    await generatePDF(
+      currentUser,
+      transactions,
+      stats,
+      viewMode,
+      logo,
+      "https://solomontaiwo.github.io/soldi-sotto/",
+      "https://www.instagram.com/solomon.taiwo/",
+      startDate,
+      endDate,
+      i18n.language
+    );
+  };
+
   const daysCount = useMemo(
     () => (startDate && endDate ? differenceInDays(endOfDay(endDate), startOfDay(startDate)) + 1 : 0),
     [startDate, endDate]
@@ -223,20 +238,7 @@ const Stats = () => {
             </Select>
             {currentUser ? (
               <Button
-                onClick={() =>
-                  generatePDF(
-                    currentUser,
-                    transactions,
-                    stats,
-                    viewMode,
-                    logo,
-                    "https://solomontaiwo.github.io/soldi-sotto/",
-                    "https://www.instagram.com/solomon.taiwo/",
-                    startDate,
-                    endDate,
-                    i18n.language
-                  )
-                }
+                onClick={handlePdfDownload}
                 disabled={!stats}
               >
                 {t("statsPage.downloadPdf")}

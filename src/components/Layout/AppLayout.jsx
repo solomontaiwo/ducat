@@ -8,6 +8,7 @@ import TransactionModal from "../Transaction/TransactionModal";
 import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
 import { FiPlus } from "react-icons/fi";
+import { useTranslation } from "react-i18next";
 
 // Base swipe routes for authenticated users
 const BASE_SWIPE_ROUTES = ["/dashboard", "/transactions", "/analytics", "/profile"];
@@ -19,8 +20,10 @@ const AppLayout = ({ children }) => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { isDemo, canAddMoreTransactions } = useUnifiedTransactions();
+  const { t } = useTranslation();
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const [showFabModal, setShowFabModal] = useState(false);
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
 
   // Only include /profile in swipe routes when authenticated
   const swipeRoutes = currentUser
@@ -116,6 +119,19 @@ const AppLayout = ({ children }) => {
       : `calc(env(safe-area-inset-bottom) + 1rem)`
     : "1.5rem";
 
+  const sendVerificationEmail = async () => {
+    if (!currentUser) return;
+    setIsSendingVerification(true);
+    try {
+      const { sendEmailVerification } = await import("firebase/auth");
+      await sendEmailVerification(currentUser);
+    } catch (error) {
+      console.error("Unable to send verification email", error);
+    } finally {
+      setIsSendingVerification(false);
+    }
+  };
+
   return (
     <div
       className="min-h-screen bg-background text-foreground flex flex-col"
@@ -132,7 +148,22 @@ const AppLayout = ({ children }) => {
               : "p-0"
           }`}
         >
-        <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>
+        <div className="mx-auto w-full max-w-6xl space-y-6">
+          {showNavigation && currentUser && !currentUser.emailVerified && (
+            <div className="flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <p>{t("security.emailVerificationRequired")}</p>
+              <button
+                type="button"
+                onClick={sendVerificationEmail}
+                disabled={isSendingVerification}
+                className="shrink-0 rounded-lg border border-amber-500/40 px-3 py-2 font-semibold disabled:opacity-60"
+              >
+                {isSendingVerification ? t("security.sendingVerification") : t("security.resendVerification")}
+              </button>
+            </div>
+          )}
+          {children}
+        </div>
       </main>
 
       {showNavigation && isMobile && <BottomNavigation navVisible={navVisible} />}

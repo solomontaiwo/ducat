@@ -3,9 +3,8 @@ import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useTheme } from "../../utils/ThemeProvider";
 import { useNotification } from "../../utils/notificationUtils";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
 import { firestore } from "../../utils/firebase.jsx";
 import React from "react";
@@ -36,16 +35,6 @@ const Profile = () => {
     navigate("/");
   };
 
-  const checkUsernameAvailability = async (username) => {
-    try {
-      const usernameDoc = await getDoc(doc(firestore, "usernames", username.toLowerCase()));
-      return !usernameDoc.exists();
-    } catch (error) {
-      console.error("Errore nel controllo username:", error);
-      return false;
-    }
-  };
-
   const handleUsernameChange = async () => {
     if (!newUsername.trim() || newUsername.length < 3) {
       notification.error(t("profile.usernameMinLength"));
@@ -60,41 +49,23 @@ const Profile = () => {
 
     setUsernameLoading(true);
     try {
-      const isAvailable = await checkUsernameAvailability(newUsername);
-      if (!isAvailable) {
-        notification.error(t("profile.usernameUnavailable"));
-        return;
-      }
-
-      await setDoc(doc(firestore, "usernames", newUsername.toLowerCase()), {
-        uid: currentUser.uid,
-        createdAt: new Date(),
-      });
-
+      const normalizedUsername = newUsername.trim();
       await setDoc(
         doc(firestore, "users", currentUser.uid),
         {
-          username: newUsername.toLowerCase(),
-          displayName: newUsername,
+          username: normalizedUsername,
+          displayName: normalizedUsername,
           updatedAt: new Date(),
         },
         { merge: true }
       );
 
       await updateProfile(currentUser, {
-        displayName: newUsername,
+        displayName: normalizedUsername,
       });
 
-      if (currentUsername && currentUsername.toLowerCase() !== newUsername.toLowerCase()) {
-        try {
-          await deleteDoc(doc(firestore, "usernames", currentUsername.toLowerCase()));
-        } catch (deleteError) {
-          console.warn("Errore nella rimozione del vecchio username (non critico):", deleteError);
-        }
-      }
-
       const updatedProfileName = await refreshProfileName(currentUser);
-      setCurrentUsername(updatedProfileName || newUsername);
+      setCurrentUsername(updatedProfileName || normalizedUsername);
       setNewUsername("");
       notification.success(t("profile.usernameSuccess"));
     } catch (error) {
@@ -146,7 +117,7 @@ const Profile = () => {
 
   return (
     <div className="page-shell">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <div>
         <Card className="glass">
           <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
@@ -170,7 +141,7 @@ const Profile = () => {
             </Button>
           </CardHeader>
         </Card>
-      </motion.div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

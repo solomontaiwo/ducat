@@ -77,10 +77,17 @@
   "loading": "Caricamento...",
   "error": "Si è verificato un errore.",
   "logoutConfirm": "Sei sicuro di voler uscire?",
+  "security": {
+    "emailVerificationRequired": "Verifica la tua email per proteggere il tuo account e sbloccare le operazioni finanziarie.",
+    "resendVerification": "Invia nuovamente",
+    "sendingVerification": "Invio..."
+  },
   "dashboard": {
     "title": "Dashboard",
     "addTransaction": "Aggiungi Transazione",
-    "greeting": "Buongiorno, {{name}}",
+    "greetingMorning": "Buongiorno, {{name}}",
+    "greetingAfternoon": "Buon pomeriggio, {{name}}",
+    "greetingEvening": "Buonasera, {{name}}",
     "overviewSubtitle": "Ecco la tua situazione nel periodo selezionato",
     "cashflow": "Cashflow complessivo",
     "periodSummary": "Riepilogo del periodo",
@@ -269,6 +276,12 @@
     "transactions": "transazioni",
     "deleteConfirm": "Elimina Definitivamente",
     "loadMore": "Carica cronologia completa",
+    "actions": {
+      "description": "Scegli cosa fare con questa transazione.",
+      "edit": "Modifica",
+      "duplicate": "Duplica",
+      "delete": "Elimina"
+    },
     "filters": {
       "label": "Filtri",
       "show": "Mostra Filtri",
@@ -360,8 +373,8 @@
   "login": {
     "title": "Bentornato!",
     "subtitle": "Accedi con il tuo account",
-    "usernameOrEmail": "Username o Email",
-    "usernameOrEmailPlaceholder": "username o email",
+    "usernameOrEmail": "Email",
+    "usernameOrEmailPlaceholder": "la tua email",
     "usernameOrEmailHelp": "Inserisci la email di registrazione per accedere",
     "password": "Password",
     "passwordPlaceholder": "inserisci la tua password",
@@ -373,10 +386,10 @@
   "register": {
     "title": "Crea Account",
     "subtitle": "Inizia il tuo viaggio finanziario",
-    "username": "Username",
-    "usernamePlaceholder": "scegli un username",
+    "username": "Nome profilo",
+    "usernamePlaceholder": "scegli un nome profilo",
     "newUsername": "Nuovo Nome Utente",
-    "usernameHelp": "Il nome utente deve avere almeno 3 caratteri e la disponibilità verrà verificata.",
+    "usernameHelp": "Il nome profilo deve avere almeno 3 caratteri.",
     "updating": "Aggiornamento in corso...",
     "usernameMin": "Min. 3 caratteri",
     "email": "Email",
@@ -393,7 +406,6 @@
   "errors": {
     "loginError": "Errore durante l'accesso",
     "emailNotFound": "Email non trovata",
-    "usernameNotFound": "Username non trovato",
     "wrongPassword": "Password non corretta",
     "invalidEmail": "Email non valida",
     "tooManyRequests": "Troppi tentativi. Riprova più tardi",
@@ -402,7 +414,6 @@
     "emailAlreadyInUse": "Email già in uso",
     "weakPassword": "Password troppo debole",
     "operationNotAllowed": "Operazione non consentita",
-    "usernameTaken": "Username già in uso, scegline un altro",
     "accountCreatedSuccess": "Account creato con successo!"
   },
   "of": "di",

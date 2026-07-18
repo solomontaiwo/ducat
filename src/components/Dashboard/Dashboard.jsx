@@ -14,11 +14,18 @@ const PERIOD_OPTIONS = ["daily", "weekly", "monthly", "last3Months", "all"];
 const DASHBOARD_PERIOD_STORAGE_KEY = "dashboard-period";
 const SPENDING_COLORS = ["#3b82f6", "#8b5cf6", "#f97316", "#10b981", "#ec4899"];
 
+const getGreetingKey = (hour) => {
+  if (hour < 12) return "greetingMorning";
+  if (hour < 18) return "greetingAfternoon";
+  return "greetingEvening";
+};
+
 const Dashboard = () => {
   const { currentUser, profileName, profileNameLoading } = useAuth();
   const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions } = useUnifiedTransactions();
   const { t } = useTranslation();
   const [dashboardData, setDashboardData] = useState([]);
+  const [localHour, setLocalHour] = useState(() => new Date().getHours());
   const [periodPref, setPeriodPref] = useState(() => {
     const saved = localStorage.getItem(DASHBOARD_PERIOD_STORAGE_KEY);
     if (!saved) return { period: "monthly" };
@@ -30,26 +37,38 @@ const Dashboard = () => {
       return { period: "monthly" };
     }
   });
+  const { start: periodStart, end: periodEnd } = useMemo(
+    () => getPeriodRange(periodPref.period || "monthly", periodPref.customRange),
+    [periodPref.period, periodPref.customRange]
+  );
 
   useEffect(() => {
     const load = async () => {
       if (isDemo) {
         setDashboardData(transactions);
       } else if (currentUser) {
-        const data = await fetchAllTransactions({ onRevalidated: setDashboardData });
+        const data = await fetchAllTransactions({
+          startDate: periodStart,
+          endDate: periodEnd,
+          onRevalidated: setDashboardData,
+        });
         setDashboardData(data);
       } else {
         setDashboardData([]);
       }
     };
     load();
-  }, [isDemo, transactions, currentUser, fetchAllTransactions]);
+  }, [isDemo, transactions, currentUser, fetchAllTransactions, periodStart, periodEnd]);
 
   useEffect(() => {
     localStorage.setItem(DASHBOARD_PERIOD_STORAGE_KEY, JSON.stringify(periodPref));
   }, [periodPref]);
 
-  const { start: periodStart, end: periodEnd } = getPeriodRange(periodPref.period || "monthly", periodPref.customRange);
+  useEffect(() => {
+    const refreshLocalHour = () => setLocalHour(new Date().getHours());
+    const intervalId = window.setInterval(refreshLocalHour, 60_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   const stats = useMemo(() => {
     if (transactionsLoading) return null;
@@ -102,7 +121,9 @@ const Dashboard = () => {
             {profileNameLoading ? (
               <Skeleton height={32} width={260} />
             ) : (
-              <h2 className="text-2xl font-bold sm:text-3xl">{t("dashboard.greeting", { name: profileName || t("profile.user") })}</h2>
+              <h2 className="text-2xl font-bold sm:text-3xl">
+                {t(`dashboard.${getGreetingKey(localHour)}`, { name: profileName || t("profile.user") })}
+              </h2>
             )}
             <p className="text-sm text-muted-foreground">{t("dashboard.overviewSubtitle")}</p>
           </div>

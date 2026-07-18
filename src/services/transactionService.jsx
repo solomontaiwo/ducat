@@ -74,11 +74,13 @@ export const TransactionService = {
       ttlMs = DEFAULT_TTL_MS,
       onRevalidated,
       revalidateIfFresh = true,
-      period = "all",
       type = "all",
+      startDate,
+      endDate,
     } = {}
   ) => {
-    const scopedCacheKey = `${CACHE_KEY}:${userId}:${period}:${type}`;
+    const rangeKey = `${startDate?.toISOString?.() || "start"}:${endDate?.toISOString?.() || "end"}`;
+    const scopedCacheKey = `${CACHE_KEY}:${userId}:${type}:${rangeKey}`;
     const readCache = () => {
       try {
         const raw = localStorage.getItem(scopedCacheKey);
@@ -102,19 +104,13 @@ export const TransactionService = {
     const isFresh = cache?.cachedAt && Date.now() - cache.cachedAt < ttlMs;
 
     const fetchFromNetwork = async () => {
-      const q =
-        type === "all"
-          ? query(
-              collection(firestore, COLLECTION_NAME),
-              where("userId", "==", userId),
-              orderBy("createdAt", "desc")
-            )
-          : query(
-              collection(firestore, COLLECTION_NAME),
-              where("userId", "==", userId),
-              where("type", "==", type),
-              orderBy("createdAt", "desc")
-            );
+      const constraints = [where("userId", "==", userId)];
+      if (type !== "all") constraints.push(where("type", "==", type));
+      if (startDate) constraints.push(where("date", ">=", startDate));
+      if (endDate) constraints.push(where("date", "<=", endDate));
+      constraints.push(orderBy(startDate || endDate ? "date" : "createdAt", "desc"));
+
+      const q = query(collection(firestore, COLLECTION_NAME), ...constraints);
       
       const snapshot = await getDocs(q);
       const transactions = snapshot.docs.map((doc) => {
@@ -191,7 +187,7 @@ export const TransactionService = {
     const isFresh = cache?.cachedAt && Date.now() - cache.cachedAt < ttlMs;
 
     const fetchFromNetwork = async () => {
-      let count = 0;
+      let count;
       if (type === "all") {
         const q = query(collection(firestore, COLLECTION_NAME), where("userId", "==", userId));
         const snapshot = await getCountFromServer(q);
