@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { readLocalValue, writeLocalValue } from "../../utils/storage.js";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useAuth } from "../../context/AuthProvider.jsx";
@@ -26,9 +27,12 @@ const Dashboard = () => {
   const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions } = useUnifiedTransactions();
   const { t } = useTranslation();
   const [dashboardData, setDashboardData] = useState([]);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState("");
+  const requestIdRef = useRef(0);
   const [localHour, setLocalHour] = useState(() => new Date().getHours());
   const [periodPref, setPeriodPref] = useState(() => {
-    const saved = localStorage.getItem(DASHBOARD_PERIOD_STORAGE_KEY);
+    const saved = readLocalValue(DASHBOARD_PERIOD_STORAGE_KEY);
     if (!saved) return { period: "monthly" };
 
     try {
@@ -45,24 +49,31 @@ const Dashboard = () => {
 
   useEffect(() => {
     const load = async () => {
+      const requestId = ++requestIdRef.current;
       if (isDemo) {
         setDashboardData(transactions);
       } else if (currentUser) {
-        const data = await fetchAllTransactions({
-          startDate: periodStart,
-          endDate: periodEnd,
-          onRevalidated: setDashboardData,
-        });
-        setDashboardData(data);
+        setDashboardLoading(true);
+        setDashboardError("");
+        try {
+          const data = await fetchAllTransactions({ startDate: periodStart, endDate: periodEnd });
+          if (requestId === requestIdRef.current) setDashboardData(data);
+        } catch (error) {
+          if (requestId === requestIdRef.current) {
+            setDashboardError(error.code === "permission-denied" ? t("security.emailVerificationRequired") : t("error"));
+          }
+        } finally {
+          if (requestId === requestIdRef.current) setDashboardLoading(false);
+        }
       } else {
         setDashboardData([]);
       }
     };
     load();
-  }, [isDemo, transactions, currentUser, fetchAllTransactions, periodStart, periodEnd]);
+  }, [isDemo, transactions, currentUser, fetchAllTransactions, periodStart, periodEnd, t]);
 
   useEffect(() => {
-    localStorage.setItem(DASHBOARD_PERIOD_STORAGE_KEY, JSON.stringify(periodPref));
+    writeLocalValue(DASHBOARD_PERIOD_STORAGE_KEY, JSON.stringify(periodPref));
   }, [periodPref]);
 
   useEffect(() => {
@@ -109,10 +120,15 @@ const Dashboard = () => {
     }).join(", ")})`;
   }, [spendingCategories]);
 
-  const isLoading = transactionsLoading;
+  const isLoading = transactionsLoading || dashboardLoading;
 
   return (
     <div className="page-shell space-y-6">
+      {dashboardError && (
+        <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-destructive">
+          {dashboardError}
+        </div>
+      )}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-lg font-semibold text-primary">

@@ -14,7 +14,7 @@ service cloud.firestore {
       return hasVerifiedEmail() && request.auth.uid == userId;
     }
 
-    function isValidTransaction(data) {
+    function isValidLegacyTransaction(data) {
       return data.keys().hasOnly([
           'userId', 'amount', 'description', 'date', 'category', 'type', 'createdAt'
         ]) &&
@@ -27,13 +27,47 @@ service cloud.firestore {
         data.date is timestamp && data.createdAt is timestamp;
     }
 
+    function isValidV2Transaction(data) {
+      return data.keys().hasOnly([
+          'userId', 'amount', 'amountMinor', 'currency', 'description', 'date',
+          'dateKey', 'category', 'type', 'createdAt', 'updatedAt', 'schemaVersion'
+        ]) &&
+        data.keys().hasAll([
+          'userId', 'amount', 'amountMinor', 'currency', 'description', 'date',
+          'dateKey', 'category', 'type', 'createdAt', 'updatedAt', 'schemaVersion'
+        ]) &&
+        data.userId is string &&
+        data.amount is number && data.amount > 0 && data.amount <= 1000000 &&
+        data.amountMinor is int && data.amountMinor > 0 && data.amountMinor <= 100000000 &&
+        data.currency == 'EUR' &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 200 &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+        data.type in ['income', 'expense'] &&
+        data.date is timestamp &&
+        data.dateKey is string && data.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        data.createdAt is timestamp && data.updatedAt is timestamp &&
+        data.schemaVersion == 2;
+    }
+
+    function isValidTransaction(data) {
+      return isValidLegacyTransaction(data) || isValidV2Transaction(data);
+    }
+
+    function isValidProfileName(value) {
+      return value is string && value.size() >= 3 && value.size() <= 50;
+    }
+
     match /transactions/{transactionId} {
       allow get, list: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId) && isValidTransaction(request.resource.data);
+      allow create: if isOwner(request.resource.data.userId) &&
+        isValidTransaction(request.resource.data) &&
+        request.resource.data.createdAt == request.time &&
+        (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt == request.time);
       allow update: if isOwner(resource.data.userId) &&
         request.resource.data.userId == resource.data.userId &&
         request.resource.data.createdAt == resource.data.createdAt &&
-        isValidTransaction(request.resource.data);
+        isValidTransaction(request.resource.data) &&
+        (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt == request.time);
       allow delete: if isOwner(resource.data.userId);
     }
 
@@ -43,10 +77,21 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId &&
         request.resource.data.keys().hasOnly(['username', 'email', 'displayName', 'createdAt', 'updatedAt']) &&
         request.resource.data.email == request.auth.token.email &&
-        request.resource.data.displayName is string && request.resource.data.displayName.size() >= 3 && request.resource.data.displayName.size() <= 50;
+        request.resource.data.email is string &&
+        isValidProfileName(request.resource.data.username) &&
+        isValidProfileName(request.resource.data.displayName) &&
+        request.resource.data.username == request.resource.data.displayName &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
       allow update: if isSignedIn() && request.auth.uid == userId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['username', 'displayName', 'updatedAt']) &&
-        request.resource.data.displayName is string && request.resource.data.displayName.size() >= 3 && request.resource.data.displayName.size() <= 50;
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['username', 'displayName', 'email', 'updatedAt']) &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.email is string &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        isValidProfileName(request.resource.data.username) &&
+        isValidProfileName(request.resource.data.displayName) &&
+        request.resource.data.username == request.resource.data.displayName &&
+        request.resource.data.updatedAt == request.time;
       allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 

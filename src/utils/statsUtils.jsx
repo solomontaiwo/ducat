@@ -7,6 +7,8 @@ import {
   startOfYear,
   endOfYear,
 } from "date-fns";
+import { dateKeyToDate } from "./dateUtils";
+import { getTransactionAmountMinor, minorToMajor } from "./money";
 
 export const getPeriodRange = (period, customRange) => {
   const today = new Date();
@@ -26,10 +28,10 @@ export const getPeriodRange = (period, customRange) => {
     case "last3Months":
       return { start: startOfMonth(subMonths(today, 2)), end: endOfMonth(today) };
     case "all":
-      return { start: new Date(0), end: new Date() };
+      return { start: new Date(0), end: endOfDay(new Date()) };
     case "custom":
       if (customRange?.from && customRange?.to) {
-        return { start: new Date(customRange.from), end: new Date(customRange.to) };
+        return { start: startOfDay(dateKeyToDate(customRange.from)), end: endOfDay(dateKeyToDate(customRange.to)) };
       }
       return { start: startOfMonth(today), end: endOfMonth(today) };
     case "monthly":
@@ -59,35 +61,41 @@ export const calculateStats = (transactions = [], startDate, endDate) => {
 
   normalizedTransactions.forEach((tx) => {
     if (tx.type === "income") {
-      totalIncome += tx.amount;
-      incomeTrend.push({ x: tx.date, y: tx.amount });
+      const amountMinor = getTransactionAmountMinor(tx);
+      totalIncome += amountMinor;
+      incomeTrend.push({ x: tx.date, y: minorToMajor(amountMinor) });
     } else if (tx.type === "expense") {
-      totalExpense += tx.amount;
-      expenseTrend.push({ x: tx.date, y: tx.amount });
-      if (!largestExpense || tx.amount > largestExpense.amount) {
+      const amountMinor = getTransactionAmountMinor(tx);
+      totalExpense += amountMinor;
+      expenseTrend.push({ x: tx.date, y: minorToMajor(amountMinor) });
+      if (!largestExpense || amountMinor > getTransactionAmountMinor(largestExpense)) {
         largestExpense = tx;
       }
       if (tx.category) {
-        categories[tx.category] = (categories[tx.category] || 0) + tx.amount;
+        categories[tx.category] = (categories[tx.category] || 0) + amountMinor;
       }
     }
   });
 
   const daysCount = differenceInDays(safeEnd, safeStart) + 1;
-  const dailyAverageExpense = daysCount ? totalExpense / daysCount : 0;
+  const dailyAverageExpense = daysCount ? minorToMajor(Math.round(totalExpense / daysCount)) : 0;
 
   const sortedCategories = Object.entries(categories)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5)
-    .map(([category, amount]) => ({ category, amount }));
+    .map(([category, amount]) => ({ category, amount: minorToMajor(amount) }));
+
+  const categoryBreakdown = Object.fromEntries(
+    Object.entries(categories).map(([category, amount]) => [category, minorToMajor(amount)])
+  );
 
   return {
-    totalIncome,
-    totalExpense,
-    balance: totalIncome - totalExpense,
+    totalIncome: minorToMajor(totalIncome),
+    totalExpense: minorToMajor(totalExpense),
+    balance: minorToMajor(totalIncome - totalExpense),
     dailyAverageExpense,
     transactionCount: normalizedTransactions.length,
-    categoryBreakdown: categories,
+    categoryBreakdown,
     topCategories: sortedCategories,
     incomeTrend,
     expenseTrend,

@@ -98,7 +98,7 @@ Once the secrets are set, any push to `main` will trigger the workflow, build th
 
 > **Do not commit your `.env` file.** It is already excluded in `.gitignore` via `*.env`.
 
-## Security setup
+## Quality and security setup
 
 The repository includes `firestore.rules` and `firestore.indexes.json`. Deploy them before using the app in production:
 
@@ -108,14 +108,29 @@ npx firebase-tools use YOUR_FIREBASE_PROJECT_ID
 npx firebase-tools deploy --only firestore:rules,firestore:indexes
 ```
 
-The rules limit financial data to verified users and to the owner of each transaction. The app now signs in with email only, so the legacy `usernames` collection is deliberately inaccessible and existing username records are not used.
+The rules limit financial data to verified users and to the owner of each transaction. The app signs in with email only, so the legacy `usernames` collection is deliberately inaccessible. The repository also includes Firestore emulator tests, unit/component tests, Playwright E2E accessibility checks, bundle budgets and a trusted callable Function for complete account deletion.
+
+Run the full local quality pipeline with Node 24 and Java 21:
+
+```bash
+npm ci
+nvm exec 22 npm --prefix functions ci
+npm run lint
+npm test
+npm run test:rules
+npm run build
+npm run check:bundle
+npm run test:e2e
+```
 
 In Firebase Console, complete these manual safeguards:
 
-1. Enable a strong password policy in **Authentication → Settings**.
-2. Register and enforce **App Check** for Firestore and Authentication.
+1. Enable a strong password policy and email enumeration protection in **Authentication → Settings**.
+2. Register and enforce **App Check** for Firestore and Cloud Functions after distributing the configured client.
 3. In Google Cloud Console, allow only the production site and local development origins in the Firebase API key's HTTP referrer restrictions.
 4. Confirm that the email action sender/domain is configured so verification emails can be delivered.
+
+For the required deployment order, backups, schema-v2 migration, Cloud Function, App Check, security headers, GitHub Secrets and release checklist, follow [CONFIGURAZIONE_MANUALE.md](CONFIGURAZIONE_MANUALE.md). The original findings and acceptance criteria remain in [AUDIT_COMPLETO.md](AUDIT_COMPLETO.md).
 
 ## Contributions
 

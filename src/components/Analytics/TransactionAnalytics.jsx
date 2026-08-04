@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useAuth } from "../../context/AuthProvider.jsx";
@@ -23,6 +23,10 @@ import {
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
+import { getTransactionAmountMinor, minorToMajor } from "../../utils/money";
+import { serializeCsv } from "../../utils/csvUtils";
+import { dateToDateKey } from "../../utils/dateUtils";
+import { readLocalValue, removeLocalValue, writeLocalValue } from "../../utils/storage.js";
 
 const EXPENSE_CHART_COLORS = ["#f43f5e", "#fb923c", "#facc15", "#f97316", "#fb7185", "#ef4444"];
 const INCOME_CHART_COLORS = ["#059669", "#0d9488", "#0284c7", "#2563eb", "#7c3aed", "#c026d3"];
@@ -35,27 +39,54 @@ const TransactionAnalytics = () => {
   const { t, i18n } = useTranslation();
   const { isDarkMode } = useTheme();
 
-  // Use custom hook for date range management
+  const readPeriodPreference = () => {
+    try {
+      const parsed = JSON.parse(readLocalValue("analytics-period", "null"));
+      const allowed = ["month", "lastMonth", "last3Months", "year", "custom"];
+      return {
+        period: allowed.includes(parsed?.period) ? parsed.period : "month",
+        customRange: parsed?.customRange && typeof parsed.customRange === "object" ? parsed.customRange : null,
+      };
+    } catch {
+      removeLocalValue("analytics-period");
+      return { period: "month", customRange: null };
+    }
+  };
+  const initialPreference = useMemo(readPeriodPreference, []);
+
   const { period, setPeriod, customRange, setCustomRange, startDate, endDate } = useDateRange(
-    localStorage.getItem("analytics-period") ? JSON.parse(localStorage.getItem("analytics-period")).period : "month",
-    localStorage.getItem("analytics-period") ? JSON.parse(localStorage.getItem("analytics-period")).customRange : null
+    initialPreference.period,
+    initialPreference.customRange
   );
 
   const [analyticsData, setAnalyticsData] = useState([]);
   const [isLoadingAnalyticsData, setIsLoadingAnalyticsData] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState("");
+  const requestIdRef = useRef(0);
 
   // Fetch full transaction history for analytics when component mounts or dependencies change
   useEffect(() => {
     const loadData = async () => {
+      const requestId = ++requestIdRef.current;
       if (isDemo) {
         setAnalyticsData(recentTransactions);
         setIsLoadingAnalyticsData(false);
       } else if (currentUser) {
         setIsLoadingAnalyticsData(true);
-        // Stale-while-revalidate: immediate cached data, then background refresh
-        const data = await fetchAllTransactions({ onRevalidated: setAnalyticsData });
-        setAnalyticsData(data);
-        setIsLoadingAnalyticsData(false);
+        setAnalyticsError("");
+        try {
+          const trendStart = startOfMonth(subMonths(new Date(), 5));
+          const queryStart = startDate < trendStart ? startDate : trendStart;
+          const queryEnd = endDate > new Date() ? endDate : endOfMonth(new Date());
+          const data = await fetchAllTransactions({ startDate: queryStart, endDate: queryEnd });
+          if (requestId === requestIdRef.current) setAnalyticsData(data);
+        } catch (error) {
+          if (requestId === requestIdRef.current) {
+            setAnalyticsError(error.code === "permission-denied" ? t("security.emailVerificationRequired") : t("error"));
+          }
+        } finally {
+          if (requestId === requestIdRef.current) setIsLoadingAnalyticsData(false);
+        }
       } else {
         // Not demo and not logged in
         setAnalyticsData([]);
@@ -63,11 +94,11 @@ const TransactionAnalytics = () => {
       }
     };
     loadData();
-  }, [isDemo, recentTransactions, currentUser, fetchAllTransactions]);
+  }, [isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate, t]);
 
   // Persist preferences
   useEffect(() => {
-    localStorage.setItem(
+    writeLocalValue(
       "analytics-period",
       JSON.stringify({
         period,
@@ -110,14 +141,16 @@ const TransactionAnalytics = () => {
 
     filteredTransactions.forEach((t) => {
       if (t.type === "expense") {
-        expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount;
+        expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + getTransactionAmountMinor(t);
       } else {
-        incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount;
+        incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + getTransactionAmountMinor(t);
       }
     });
 
-    const topExpenseCategories = processCategories(expenseByCategory, stats.totalExpense, expenseCategories);
-    const topIncomeCategories = processCategories(incomeByCategory, stats.totalIncome, incomeCategories);
+    const expenseCategoryMajor = Object.fromEntries(Object.entries(expenseByCategory).map(([key, value]) => [key, minorToMajor(value)]));
+    const incomeCategoryMajor = Object.fromEntries(Object.entries(incomeByCategory).map(([key, value]) => [key, minorToMajor(value)]));
+    const topExpenseCategories = processCategories(expenseCategoryMajor, stats.totalExpense, expenseCategories);
+    const topIncomeCategories = processCategories(incomeCategoryMajor, stats.totalIncome, incomeCategories);
 
     // Largest individual movements in the selected period, rather than category totals.
     const getTopTransactions = (type) =>
@@ -139,8 +172,8 @@ const TransactionAnalytics = () => {
         t.date && isWithinInterval(t.date, { start: monthStart, end: monthEnd })
       );
 
-      const monthIncome = monthTransactions.filter((t) => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
-      const monthExpense = monthTransactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
+      const monthIncome = minorToMajor(monthTransactions.filter((t) => t.type === "income").reduce((sum, t) => sum + getTransactionAmountMinor(t), 0));
+      const monthExpense = minorToMajor(monthTransactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + getTransactionAmountMinor(t), 0));
 
       monthlyTrend.push({
         month: format(monthStart, "MMM yyyy"),
@@ -153,7 +186,7 @@ const TransactionAnalytics = () => {
     // 3. Averages
     const avgTransactionAmount =
       filteredTransactions.length > 0
-        ? filteredTransactions.reduce((sum, t) => sum + t.amount, 0) / filteredTransactions.length
+        ? minorToMajor(Math.round(filteredTransactions.reduce((sum, t) => sum + getTransactionAmountMinor(t), 0) / filteredTransactions.length))
         : 0;
 
     // Savings Rate
@@ -190,16 +223,14 @@ const TransactionAnalytics = () => {
   const exportCsv = async () => {
     if (!extendedStats?.filteredTransactions?.length) return;
     const headers = ["Data", "Tipo", "Descrizione", "Categoria", "Importo"];
-    const rows = extendedStats.filteredTransactions.map((t) => {
-      return [
-        format(t.date, "yyyy-MM-dd"),
-        t.type,
-        `"${(t.description || "").replace(/"/g, '""')}"`, // Corrected escaping for description
-        t.category || "",
-        t.amount,
-      ];
-    });
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const rows = extendedStats.filteredTransactions.map((transaction) => [
+      transaction.dateKey || dateToDateKey(transaction.date),
+      transaction.type,
+      transaction.description || "",
+      transaction.category || "",
+      transaction.amount.toFixed(2),
+    ]);
+    const csv = serializeCsv(headers, rows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -331,6 +362,11 @@ const TransactionAnalytics = () => {
 
   return (
     <div className="page-shell">
+      {analyticsError && (
+        <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-destructive">
+          {analyticsError}
+        </div>
+      )}
       <div className="space-y-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>

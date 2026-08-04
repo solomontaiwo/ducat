@@ -18,6 +18,7 @@ export const TransactionProvider = ({ children }) => {
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [recentRevision, setRecentRevision] = useState(0);
 
   // Fetch recent transactions for the UI (limit 50)
   useEffect(() => {
@@ -35,7 +36,7 @@ export const TransactionProvider = ({ children }) => {
     import("../services/transactionService.jsx").then(({ TransactionService }) => {
       if (cancelled) return;
       unsubscribe = TransactionService.subscribeToRecent(currentUser.uid, 50,
-        (data) => { setTransactions(data); setLoading(false); },
+        (data) => { setTransactions(data); setRecentRevision((revision) => revision + 1); setLoading(false); },
         (error) => { console.error("Error fetching transactions:", error); setLoading(false); }
       );
     }).catch((error) => { console.error("Error loading transaction service:", error); setLoading(false); });
@@ -56,8 +57,14 @@ export const TransactionProvider = ({ children }) => {
     return TransactionService.getTotalCount(currentUser.uid, options);
   }, [currentUser]);
 
+  const fetchTransactionPage = useCallback(async (options = {}) => {
+    if (!currentUser) return { items: [], nextCursor: null, hasMore: false };
+    const { TransactionService } = await import("../services/transactionService.jsx");
+    return TransactionService.fetchPage(currentUser.uid, options);
+  }, [currentUser]);
+
   return (
-    <TransactionContext.Provider value={{ transactions, loading, fetchAllTransactions, getTotalTransactionCount }}>
+    <TransactionContext.Provider value={{ transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount }}>
       {children}
     </TransactionContext.Provider>
   );

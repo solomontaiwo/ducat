@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "../../router/RouterProvider";
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
-import { auth, firestore } from "../../utils/firebase";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { auth } from "../../utils/firebaseAuth";
+import { firestore } from "../../utils/firebaseFirestore";
 import { useNotification } from "../../utils/notificationUtils";
 import { motion } from "framer-motion";
 import { FiArrowLeft, FiEye, FiEyeOff, FiLock, FiMail, FiUser, FiUserPlus } from "react-icons/fi";
@@ -11,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
+import { registrationSchema } from "../../schemas/profile";
 
 const Register = () => {
   const [username, setUsername] = useState("");
@@ -31,36 +33,29 @@ const Register = () => {
     setLoading(true);
     setError("");
 
-    if (username.length < 3) {
-      setError(t("profile.usernameMinLength"));
-      setLoading(false);
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Le password non coincidono");
-      setLoading(false);
-      return;
-    }
-    if (password.length < 6) {
-      setError(t("errors.weakPassword"));
+    const validation = registrationSchema.safeParse({ username, email, password, confirmPassword });
+    if (!validation.success) {
+      setError(validation.error.issues[0].message);
       setLoading(false);
       return;
     }
 
+    let createdUser = null;
     try {
-      const usernameTrimmed = username.trim();
+      const { username: usernameTrimmed, email: normalizedEmail } = validation.data;
 
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
       const user = userCredential.user;
+      createdUser = user;
 
       await updateProfile(user, { displayName: usernameTrimmed });
 
       await setDoc(doc(firestore, "users", user.uid), {
         username: usernameTrimmed,
-        email: email.toLowerCase(),
+        email: user.email,
         displayName: usernameTrimmed,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       try {
@@ -70,9 +65,14 @@ const Register = () => {
       }
 
       notification.success(t("errors.accountCreatedSuccess"));
-      navigate("/dashboard");
+      navigate("/verify-email", { replace: true });
     } catch (err) {
       console.error("Errore durante la registrazione:", err);
+      if (createdUser) {
+        notification.warning("L'account è stato creato, ma il profilo non è completo. Puoi riprovare dopo la verifica.");
+        navigate("/verify-email", { replace: true });
+        return;
+      }
       let errorMessage;
       switch (err.code) {
         case "auth/email-already-in-use":
@@ -143,6 +143,9 @@ const Register = () => {
                 onChange={(e) => setUsername(e.target.value)}
                 className="border-0 shadow-none focus-visible:ring-0"
                 autoComplete="username"
+                minLength={3}
+                maxLength={50}
+                required
               />
             </div>
           </div>
@@ -159,6 +162,7 @@ const Register = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 className="border-0 shadow-none focus-visible:ring-0"
                 autoComplete="email"
+                required
               />
             </div>
           </div>
@@ -175,8 +179,16 @@ const Register = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 className="border-0 shadow-none focus-visible:ring-0"
                 autoComplete="new-password"
+                minLength={8}
+                required
               />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-muted-foreground"
+                aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                aria-pressed={showPassword}
+              >
                 {showPassword ? <FiEyeOff /> : <FiEye />}
               </button>
             </div>
@@ -194,8 +206,16 @@ const Register = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="border-0 shadow-none focus-visible:ring-0"
                 autoComplete="new-password"
+                minLength={8}
+                required
               />
-              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="text-muted-foreground"
+                aria-label={showConfirmPassword ? "Nascondi conferma password" : "Mostra conferma password"}
+                aria-pressed={showConfirmPassword}
+              >
                 {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
               </button>
             </div>

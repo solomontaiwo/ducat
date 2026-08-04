@@ -5,7 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
-  { ignores: ['dist'] },
+  { ignores: ['dist', 'functions/node_modules'] },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
@@ -36,7 +36,16 @@ export default [
     },
   },
   {
-    files: ['src/context/**/*.{js,jsx}', 'src/utils/notificationUtils.jsx'],
+    files: ['*.config.js', 'scripts/**/*.mjs', 'functions/**/*.{js,mjs}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: globals.node,
+      parserOptions: { sourceType: 'module' },
+    },
+    rules: js.configs.recommended.rules,
+  },
+  {
+    files: ['src/context/**/*.{js,jsx}', 'src/utils/notificationUtils.jsx', 'src/router/RouterProvider.jsx'],
     rules: {
       // Context providers intentionally export their matching hooks from the same module.
       'react-refresh/only-export-components': 'off',

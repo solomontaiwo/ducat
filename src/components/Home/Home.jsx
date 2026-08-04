@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import LandingPage from "./LandingPage";

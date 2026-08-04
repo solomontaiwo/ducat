@@ -66,10 +66,15 @@ export const NotificationProvider = ({ children }) => {
   return (
     <NotificationContext.Provider value={{ success, error, warning, info, addToast }}>
       {children}
-      <div className="fixed left-1/2 top-6 z-50 flex w-80 max-w-[90vw] -translate-x-1/2 flex-col gap-2">
+      <div
+        className="fixed left-1/2 top-6 z-50 flex w-80 max-w-[90vw] -translate-x-1/2 flex-col gap-2"
+        aria-live="polite"
+        aria-atomic="false"
+      >
           {toasts.map((toast) => (
             <div
               key={toast.id}
+              role={toast.type === "danger" ? "alert" : "status"}
               className={`animate-toast-in rounded-xl border px-4 py-3 shadow-lg backdrop-blur ${getToastStyles(toast.type)}`}
             >
               <div className="flex items-start justify-between gap-2">
@@ -83,7 +88,9 @@ export const NotificationProvider = ({ children }) => {
                   <div>{toast.message}</div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => removeToast(toast.id)}
+                  aria-label={t("notifications.close", { defaultValue: "Chiudi notifica" })}
                   className="text-muted-foreground hover:text-foreground"
                 >
                   ×

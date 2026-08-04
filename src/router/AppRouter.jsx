@@ -1,131 +1,107 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
-import PropTypes from "prop-types";
 import { useAuth } from "../context/AuthProvider";
+import { useUnifiedTransactions } from "../context/UnifiedTransactionProvider";
 import AppLayout from "../components/Layout/AppLayout";
+import { Navigate, useLocation } from "./RouterProvider";
+import { resolveRouteAccess } from "./accessPolicy";
 
-// Lazy load all main pages for better performance.
-const loadDashboard = () => import("../components/Dashboard/Dashboard");
-const loadTransactionList = () => import("../components/Transaction/TransactionList");
-const loadAnalytics = () => import("../components/Analytics/TransactionAnalytics");
-const loadStats = () => import("../components/Stats/Stats");
-const loadProfile = () => import("../components/Profile/Profile");
-const loadHome = () => import("../components/Home/Home");
-const loadLandingPage = () => import("../components/Home/LandingPage");
+const loaders = {
+  dashboard: () => import("../components/Dashboard/Dashboard"),
+  transactions: () => import("../components/Transaction/TransactionList"),
+  analytics: () => import("../components/Analytics/TransactionAnalytics"),
+  stats: () => import("../components/Stats/Stats"),
+  profile: () => import("../components/Profile/Profile"),
+  home: () => import("../components/Home/Home"),
+  landing: () => import("../components/Home/LandingPage"),
+  login: () => import("../components/Auth/Login"),
+  register: () => import("../components/Auth/Register"),
+  verifyEmail: () => import("../components/Auth/VerifyEmail"),
+  forgotPassword: () => import("../components/Auth/ForgotPassword"),
+  legal: () => import("../components/Legal/LegalPage"),
+};
 
-const Dashboard = lazy(loadDashboard);
-const TransactionList = lazy(loadTransactionList);
-const Analytics = lazy(loadAnalytics);
-const Stats = lazy(loadStats);
-const Profile = lazy(loadProfile);
-const Home = lazy(loadHome);
-const LandingPage = lazy(loadLandingPage);
+const pages = Object.fromEntries(
+  Object.entries(loaders).map(([key, loader]) => [key, lazy(loader)])
+);
 
-// Lazy load components for better performance
-const loadLogin = () => import("../components/Auth/Login");
-const loadRegister = () => import("../components/Auth/Register");
-
-const Login = lazy(loadLogin);
-const Register = lazy(loadRegister);
-
-// Loading component
 const PageLoader = () => (
-  <div className="flex min-h-screen items-center justify-center bg-background">
+  <div className="flex min-h-screen items-center justify-center bg-background" role="status" aria-label="Caricamento pagina">
     <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
   </div>
 );
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
-
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
-
   return null;
 };
 
-// Route guards
-const PublicRoute = ({ children }) => {
-  PublicRoute.propTypes = {
-    children: PropTypes.node.isRequired,
-  };
-  
-  const { currentUser, loading } = useAuth();
-  
-  if (loading) return <PageLoader />;
-  
-  // If user is logged in, redirect to dashboard
-  if (currentUser) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  return children;
-};
+const routeDefinitions = [
+  { path: "/", page: "home", access: "public" },
+  { path: "/landing", page: "landing", access: "public-only" },
+  { path: "/login", page: "login", access: "public-only" },
+  { path: "/register", page: "register", access: "public-only" },
+  { path: "/forgot-password", page: "forgotPassword", access: "public-only" },
+  { path: "/verify-email", page: "verifyEmail", access: "authenticated-unverified" },
+  { path: "/privacy", page: "legal", access: "public" },
+  { path: "/terms", page: "legal", access: "public" },
+  { path: "/dashboard", page: "dashboard", access: "app" },
+  { path: "/transactions", page: "transactions", access: "app" },
+  { path: "/analytics", page: "analytics", access: "app" },
+  { path: "/stats", page: "stats", access: "app" },
+  { path: "/profile", page: "profile", access: "authenticated" },
+];
 
 const AppRouter = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
+  const { isDemo, loading: transactionLoading } = useUnifiedTransactions();
+  const location = useLocation();
 
   useEffect(() => {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (connection?.saveData) return () => {};
+    if (connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType)) return undefined;
 
-    const likelyNextRoutes = currentUser
-      ? [loadDashboard, loadTransactionList, loadAnalytics]
-      : [loadLogin, loadRegister, loadLandingPage];
-
-    const preload = () => {
-      Promise.allSettled(likelyNextRoutes.map((loadRoute) => loadRoute()));
-    };
+    const likelyLoader = currentUser?.emailVerified
+      ? loaders.dashboard
+      : currentUser
+        ? loaders.verifyEmail
+        : loaders.landing;
+    const preload = () => likelyLoader();
 
     if ("requestIdleCallback" in window) {
-      const idleId = window.requestIdleCallback(preload, { timeout: 1500 });
+      const idleId = window.requestIdleCallback(preload, { timeout: 2000 });
       return () => window.cancelIdleCallback(idleId);
     }
-
-    const timeoutId = window.setTimeout(preload, 300);
+    const timeoutId = window.setTimeout(preload, 800);
     return () => window.clearTimeout(timeoutId);
   }, [currentUser]);
 
-  const routes = [
-    { path: "/", element: <Home /> },
-    { path: "/login", element: (
-      <PublicRoute>
-        <Login />
-      </PublicRoute>
-    ) },
-    { path: "/register", element: (
-      <PublicRoute>
-        <Register />
-      </PublicRoute>
-    ) },
-    { path: "/dashboard", element: <Dashboard /> },
-    { path: "/transactions", element: <TransactionList /> },
-    { path: "/analytics", element: <Analytics /> },
-    { path: "/stats", element: <Stats /> },
-    { path: "/profile", element: <Profile /> },
-    { path: "/landing", element: <LandingPage /> },
-    { path: "*", element: <Navigate to="/" replace /> },
-  ];
+  if (authLoading || transactionLoading) return <PageLoader />;
 
+  const route = routeDefinitions.find((candidate) => candidate.path === location.pathname);
+  if (!route) return <Navigate to="/" replace />;
+
+  const redirect = resolveRouteAccess({
+    access: route.access,
+    currentUser,
+    isDemo,
+    pathname: location.pathname,
+  });
+  if (redirect) {
+    return <Navigate to={redirect} replace state={{ from: location.pathname }} />;
+  }
+
+  const Page = pages[route.page];
   return (
     <AppLayout>
-        <ScrollToTop />
-        <Routes>
-          {routes.map(({ path, element }) => (
-            <Route
-              key={path}
-              path={path}
-              element={
-                <Suspense fallback={<PageLoader />}>
-                  <div style={{ width: "100%", minHeight: "100vh" }}>
-                    {element}
-                  </div>
-                </Suspense>
-              }
-            />
-          ))}
-        </Routes>
+      <ScrollToTop />
+      <Suspense fallback={<PageLoader />}>
+        <div style={{ width: "100%", minHeight: "100vh" }}>
+          <Page />
+        </div>
+      </Suspense>
     </AppLayout>
   );
 };

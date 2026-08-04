@@ -1,270 +1,244 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  serverTimestamp, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  onSnapshot,
+import {
+  Timestamp,
+  collection,
+  deleteDoc,
+  documentId,
+  doc,
+  getCountFromServer,
   getDocs,
-  getCountFromServer // Import for count
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  startAfter,
+  updateDoc,
+  where,
 } from "firebase/firestore";
-import { firestore } from "../utils/firebase.jsx";
-import { transactionInputSchema } from "../schemas/transaction.jsx";
+import { firestore } from "../utils/firebaseFirestore.js";
+import { transactionV2InputSchema, transactionV2PatchSchema } from "../schemas/transaction.jsx";
+import { DEFAULT_CURRENCY, getTransactionAmountMinor, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
+import { coerceDateKey, dateKeyToDate, dateKeyToUtcDate, dateToDateKey, nextDateKeyUtcDate } from "../utils/dateUtils.js";
 
 const COLLECTION_NAME = "transactions";
-const CACHE_KEY = "soldi_sotto_transactions_cache_v2";
-const COUNT_CACHE_KEY = "soldi_sotto_transactions_count_cache_v2";
-const DEFAULT_TTL_MS = 3 * 60 * 1000; // 3 minutes for stale-while-revalidate
+const DEFAULT_TTL_MS = 3 * 60 * 1000;
+const DEFAULT_PAGE_SIZE = 40;
+const dataCache = new Map();
+const countCache = new Map();
+const inFlight = new Map();
 
+const safeId = (value) => String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
 
-// Helper to normalize date from Firestore or JSON string
-const normalizeDate = (dateInput) => {
-  if (!dateInput) return new Date();
-  if (typeof dateInput.toDate === 'function') return dateInput.toDate(); // Firestore Timestamp
-  return new Date(dateInput); // String or Date object
+const normalizeDocument = (snapshot) => {
+  const raw = snapshot.data();
+  const amountMinor = getTransactionAmountMinor(raw);
+  const dateKey = raw.dateKey || dateToDateKey(raw.date);
+  return {
+    ...raw,
+    id: snapshot.id,
+    amountMinor,
+    amount: minorToMajor(amountMinor),
+    currency: raw.currency || DEFAULT_CURRENCY,
+    dateKey,
+    date: dateKeyToDate(dateKey),
+    schemaVersion: raw.schemaVersion || 1,
+  };
 };
 
-// Helper to clear cache for full data and count
-const invalidateCache = () => {
+const normalizeSnapshot = (snapshot, onInvalid) => snapshot.docs.flatMap((item) => {
   try {
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith(CACHE_KEY) || key.startsWith(COUNT_CACHE_KEY)) {
-        localStorage.removeItem(key);
-      }
-    });
-  } catch (e) {
-    console.warn("Failed to clear cache", e);
+    return [normalizeDocument(item)];
+  } catch (error) {
+    onInvalid?.({ id: item.id, code: "invalid-transaction", error });
+    return [];
   }
+});
+
+const buildConstraints = ({ userId, type = "all", startDate, endDate, ordered = true }) => {
+  const constraints = [where("userId", "==", userId)];
+  if (type !== "all") constraints.push(where("type", "==", type));
+  if (startDate) constraints.push(where("date", ">=", Timestamp.fromDate(dateKeyToUtcDate(coerceDateKey(startDate)))));
+  if (endDate) constraints.push(where("date", "<", Timestamp.fromDate(nextDateKeyUtcDate(endDate))));
+  if (ordered) {
+    constraints.push(orderBy("date", "desc"));
+    constraints.push(orderBy(documentId(), "desc"));
+  }
+  return constraints;
 };
+
+const queryKey = ({ userId, type = "all", startDate, endDate }) => [
+  userId,
+  type,
+  startDate ? coerceDateKey(startDate) : "start",
+  endDate ? coerceDateKey(endDate) : "end",
+].join(":");
+
+const dedupe = async (key, loader) => {
+  if (inFlight.has(key)) return inFlight.get(key);
+  const promise = loader().finally(() => inFlight.delete(key));
+  inFlight.set(key, promise);
+  return promise;
+};
+
+const invalidateCache = () => {
+  dataCache.clear();
+  countCache.clear();
+  inFlight.clear();
+};
+
+const toV2Input = (data) => transactionV2InputSchema.parse({
+  amountMinor: Number.isSafeInteger(data.amountMinor) ? data.amountMinor : parseMoneyToMinor(data.amount),
+  currency: data.currency || DEFAULT_CURRENCY,
+  description: data.description,
+  dateKey: data.dateKey || coerceDateKey(data.date),
+  category: data.category,
+  type: data.type,
+});
+
+const toPersistedFields = (input) => ({
+  ...input,
+  amount: minorToMajor(input.amountMinor),
+  date: Timestamp.fromDate(dateKeyToUtcDate(input.dateKey)),
+  schemaVersion: 2,
+  updatedAt: serverTimestamp(),
+});
 
 export const TransactionService = {
-  // Subscribe to recent transactions (real-time)
-  subscribeToRecent: (userId, limitCount, onUpdate, onError) => {
-    const q = query(
+  subscribeToRecent: (userId, limitCount, onUpdate, onError, onInvalid) => {
+    const recentQuery = query(
       collection(firestore, COLLECTION_NAME),
       where("userId", "==", userId),
       orderBy("createdAt", "desc"),
       limit(limitCount)
     );
 
-    return onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => {
-        const docData = doc.data();
-        return {
-          ...docData,
-          id: doc.id,
-          amount: parseFloat(docData.amount) || 0,
-          date: normalizeDate(docData.date),
-        };
-      });
-      onUpdate(data);
+    return onSnapshot(recentQuery, (snapshot) => {
+      onUpdate(normalizeSnapshot(snapshot, onInvalid), snapshot.docChanges().map((change) => ({
+        type: change.type,
+        id: change.doc.id,
+      })));
     }, onError);
   },
 
-  // Fetch all transactions with Caching
-  fetchAll: async (
-    userId,
-    {
+  fetchRange: async (userId, options = {}) => {
+    const {
       forceRefresh = false,
       ttlMs = DEFAULT_TTL_MS,
       onRevalidated,
-      revalidateIfFresh = true,
+      revalidateIfFresh = false,
+      onInvalid,
       type = "all",
       startDate,
       endDate,
-    } = {}
-  ) => {
-    const rangeKey = `${startDate?.toISOString?.() || "start"}:${endDate?.toISOString?.() || "end"}`;
-    const scopedCacheKey = `${CACHE_KEY}:${userId}:${type}:${rangeKey}`;
-    const readCache = () => {
-      try {
-        const raw = localStorage.getItem(scopedCacheKey);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (parsed.cacheUserId !== userId) return null;
-        return parsed;
-      } catch (e) {
-        console.warn("Cache read error", e);
-        return null;
-      }
-    };
+    } = options;
+    const key = queryKey({ userId, type, startDate, endDate });
+    const cached = dataCache.get(key);
+    const isFresh = cached && Date.now() - cached.cachedAt < ttlMs;
 
-    const cache = readCache();
-    const hydrate = (data) =>
-      data.map((t) => ({
-        ...t,
-        date: new Date(t.date),
-      }));
+    const load = () => dedupe(`range:${key}`, async () => {
+      const rangeQuery = query(
+        collection(firestore, COLLECTION_NAME),
+        ...buildConstraints({ userId, type, startDate, endDate })
+      );
+      const snapshot = await getDocs(rangeQuery);
+      const data = normalizeSnapshot(snapshot, onInvalid);
+      dataCache.set(key, { data, cachedAt: Date.now() });
+      return data;
+    });
 
-    const isFresh = cache?.cachedAt && Date.now() - cache.cachedAt < ttlMs;
-
-    const fetchFromNetwork = async () => {
-      const constraints = [where("userId", "==", userId)];
-      if (type !== "all") constraints.push(where("type", "==", type));
-      if (startDate) constraints.push(where("date", ">=", startDate));
-      if (endDate) constraints.push(where("date", "<=", endDate));
-      constraints.push(orderBy(startDate || endDate ? "date" : "createdAt", "desc"));
-
-      const q = query(collection(firestore, COLLECTION_NAME), ...constraints);
-      
-      const snapshot = await getDocs(q);
-      const transactions = snapshot.docs.map((doc) => {
-        const docData = doc.data();
-        return {
-          ...docData,
-          id: doc.id,
-          amount: parseFloat(docData.amount) || 0,
-          date: normalizeDate(docData.date),
-        };
-      });
-
-      try {
-        localStorage.setItem(
-          scopedCacheKey,
-          JSON.stringify({
-            data: transactions,
-            cacheUserId: userId,
-            cachedAt: Date.now(),
-          })
-        );
-      } catch (e) {
-        console.warn("Cache write error", e);
-      }
-
-      return transactions;
-    };
-
-    const shouldRevalidateInBackground = cache && (!isFresh || revalidateIfFresh);
-
-    if (!forceRefresh && cache) {
-      if (shouldRevalidateInBackground) {
-        fetchFromNetwork()
-          .then((live) => onRevalidated?.(live))
-          .catch((e) => console.warn("Background refresh error", e));
-      }
-      if (isFresh && !revalidateIfFresh) {
-        return hydrate(cache.data);
-      }
-      // Return cached immediately even if revalidating
-      return hydrate(cache.data);
+    if (!forceRefresh && isFresh) {
+      if (revalidateIfFresh) load().then((data) => onRevalidated?.(data)).catch(() => {});
+      return cached.data;
     }
-
-    // No cache or forced refresh
-    return await fetchFromNetwork();
+    if (!forceRefresh && cached) {
+      load().then((data) => onRevalidated?.(data)).catch(() => {});
+      return cached.data;
+    }
+    return load();
   },
 
-  // Get total count of transactions with Caching
-  getTotalCount: async (
-    userId,
-    {
-      forceRefresh = false,
-      ttlMs = DEFAULT_TTL_MS,
-      onRevalidated,
-      revalidateIfFresh = true,
-      type = "all",
-    } = {}
-  ) => {
-    const scopedCountCacheKey = `${COUNT_CACHE_KEY}:${userId}:${type}`;
-    const readCache = () => {
-      try {
-        const raw = localStorage.getItem(scopedCountCacheKey);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (parsed.cacheUserId !== userId) return null;
-        return parsed;
-      } catch (e) {
-        console.warn("Count cache read error", e);
-        return null;
-      }
+  fetchAll: (userId, options = {}) => TransactionService.fetchRange(userId, options),
+
+  fetchPage: async (userId, { pageSize = DEFAULT_PAGE_SIZE, cursor = null, onInvalid, type = "all", startDate, endDate } = {}) => {
+    const constraints = buildConstraints({ userId, type, startDate, endDate });
+    if (cursor) constraints.push(startAfter(cursor));
+    constraints.push(limit(pageSize));
+    const snapshot = await getDocs(query(collection(firestore, COLLECTION_NAME), ...constraints));
+    return {
+      items: normalizeSnapshot(snapshot, onInvalid),
+      nextCursor: snapshot.docs.at(-1) || null,
+      hasMore: snapshot.size === pageSize,
     };
+  },
 
-    const cache = readCache();
-    const isFresh = cache?.cachedAt && Date.now() - cache.cachedAt < ttlMs;
+  getTotalCount: async (userId, options = {}) => {
+    const { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, type = "all", startDate, endDate } = options;
+    const key = queryKey({ userId, type, startDate, endDate });
+    const cached = countCache.get(key);
+    if (!forceRefresh && cached && Date.now() - cached.cachedAt < ttlMs) return cached.count;
 
-    const fetchFromNetwork = async () => {
-      let count;
-      if (type === "all") {
-        const q = query(collection(firestore, COLLECTION_NAME), where("userId", "==", userId));
-        const snapshot = await getCountFromServer(q);
-        count = snapshot.data().count;
-      } else {
-        const q = query(
-          collection(firestore, COLLECTION_NAME),
-          where("userId", "==", userId),
-          where("type", "==", type)
-        );
-        const snapshot = await getCountFromServer(q);
-        count = snapshot.data().count;
-      }
-
-      try {
-        localStorage.setItem(
-          scopedCountCacheKey,
-          JSON.stringify({
-            count,
-            cacheUserId: userId,
-            cachedAt: Date.now(),
-          })
-        );
-      } catch (e) {
-        console.warn("Count cache write error", e);
-      }
-
+    return dedupe(`count:${key}`, async () => {
+      const countQuery = query(
+        collection(firestore, COLLECTION_NAME),
+        ...buildConstraints({ userId, type, startDate, endDate, ordered: false })
+      );
+      const snapshot = await getCountFromServer(countQuery);
+      const count = snapshot.data().count;
+      countCache.set(key, { count, cachedAt: Date.now() });
       return count;
-    };
-
-    const shouldRevalidateInBackground = cache && (!isFresh || revalidateIfFresh);
-
-    if (!forceRefresh && cache) {
-      if (shouldRevalidateInBackground) {
-        fetchFromNetwork()
-          .then((liveCount) => onRevalidated?.(liveCount))
-          .catch((e) => console.warn("Background count refresh error", e));
-      }
-      if (isFresh && !revalidateIfFresh) {
-        return cache.count;
-      }
-      return cache.count;
-    }
-
-    return await fetchFromNetwork();
+    });
   },
 
-  add: async (userId, data) => {
-    // Validate data using Zod
-    const validatedData = transactionInputSchema.parse(data);
-    
-    const result = await addDoc(collection(firestore, COLLECTION_NAME), {
+  add: async (userId, data, { requestId = crypto.randomUUID() } = {}) => {
+    const input = toV2Input(data);
+    const reference = doc(firestore, COLLECTION_NAME, `${safeId(userId)}_${safeId(requestId)}`);
+    await setDoc(reference, {
       userId,
-      ...validatedData,
+      ...toPersistedFields(input),
       createdAt: serverTimestamp(),
     });
-    
-    invalidateCache(); // Invalidate on write
-    return result;
+    invalidateCache();
+    return reference;
   },
 
   update: async (id, data) => {
-    const transactionRef = doc(firestore, COLLECTION_NAME, id);
-    const result = await updateDoc(transactionRef, data);
-    
-    invalidateCache(); // Invalidate on write
-    return result;
+    const rawPatch = {};
+    if (data.amount !== undefined || data.amountMinor !== undefined) {
+      rawPatch.amountMinor = Number.isSafeInteger(data.amountMinor) ? data.amountMinor : parseMoneyToMinor(data.amount);
+    }
+    if (data.currency !== undefined) rawPatch.currency = data.currency;
+    if (data.description !== undefined) rawPatch.description = data.description;
+    if (data.date !== undefined || data.dateKey !== undefined) rawPatch.dateKey = data.dateKey || coerceDateKey(data.date);
+    if (data.category !== undefined) rawPatch.category = data.category;
+    if (data.type !== undefined) rawPatch.type = data.type;
+    const patch = transactionV2PatchSchema.parse(rawPatch);
+    const persistedPatch = { schemaVersion: 2, updatedAt: serverTimestamp() };
+    if (patch.amountMinor !== undefined) {
+      persistedPatch.amountMinor = patch.amountMinor;
+      persistedPatch.amount = minorToMajor(patch.amountMinor);
+    }
+    if (patch.currency !== undefined) persistedPatch.currency = patch.currency;
+    if (patch.description !== undefined) persistedPatch.description = patch.description;
+    if (patch.dateKey !== undefined) {
+      persistedPatch.dateKey = patch.dateKey;
+      persistedPatch.date = Timestamp.fromDate(dateKeyToUtcDate(patch.dateKey));
+    }
+    if (patch.category !== undefined) persistedPatch.category = patch.category;
+    if (patch.type !== undefined) persistedPatch.type = patch.type;
+
+    await updateDoc(doc(firestore, COLLECTION_NAME, id), persistedPatch);
+    invalidateCache();
   },
 
   delete: async (id) => {
-    const transactionRef = doc(firestore, COLLECTION_NAME, id);
-    const result = await deleteDoc(transactionRef);
-    
-    invalidateCache(); // Invalidate on write
-    return result;
+    await deleteDoc(doc(firestore, COLLECTION_NAME, id));
+    invalidateCache();
   },
 
   invalidateCache,
+  normalizeDocument,
+  toV2Input,
   DEFAULT_TTL_MS,
+  DEFAULT_PAGE_SIZE,
 };

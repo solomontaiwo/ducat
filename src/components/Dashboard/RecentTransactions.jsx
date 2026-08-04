@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "../../router/RouterProvider";
 import { useMediaQuery } from "react-responsive";
 import formatCurrency from "../../utils/formatCurrency";
 import PropTypes from "prop-types";
@@ -80,10 +80,12 @@ const RecentTransactions = ({ transactions = [], loading = false }) => {
   return (
     <div className="space-y-3">
       {recentTransactions.map((transaction) => (
-        <div
+        <button
+          type="button"
           key={transaction.id}
-          className="flex items-center justify-between rounded-xl border border-border bg-card/70 p-3 shadow-sm"
+          className="flex w-full items-center justify-between rounded-xl border border-border bg-card/70 p-3 text-left shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={() => navigate("/transactions")}
+          aria-label={`${transaction.description}: ${formatCurrency(transaction.amount)}`}
         >
           <div className="flex items-center gap-3">
             <div className="space-y-1">
@@ -103,7 +105,7 @@ const RecentTransactions = ({ transactions = [], loading = false }) => {
             {transaction.type === "income" ? "+" : "-"}
             {formatCurrency(transaction.amount)}
           </div>
-        </div>
+        </button>
       ))}
       <div className="flex justify-end pt-1">
         <Button variant="ghost" size="sm" onClick={() => navigate("/transactions")}>

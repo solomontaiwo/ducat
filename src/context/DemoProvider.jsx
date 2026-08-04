@@ -9,6 +9,10 @@ import {
     import { useNotification } from "../utils/notificationUtils.jsx";
     import PropTypes from "prop-types";
     import { useTranslation } from 'react-i18next';
+    import { transactionV2InputSchema } from "../schemas/transaction.jsx";
+    import { DEFAULT_CURRENCY, getTransactionAmountMinor, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
+    import { coerceDateKey, dateKeyToDate, todayDateKey } from "../utils/dateUtils.js";
+    import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/storage.js";
 
 const DemoContext = createContext();
 
@@ -16,6 +20,26 @@ export const useDemo = () => useContext(DemoContext);
 
 const DEMO_STORAGE_KEY = "soldi-sotto-demo-transactions";
 export const MAX_DEMO_TRANSACTIONS = 10;
+
+const normalizeDemoTransaction = (transaction) => {
+  const amountMinor = getTransactionAmountMinor(transaction);
+  const dateKey = transaction.dateKey || coerceDateKey(transaction.date);
+  const input = transactionV2InputSchema.parse({
+    amountMinor,
+    currency: transaction.currency || DEFAULT_CURRENCY,
+    description: transaction.description,
+    dateKey,
+    category: transaction.category,
+    type: transaction.type,
+  });
+  return {
+    ...transaction,
+    ...input,
+    amount: minorToMajor(input.amountMinor),
+    date: dateKeyToDate(input.dateKey),
+    schemaVersion: 2,
+  };
+};
 
 export const DemoProvider = ({ children, seedOnMount = false }) => {
   DemoProvider.propTypes = {
@@ -32,15 +56,11 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
   // Load demo transactions from localStorage
   const loadDemoTransactions = useCallback(() => {
     try {
-      const savedTransactions = localStorage.getItem(DEMO_STORAGE_KEY);
+      const savedTransactions = readLocalValue(DEMO_STORAGE_KEY);
       if (savedTransactions) {
         const parsed = JSON.parse(savedTransactions);
-        // Convert date strings to Date objects
-        const transactions = parsed.map(transaction => ({
-          ...transaction,
-          date: new Date(transaction.date),
-          amount: parseFloat(transaction.amount) || 0,
-        }));
+        if (!Array.isArray(parsed)) throw new Error("Invalid demo cache");
+        const transactions = parsed.map(normalizeDemoTransaction);
         // Sort by date descending
         transactions.sort((a, b) => b.date - a.date);
         setDemoTransactions(transactions);
@@ -56,7 +76,9 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
   // Save demo transactions to localStorage
   const saveDemoTransactions = useCallback((transactions) => {
     try {
-      localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(transactions));
+      if (!writeLocalValue(DEMO_STORAGE_KEY, JSON.stringify(transactions))) {
+        throw new Error("Demo storage unavailable");
+      }
     } catch (error) {
       console.error("Error saving demo transactions:", error);
     }
@@ -70,12 +92,16 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
       return false;
     }
 
-    const newTransaction = {
+    const newTransaction = normalizeDemoTransaction({
       ...transactionData,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      amountMinor: Number.isSafeInteger(transactionData.amountMinor)
+        ? transactionData.amountMinor
+        : parseMoneyToMinor(transactionData.amount),
+      dateKey: transactionData.dateKey || coerceDateKey(transactionData.date),
+      id: crypto.randomUUID(),
       createdAt: new Date(),
       isSample: false, 
-    };
+    });
 
     const updatedTransactions = [newTransaction, ...demoTransactions];
     setDemoTransactions(updatedTransactions);
@@ -89,7 +115,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
   const updateDemoTransaction = useCallback(async (transactionId, updatedData) => {
     const updatedTransactions = demoTransactions.map(transaction =>
       transaction.id === transactionId
-        ? { ...transaction, ...updatedData }
+        ? normalizeDemoTransaction({ ...transaction, ...updatedData })
         : transaction
     );
     setDemoTransactions(updatedTransactions);
@@ -112,7 +138,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
   // Clears all demo transactions
   const clearDemoTransactions = useCallback(() => {
     setDemoTransactions([]);
-    localStorage.removeItem(DEMO_STORAGE_KEY);
+    removeLocalValue(DEMO_STORAGE_KEY);
     notification.success(t('demo.allTransactionsCleared'));
   }, [notification, t]);
 
@@ -123,18 +149,18 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
   const getDemoStats = useCallback(() => {
     const totalIncome = demoTransactions
       .filter(t => t.type === "income")
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + getTransactionAmountMinor(t), 0);
     
     const totalExpense = demoTransactions
       .filter(t => t.type === "expense")
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + getTransactionAmountMinor(t), 0);
 
     const userTransactionCount = demoTransactions.filter(t => !t.isSample).length;
 
     return {
-      totalIncome,
-      totalExpense,
-      balance: totalIncome - totalExpense,
+      totalIncome: minorToMajor(totalIncome),
+      totalExpense: minorToMajor(totalExpense),
+      balance: minorToMajor(totalIncome - totalExpense),
       transactionCount: userTransactionCount,
       maxTransactions: MAX_DEMO_TRANSACTIONS,
       canAddMore: userTransactionCount < MAX_DEMO_TRANSACTIONS,
@@ -144,13 +170,17 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
   // Generate some sample transactions if none exist
   const generateSampleTransactions = useCallback(() => {
     const today = new Date();
+    const dateKey = todayDateKey();
     const sampleTransactions = [
       {
         id: "demo-1",
         type: "income",
         amount: 2500,
+        amountMinor: 250000,
         description: t('demo.sampleSalary'),
         date: today,
+        dateKey,
+        currency: DEFAULT_CURRENCY,
         category: "stipendio",
         createdAt: new Date(),
         isSample: true,
@@ -159,8 +189,11 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
         id: "demo-2",
         type: "expense",
         amount: 50,
+        amountMinor: 5000,
         description: t('demo.sampleGroceries'),
         date: today,
+        dateKey,
+        currency: DEFAULT_CURRENCY,
         category: "supermercato",
         createdAt: new Date(),
         isSample: true,
@@ -169,16 +202,20 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
         id: "demo-3",
         type: "expense",
         amount: 25,
+        amountMinor: 2500,
         description: t('demo.sampleFuel'),
         date: today,
+        dateKey,
+        currency: DEFAULT_CURRENCY,
         category: "trasporti",
         createdAt: new Date(),
         isSample: true,
       },
     ];
 
-    setDemoTransactions(sampleTransactions);
-    saveDemoTransactions(sampleTransactions);
+    const normalizedSamples = sampleTransactions.map(normalizeDemoTransaction);
+    setDemoTransactions(normalizedSamples);
+    saveDemoTransactions(normalizedSamples);
     notification.info(t('demo.sampleTransactionsAdded'));
   }, [saveDemoTransactions, notification, t]);
 

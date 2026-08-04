@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import React from "react";
 import PropTypes from "prop-types";
 import { useAuth } from "../../context/AuthProvider.jsx";
@@ -25,10 +25,10 @@ import "react-loading-skeleton/dist/skeleton.css";
 import { Button } from "../ui/button";
 import { Select } from "../ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "../../router/RouterProvider";
 import { useTranslation } from "react-i18next";
 
-const logo = `${import.meta.env.BASE_URL}icon.png`;
+const logo = `${import.meta.env.BASE_URL}icon-512.png`;
 
 const StatPill = ({ label, value, tone }) => {
   const backgrounds = {
@@ -85,8 +85,12 @@ ProgressBar.defaultProps = {
 
 const Stats = () => {
   const { currentUser, loading: authLoading } = useAuth();
-  const { transactions, loading: transactionsLoading, isDemo, startDemo } = useUnifiedTransactions();
+  const { transactions, loading: transactionsLoading, isDemo, startDemo, fetchAllTransactions } = useUnifiedTransactions();
   const [stats, setStats] = useState(null);
+  const [periodTransactions, setPeriodTransactions] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const requestIdRef = useRef(0);
   const [viewMode, setViewMode] = useState("monthly");
   const [customRange, setCustomRange] = useState(null);
   const [startDate, setStartDate] = useState(null);
@@ -94,7 +98,7 @@ const Stats = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
-  const loading = authLoading || transactionsLoading;
+  const loading = authLoading || transactionsLoading || statsLoading;
 
   const getSafeDate = (dateInput) => {
     if (!dateInput) return null;
@@ -105,7 +109,7 @@ const Stats = () => {
   };
 
   useEffect(() => {
-    if (!loading && transactions.length > 0) {
+    if (!authLoading && !transactionsLoading) {
       const today = new Date();
       let start, end;
 
@@ -133,24 +137,39 @@ const Stats = () => {
         }
       }
 
-      const filteredTransactions = transactions.filter((transaction) => {
-        const transactionDate = getSafeDate(transaction.date);
-        if (!transactionDate) return false;
-        return (
-          (isAfter(transactionDate, start) || isEqual(transactionDate, start)) &&
-          (isBefore(transactionDate, end) || isEqual(transactionDate, end))
-        );
-      });
-
-      setStats(calculateStats(filteredTransactions, start, end));
       setStartDate(start);
       setEndDate(end);
-    } else if (!loading && transactions.length === 0) {
-      setStats(null);
-      setStartDate(null);
-      setEndDate(null);
+      const requestId = ++requestIdRef.current;
+      const loadPeriod = async () => {
+        setStatsLoading(true);
+        setLoadError("");
+        try {
+          const data = isDemo
+            ? transactions
+            : currentUser
+              ? await fetchAllTransactions({ startDate: start, endDate: end })
+              : [];
+          if (requestId !== requestIdRef.current) return;
+          const filteredTransactions = data.filter((transaction) => {
+            const transactionDate = getSafeDate(transaction.date);
+            return transactionDate &&
+              (isAfter(transactionDate, start) || isEqual(transactionDate, start)) &&
+              (isBefore(transactionDate, end) || isEqual(transactionDate, end));
+          });
+          setPeriodTransactions(filteredTransactions);
+          setStats(filteredTransactions.length ? calculateStats(filteredTransactions, start, end) : null);
+        } catch (error) {
+          if (requestId === requestIdRef.current) {
+            setLoadError(error.code === "permission-denied" ? t("security.emailVerificationRequired") : t("error"));
+            setStats(null);
+          }
+        } finally {
+          if (requestId === requestIdRef.current) setStatsLoading(false);
+        }
+      };
+      loadPeriod();
     }
-  }, [loading, transactions, viewMode, customRange]);
+  }, [authLoading, transactionsLoading, transactions, viewMode, customRange, currentUser, fetchAllTransactions, isDemo, t]);
 
   const handleViewModeChange = (value) => {
     setViewMode(value);
@@ -161,7 +180,7 @@ const Stats = () => {
     const { generatePDF } = await import("../../utils/pdfUtils.jsx");
     await generatePDF(
       currentUser,
-      transactions,
+      periodTransactions,
       stats,
       viewMode,
       logo,
@@ -226,6 +245,11 @@ const Stats = () => {
   return (
     <LoadingWrapper loading={loading}>
       <div className="page-shell">
+        {loadError && (
+          <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-destructive">
+            {loadError}
+          </div>
+        )}
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-3xl font-bold">{t("statsPage.title")}</h2>
@@ -233,10 +257,10 @@ const Stats = () => {
           </div>
           <div className="flex flex-col gap-2 md:flex-row">
             <Select value={viewMode} onChange={(e) => handleViewModeChange(e.target.value)} className="md:w-48">
-              <option value="daily">Oggi</option>
-              <option value="weekly">Settimana</option>
-              <option value="monthly">Mese</option>
-              <option value="annually">Anno</option>
+              <option value="daily">{t("periods.daily")}</option>
+              <option value="weekly">{t("periods.weekly")}</option>
+              <option value="monthly">{t("periods.monthly")}</option>
+              <option value="annually">{t("periods.annually")}</option>
             </Select>
             {currentUser ? (
               <Button

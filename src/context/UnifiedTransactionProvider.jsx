@@ -11,6 +11,8 @@ import { DemoProvider, useDemo, MAX_DEMO_TRANSACTIONS } from "./DemoProvider.jsx
 import { useNotification } from "../utils/notificationUtils.jsx";
 import PropTypes from "prop-types";
 import { useTranslation } from 'react-i18next';
+import { getTransactionAmountMinor, minorToMajor } from "../utils/money.js";
+import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/storage.js";
 
 const UnifiedTransactionContext = createContext({
   transactions: [],
@@ -20,6 +22,8 @@ const UnifiedTransactionContext = createContext({
   deleteTransaction: async () => false,
   fetchAllTransactions: async () => [],
   getTotalTransactionCount: async () => 0,
+  fetchTransactionPage: async () => ({ items: [], nextCursor: null, hasMore: false }),
+  recentRevision: 0,
   canAddMoreTransactions: false,
   maxTransactions: 0,
   getStats: () => ({}),
@@ -39,7 +43,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
   };
   
   const { currentUser } = useAuth();
-  const { transactions, loading, fetchAllTransactions, getTotalTransactionCount } = useTransactions();
+  const { transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount } = useTransactions();
   const [isProcessing, setIsProcessing] = useState(false);
   const notification = useNotification();
   const { t } = useTranslation();
@@ -51,7 +55,8 @@ const FirebaseTransactionWrapper = ({ children }) => {
     setIsProcessing(true);
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
-      await TransactionService.add(currentUser.uid, transactionData);
+      const { clientRequestId, ...payload } = transactionData;
+      await TransactionService.add(currentUser.uid, payload, { requestId: clientRequestId });
       notification.success(t('notifications.addSuccess'));
       return true;
     } catch (error) {
@@ -110,16 +115,16 @@ const FirebaseTransactionWrapper = ({ children }) => {
   const getStats = useCallback(() => {
     const totalIncome = transactions
       .filter(t => t.type === "income")
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, transaction) => sum + getTransactionAmountMinor(transaction), 0);
     
     const totalExpense = transactions
       .filter(t => t.type === "expense")
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, transaction) => sum + getTransactionAmountMinor(transaction), 0);
 
     return {
-      totalIncome,
-      totalExpense,
-      balance: totalIncome - totalExpense,
+      totalIncome: minorToMajor(totalIncome),
+      totalExpense: minorToMajor(totalExpense),
+      balance: minorToMajor(totalIncome - totalExpense),
       transactionCount: transactions.length,
       canAddMore: true, // No limit for registered users
     };
@@ -137,6 +142,8 @@ const FirebaseTransactionWrapper = ({ children }) => {
         updateTransaction,
         deleteTransaction,
         fetchAllTransactions, // Expose specifically for analytics
+        fetchTransactionPage,
+        recentRevision,
         
         // Utilities
         canAddMoreTransactions: true,
@@ -187,6 +194,16 @@ const DemoTransactionWrapper = ({ children, startDemo, seedDemo, stopDemo }) => 
     return transactions.length;
   }, [transactions]);
 
+  const fetchTransactionPage = useCallback(async ({ pageSize = 40, cursor = 0 } = {}) => {
+    const start = typeof cursor === "number" ? cursor : 0;
+    const items = transactions.slice(start, start + pageSize);
+    return {
+      items,
+      nextCursor: start + items.length,
+      hasMore: start + items.length < transactions.length,
+    };
+  }, [transactions]);
+
   return (
     <UnifiedTransactionContext.Provider
       value={{
@@ -201,6 +218,8 @@ const DemoTransactionWrapper = ({ children, startDemo, seedDemo, stopDemo }) => 
         generateSampleTransactions,
         clearTransactions,
         fetchAllTransactions,
+        fetchTransactionPage,
+        recentRevision: transactions.length,
         
         // Utilities
         canAddMoreTransactions,
@@ -230,19 +249,19 @@ export const UnifiedTransactionProvider = ({ children }) => {
   const { currentUser, loading: authLoading } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const [demoEnabled, setDemoEnabled] = useState(() => {
-    return localStorage.getItem(DEMO_FLAG_KEY) === "true";
+    return readLocalValue(DEMO_FLAG_KEY) === "true";
   });
   const [seedDemo, setSeedDemo] = useState(false);
 
   const startDemo = useCallback(() => {
-    localStorage.setItem(DEMO_FLAG_KEY, "true");
+    writeLocalValue(DEMO_FLAG_KEY, "true");
     setDemoEnabled(true);
     setSeedDemo(true);
     return true;
   }, []);
 
   const stopDemo = useCallback(() => {
-    localStorage.removeItem(DEMO_FLAG_KEY);
+    removeLocalValue(DEMO_FLAG_KEY);
     setDemoEnabled(false);
     setSeedDemo(false);
   }, []);
@@ -272,6 +291,8 @@ export const UnifiedTransactionProvider = ({ children }) => {
           stopDemo,
           fetchAllTransactions: async () => [],
           getTotalTransactionCount: async () => 0,
+          fetchTransactionPage: async () => ({ items: [], nextCursor: null, hasMore: false }),
+          recentRevision: 0,
         }}
       >
         {children}
@@ -279,14 +300,42 @@ export const UnifiedTransactionProvider = ({ children }) => {
     );
   }
 
-  // If user is authenticated, use Firebase
-  if (currentUser) {
+  // Firestore transaction rules require a verified email. Avoid opening a
+  // listener that is guaranteed to be denied while verification is pending.
+  if (currentUser?.emailVerified) {
     return (
       <TransactionProvider>
         <FirebaseTransactionWrapper>
           {children}
         </FirebaseTransactionWrapper>
       </TransactionProvider>
+    );
+  }
+
+  if (currentUser) {
+    return (
+      <UnifiedTransactionContext.Provider
+        value={{
+          transactions: [],
+          loading: false,
+          addTransaction: () => Promise.resolve(false),
+          updateTransaction: () => Promise.resolve(false),
+          deleteTransaction: () => Promise.resolve(false),
+          canAddMoreTransactions: false,
+          maxTransactions: 0,
+          getStats: () => ({ totalIncome: 0, totalExpense: 0, balance: 0, transactionCount: 0 }),
+          isDemo: false,
+          isAuthenticated: true,
+          startDemo,
+          stopDemo,
+          fetchAllTransactions: async () => [],
+          getTotalTransactionCount: async () => 0,
+          fetchTransactionPage: async () => ({ items: [], nextCursor: null, hasMore: false }),
+          recentRevision: 0,
+        }}
+      >
+        {children}
+      </UnifiedTransactionContext.Provider>
     );
   }
 
@@ -328,6 +377,8 @@ export const UnifiedTransactionProvider = ({ children }) => {
         stopDemo,
         fetchAllTransactions: async () => [],
         getTotalTransactionCount: async () => 0,
+        fetchTransactionPage: async () => ({ items: [], nextCursor: null, hasMore: false }),
+        recentRevision: 0,
       }}
     >
       {children}
