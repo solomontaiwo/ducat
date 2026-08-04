@@ -3,20 +3,23 @@ import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useTheme } from "../../utils/ThemeProvider";
 import { useNotification } from "../../utils/notificationUtils";
-import { useNavigate } from "react-router-dom";
-import { doc, setDoc } from "firebase/firestore";
+import { useNavigate } from "../../router/RouterProvider";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
-import { firestore } from "../../utils/firebase.jsx";
+import { firestore } from "../../utils/firebaseFirestore.js";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
+import { buildAccountExport, downloadJson } from "../../utils/accountExport.js";
+import { deleteCurrentAccount, requestEmailChange, requestPasswordReset } from "../../services/accountService.js";
+import { removeLocalValue, writeLocalValue } from "../../utils/storage.js";
 
 const Profile = () => {
   const { currentUser, loading: userLoading, logout, profileName, profileNameLoading, refreshProfileName } = useAuth();
-  const { loading: transactionsLoading } = useUnifiedTransactions();
+  const { loading: transactionsLoading, fetchAllTransactions } = useUnifiedTransactions();
   const loading = userLoading || transactionsLoading || profileNameLoading;
   const { theme, toggleTheme } = useTheme();
   const notification = useNotification();
@@ -24,6 +27,9 @@ const Profile = () => {
   const [newUsername, setNewUsername] = useState("");
   const [usernameLoading, setUsernameLoading] = useState(false);
   const [currentUsername, setCurrentUsername] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [accountAction, setAccountAction] = useState("");
   const { t, i18n } = useTranslation();
 
   useEffect(() => {
@@ -55,7 +61,7 @@ const Profile = () => {
         {
           username: normalizedUsername,
           displayName: normalizedUsername,
-          updatedAt: new Date(),
+          updatedAt: serverTimestamp(),
         },
         { merge: true }
       );
@@ -99,7 +105,82 @@ const Profile = () => {
 
   const handleLanguageChange = (e) => {
     i18n.changeLanguage(e.target.value);
-    localStorage.setItem("appLanguage", e.target.value);
+    writeLocalValue("appLanguage", e.target.value);
+  };
+
+  const handleExport = async () => {
+    setAccountAction("export");
+    try {
+      const transactions = await fetchAllTransactions({ forceRefresh: true });
+      const payload = buildAccountExport({ user: currentUser, profileName: currentUsername, transactions });
+      downloadJson(payload, `soldi-sotto-account-${new Date().toISOString().slice(0, 10)}.json`);
+      notification.success("Archivio account esportato.");
+    } catch (error) {
+      console.error("Unable to export account data", error);
+      notification.error("Impossibile esportare i dati. Riprova.");
+    } finally {
+      setAccountAction("");
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    setAccountAction("password");
+    try {
+      await requestPasswordReset();
+      notification.success("Email per il reset della password inviata.");
+    } catch (error) {
+      console.error("Unable to request password reset", error);
+      notification.error("Invio non riuscito. Riprova più tardi.");
+    } finally {
+      setAccountAction("");
+    }
+  };
+
+  const handleEmailChange = async () => {
+    if (!newEmail.trim() || !currentPassword) {
+      notification.error("Inserisci la nuova email e la password attuale.");
+      return;
+    }
+    setAccountAction("email");
+    try {
+      await requestEmailChange(newEmail, currentPassword);
+      setNewEmail("");
+      setCurrentPassword("");
+      notification.success("Controlla la nuova email per confermare la modifica.");
+    } catch (error) {
+      console.error("Unable to request email change", error);
+      notification.error(error.code === "auth/invalid-credential"
+        ? "Password attuale non corretta."
+        : "Cambio email non riuscito. Verifica i dati e riprova.");
+    } finally {
+      setAccountAction("");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!currentPassword) {
+      notification.error("Inserisci la password attuale prima di eliminare l'account.");
+      return;
+    }
+    const confirmed = window.confirm(
+      "Eliminare definitivamente account e transazioni? Esporta prima i dati: l'operazione non è annullabile."
+    );
+    if (!confirmed) return;
+
+    setAccountAction("delete");
+    try {
+      await deleteCurrentAccount(currentPassword);
+      removeLocalValue("soldi-sotto-demo-enabled");
+      navigate("/", { replace: true });
+    } catch (error) {
+      console.error("Unable to delete account", error);
+      notification.error(error.code === "functions/failed-precondition"
+        ? "La sessione non è abbastanza recente. Accedi di nuovo e riprova."
+        : "Eliminazione non riuscita. Nessun dato locale è stato cancellato.");
+    } finally {
+      setCurrentPassword("");
+      setAccountAction("");
+    }
   };
 
   if (loading) {
@@ -203,6 +284,62 @@ const Profile = () => {
                 ))}
               </select>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Dati e sicurezza</CardTitle>
+            <CardDescription>Esporta i tuoi dati o gestisci le credenziali dell’account.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button variant="outline" onClick={handleExport} disabled={Boolean(accountAction)}>
+              {accountAction === "export" ? "Preparazione…" : "Esporta tutti i dati (JSON)"}
+            </Button>
+            <Button variant="outline" onClick={handlePasswordReset} disabled={Boolean(accountAction)}>
+              {accountAction === "password" ? "Invio…" : "Invia email per cambiare password"}
+            </Button>
+            <div className="space-y-2 border-t border-border pt-4">
+              <Label htmlFor="newEmail">Nuovo indirizzo email</Label>
+              <Input
+                id="newEmail"
+                type="email"
+                value={newEmail}
+                onChange={(event) => setNewEmail(event.target.value)}
+                autoComplete="email"
+                maxLength={254}
+              />
+              <Label htmlFor="currentPassword">Password attuale</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                autoComplete="current-password"
+              />
+              <Button onClick={handleEmailChange} disabled={Boolean(accountAction)}>
+                {accountAction === "email" ? "Invio verifica…" : "Cambia email"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle>Elimina account</CardTitle>
+            <CardDescription>
+              Cancella in modo definitivo credenziale, profilo e tutte le transazioni. Prima puoi scaricare l’export JSON.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Per confermare usa la password attuale inserita nella sezione “Dati e sicurezza”.
+            </p>
+            <Button variant="destructive" onClick={handleDeleteAccount} disabled={Boolean(accountAction)}>
+              {accountAction === "delete" ? "Eliminazione…" : "Elimina definitivamente l’account"}
+            </Button>
           </CardContent>
         </Card>
       </div>

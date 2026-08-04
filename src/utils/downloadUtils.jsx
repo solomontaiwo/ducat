@@ -1,4 +1,4 @@
-import { generateExportFileName, getUserName } from "./exportFilename.js";
+import { getUserName } from "./exportFilename.js";
 
 export { generateExportFileName, getUserName, sanitizeFilename } from "./exportFilename.js";
 
@@ -8,7 +8,7 @@ export const getCurrentProfileName = async (user) => {
 
   try {
     const [{ firestore }, { doc, getDoc }] = await Promise.all([
-      import("../utils/firebase.jsx"),
+      import("../utils/firebaseFirestore.js"),
       import("firebase/firestore"),
     ]);
     const profile = await getDoc(doc(firestore, "users", user.uid));
@@ -18,9 +18,4 @@ export const getCurrentProfileName = async (user) => {
     console.warn("Unable to load the profile name for the export", error);
     return getUserName(user);
   }
-};
-
-// Deprecated: generateExportFileName is used
-export const generateCsvFileName = (periodText, startDate, endDate, user) => {
-  return generateExportFileName(periodText, startDate, endDate, user, "csv");
 };

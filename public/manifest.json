@@ -3,18 +3,18 @@
   "name": "Soldi Sotto",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "icon-192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "icon.png",
+      "src": "icon-512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff"
+  "theme_color": "#f9f9fb",
+  "background_color": "#f9f9fb"
 }

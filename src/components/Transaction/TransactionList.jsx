@@ -128,8 +128,9 @@ const TransactionList = () => {
     updateTransaction,
     isDemo,
     maxTransactions,
-    fetchAllTransactions, // New method to fetch more history
-    getTotalTransactionCount, // New method to get total count
+    fetchTransactionPage,
+    getTotalTransactionCount,
+    recentRevision,
   } = useUnifiedTransactions();
 
   const { expenseCategories, incomeCategories } = useCategories();
@@ -139,70 +140,106 @@ const TransactionList = () => {
   const [actionTransaction, setActionTransaction] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   
-  // Local state for loaded transactions (for scalability)
   const [allLoadedTransactions, setAllLoadedTransactions] = useState([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true); // Logic to determine if more exist could be improved
-  const [totalTransactionCount, setTotalTransactionCount] = useState(0); // For "X of Y" display
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [pageCursor, setPageCursor] = useState(null);
+  const [totalTransactionCount, setTotalTransactionCount] = useState(0);
+  const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Using custom hooks
   const { period, setPeriod, startDate, endDate } = useDateRange("monthly");
+  const {
+    filteredTransactions,
+    searchTerm,
+    setSearchTerm,
+    selectedCategory,
+    setSelectedCategory,
+    selectedType,
+    setSelectedType,
+  } = useTransactionFilter(
+    allLoadedTransactions.length > 0 ? allLoadedTransactions : transactions,
+    { startDate, endDate }
+  );
   
-  // Fetch total count on mount for authenticated users
   useEffect(() => {
     const fetchCount = async () => {
-      if (currentUser && !isDemo) {
-        const count = await getTotalTransactionCount({ onRevalidated: setTotalTransactionCount });
-        setTotalTransactionCount(count);
-      } else if (isDemo) {
-        setTotalTransactionCount(transactions.length); // For demo, initial transactions are the total
+      try {
+        if (currentUser && !isDemo) {
+          setTotalTransactionCount(await getTotalTransactionCount({ startDate, endDate, type: selectedType }));
+        } else if (isDemo) {
+          setTotalTransactionCount(transactions.length);
+        }
+      } catch {
+        setLoadError("Impossibile caricare il conteggio delle transazioni.");
       }
     };
     fetchCount();
-  }, [currentUser, isDemo, getTotalTransactionCount, transactions]);
+  }, [currentUser, isDemo, getTotalTransactionCount, transactions, startDate, endDate, selectedType]);
 
-  // Update loaded transactions when live transactions update (dashboard sync)
+  // Reset to the first deterministic date-ordered page whenever the realtime
+  // stream changes. This prevents stale cross-device deletions from surviving
+  // in an independently merged history.
   useEffect(() => {
-    if (transactions.length > 0) {
-      setAllLoadedTransactions(prev => {
-        // Merge fresh live transactions with existing loaded ones, avoiding duplicates
-        const merged = new Map(prev.map((t) => [t.id, t]));
-        transactions.forEach((t) => {
-          merged.set(t.id, t);
-        });
+    let cancelled = false;
+    const loadFirstPage = async () => {
+      if (isDemo) {
+        setAllLoadedTransactions(transactions);
+        setHasMore(false);
+        return;
+      }
+      if (!currentUser) {
+        setAllLoadedTransactions([]);
+        return;
+      }
+      setIsLoadingInitial(true);
+      setLoadError("");
+      try {
+        const page = await fetchTransactionPage({ pageSize: 40, startDate, endDate, type: selectedType });
+        if (cancelled) return;
+        setAllLoadedTransactions(page.items);
+        setPageCursor(page.nextCursor);
+        setHasMore(page.hasMore);
+      } catch (error) {
+        if (!cancelled) setLoadError(error.code === "permission-denied"
+          ? "Verifica l'email per accedere alle transazioni."
+          : "Impossibile caricare le transazioni. Riprova.");
+      } finally {
+        if (!cancelled) setIsLoadingInitial(false);
+      }
+    };
+    loadFirstPage();
+    return () => { cancelled = true; };
+  }, [currentUser, fetchTransactionPage, isDemo, recentRevision, reloadKey, transactions, startDate, endDate, selectedType]);
 
-        // If we never loaded history, prioritize the fresh stream
-        if (prev.length === 0 || prev.length <= transactions.length) {
-          return [...transactions].sort((a, b) => b.date - a.date);
-        }
-
+  const handleLoadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    setLoadError("");
+    try {
+      const page = await fetchTransactionPage({ pageSize: 40, cursor: pageCursor, startDate, endDate, type: selectedType });
+      setAllLoadedTransactions((previous) => {
+        const merged = new Map(previous.map((item) => [item.id, item]));
+        page.items.forEach((item) => merged.set(item.id, item));
         return Array.from(merged.values()).sort((a, b) => b.date - a.date);
       });
+      setPageCursor(page.nextCursor);
+      setHasMore(page.hasMore);
+    } catch {
+      setLoadError("Impossibile caricare altre transazioni. Riprova.");
+    } finally {
+      setIsLoadingMore(false);
     }
-  }, [transactions]); // Depend on transactions (recent stream)
-
-  // Load initial data or full history if needed
-  // For scalable solution: Dashboard loads recent (50). 
-  // List page *could* load more.
-  // Let's implement a manual "Load Full History" for now to solve the "search/filter" issue 
-  // or just rely on the 'recent' list for default view.
-  
-  const handleLoadMore = useCallback(async () => {
-    setIsLoadingMore(true);
-    // Fetch full history with stale-while-revalidate; update state when fresh data arrives
-    const fullHistory = await fetchAllTransactions({ onRevalidated: setAllLoadedTransactions });
-    setAllLoadedTransactions(fullHistory);
-    setTotalTransactionCount(fullHistory.length); // Update total count to actual fetched count
-    setHasMore(false); // Assumes we fetched everything
-    setIsLoadingMore(false);
-  }, [fetchAllTransactions]);
+  }, [fetchTransactionPage, hasMore, isLoadingMore, pageCursor, startDate, endDate, selectedType]);
 
   const sentinelRef = useRef(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isDemo && allLoadedTransactions.length > 0 && totalTransactionCount > allLoadedTransactions.length) {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isDemo && allLoadedTransactions.length > 0) {
           handleLoadMore();
         }
       },
@@ -217,21 +254,11 @@ const TransactionList = () => {
     return () => {
       if (currentRef) observer.unobserve(currentRef);
     };
-  }, [hasMore, isLoadingMore, isDemo, allLoadedTransactions.length, totalTransactionCount, handleLoadMore]);
-
-  const {
-    filteredTransactions,
-    searchTerm,
-    setSearchTerm,
-    selectedCategory,
-    setSelectedCategory,
-    selectedType,
-    setSelectedType,
-  } = useTransactionFilter(allLoadedTransactions.length > 0 ? allLoadedTransactions : transactions, { startDate, endDate });
+  }, [hasMore, isLoadingMore, isDemo, allLoadedTransactions.length, handleLoadMore]);
 
   const { t, i18n } = useTranslation();
 
-  const loading = authLoading || (transactionsLoading && allLoadedTransactions.length === 0);
+  const loading = authLoading || isLoadingInitial || (transactionsLoading && allLoadedTransactions.length === 0);
   const hasActiveFilters = selectedCategory !== "all" || selectedType !== "all";
 
   const motivationalQuotes = useMemo(() => t("dashboard.motivationalQuotes", { returnObjects: true }), [t]);
@@ -302,9 +329,10 @@ const TransactionList = () => {
   const confirmDelete = useCallback(async () => {
     if (deleteConfirm) {
       const success = await deleteTransaction(deleteConfirm);
-      if (success) setDeleteConfirm(null);
-      // Update local state manually to avoid refetch wait
-      setAllLoadedTransactions(prev => prev.filter(t => t.id !== deleteConfirm));
+      if (success) {
+        setDeleteConfirm(null);
+        setAllLoadedTransactions(prev => prev.filter(t => t.id !== deleteConfirm));
+      }
     }
   }, [deleteConfirm, deleteTransaction]);
 
@@ -318,19 +346,7 @@ const TransactionList = () => {
     { value: "all", label: t("transactions.filters.all") },
   ];
 
-  const handleModalSubmit = useCallback(async (formData) => {
-    const normalizedAmount = formData.amount?.toString().replace(",", ".") || "";
-    const amountValue = parseFloat(normalizedAmount);
-    if (Number.isNaN(amountValue) || amountValue <= 0) return false;
-
-    const payload = {
-      type: formData.type,
-      amount: amountValue,
-      description: formData.description,
-      date: new Date(formData.date),
-      category: formData.category,
-    };
-
+  const handleModalSubmit = useCallback(async (payload) => {
     if (editTransaction) {
       const success = await updateTransaction(editTransaction.id, payload);
       if (success) {
@@ -376,6 +392,12 @@ const TransactionList = () => {
 
   return (
     <div className="page-shell -mt-6 pt-0">
+      {loadError && (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <span>{loadError}</span>
+          <Button variant="outline" size="sm" onClick={() => setReloadKey((value) => value + 1)}>Riprova</Button>
+        </div>
+      )}
       <div className="sticky top-0 z-20 rounded-2xl border border-border bg-card/90 backdrop-blur-md p-3 md:p-4 shadow-md">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
@@ -383,6 +405,9 @@ const TransactionList = () => {
               💳 {t("transactions.title")}
             </h1>
             <div className="hidden text-primary text-sm italic md:block">{quote}</div>
+            {!isDemo && totalTransactionCount > 0 && (
+              <div className="text-xs text-muted-foreground">{allLoadedTransactions.length} / {totalTransactionCount}</div>
+            )}
           </div>
         </div>
 
@@ -394,7 +419,13 @@ const TransactionList = () => {
               placeholder={t("searchTransactions")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              aria-describedby={searchTerm && hasMore ? "search-scope-help" : undefined}
             />
+            {searchTerm && hasMore && (
+              <p id="search-scope-help" className="mt-1 text-xs text-muted-foreground">
+                La ricerca considera le {allLoadedTransactions.length} transazioni già caricate. Scorri per estenderla.
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
             <Select value={period} onChange={(e) => setPeriod(e.target.value)} className="min-w-0">
@@ -489,7 +520,7 @@ const TransactionList = () => {
         )}
         
         {/* Infinite Scroll Sentinel */}
-        {hasMore && !isDemo && allLoadedTransactions.length > 0 && totalTransactionCount > allLoadedTransactions.length && (
+        {hasMore && !isDemo && allLoadedTransactions.length > 0 && (
           <div ref={sentinelRef} className="flex justify-center py-6">
             {isLoadingMore && (
               <div className="flex items-center gap-2 text-muted-foreground text-sm">

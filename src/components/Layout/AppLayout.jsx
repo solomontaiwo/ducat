@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import Navbar from "../Navbar/Navbar";
 import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
-import TransactionModal from "../Transaction/TransactionModal";
 import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
 import { FiPlus } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
+
+const TransactionModal = lazy(() => import("../Transaction/TransactionModal"));
 
 // Base swipe routes for authenticated users
 const BASE_SWIPE_ROUTES = ["/dashboard", "/transactions", "/analytics", "/profile"];
@@ -104,7 +105,7 @@ const AppLayout = ({ children }) => {
   }, [swipeRoutes, location.pathname, navigate]);
 
   // Define public routes where navigation is not shown
-  const publicRoutes = ["/", "/login", "/register"];
+  const publicRoutes = ["/", "/landing", "/login", "/register", "/forgot-password", "/verify-email", "/privacy", "/terms"];
   const isPublicRoute = publicRoutes.includes(location.pathname);
 
   // Show navigation if:
@@ -179,10 +180,14 @@ const AppLayout = ({ children }) => {
           >
             <FiPlus className="h-6 w-6" />
           </button>
-          <TransactionModal
-            show={showFabModal}
-            onClose={() => setShowFabModal(false)}
-          />
+          {showFabModal && (
+            <Suspense fallback={null}>
+              <TransactionModal
+                show
+                onClose={() => setShowFabModal(false)}
+              />
+            </Suspense>
+          )}
         </>
       )}
     </div>

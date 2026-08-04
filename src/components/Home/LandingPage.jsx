@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "../../router/RouterProvider";
 import { FiArrowUpRight, FiBarChart2, FiFileText, FiPlay, FiShield, FiStar, FiUserPlus, FiZap } from "react-icons/fi";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
@@ -127,6 +127,10 @@ const LandingPage = () => {
               </Card>
             ))}
           </div>
+          <footer className="mt-6 flex justify-center gap-5 text-xs text-muted-foreground">
+            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link to="/terms" className="hover:text-foreground">Termini d’uso</Link>
+          </footer>
         </div>
       </div>
     </div>

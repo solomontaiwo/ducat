@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { dateToDateKey } from "./dateUtils.js";
 
 export const sanitizeFilename = (value) => {
   if (!value) return "user";
@@ -12,6 +13,10 @@ export const getUserName = (user) => {
 
 export const generateExportFileName = (periodText, startDate, endDate, user, extension) => {
   const userName = sanitizeFilename(getUserName(user));
-  const timestamp = format(new Date(), "yyyyMMdd-HHmm");
-  return `report-soldisotto-${userName}-${timestamp}.${extension}`;
+  const period = sanitizeFilename(periodText || "period");
+  const range = startDate && endDate
+    ? `${dateToDateKey(startDate)}_${dateToDateKey(endDate)}`
+    : "snapshot";
+  const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
+  return `report-soldisotto-${userName}-${period}-${range}-${timestamp}.${sanitizeFilename(extension)}`;
 };

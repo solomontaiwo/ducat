@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useLayoutEffect, useState, useCallback } from "react";
 import PropTypes from "prop-types";
+import { readLocalValue, writeLocalValue } from "./storage.js";
 
 // Creazione del contesto per il tema
 const ThemeContext = createContext();
@@ -24,7 +25,7 @@ export const ThemeProvider = ({ children }) => {
   };
 
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("theme") || "system";
+    return readLocalValue("theme", "system");
   });
 
   const getSystemPreference = useCallback(() => {
@@ -46,7 +47,7 @@ export const ThemeProvider = ({ children }) => {
 
   const toggleTheme = (newTheme) => {
     setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
+    writeLocalValue("theme", newTheme);
     applyTheme(newTheme);
   };
 

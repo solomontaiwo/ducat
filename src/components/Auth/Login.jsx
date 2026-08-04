@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "../../router/RouterProvider";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../utils/firebase";
+import { auth } from "../../utils/firebaseAuth";
 import { useNotification } from "../../utils/notificationUtils";
 import { motion } from "framer-motion";
 import { FiArrowLeft, FiEye, FiEyeOff, FiLock, FiLogIn, FiUser } from "react-icons/fi";
@@ -28,9 +28,9 @@ const Login = () => {
     setError("");
 
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      const credential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       notification.success(t("login.title"));
-      navigate("/dashboard");
+      navigate(credential.user.emailVerified ? "/dashboard" : "/verify-email", { replace: true });
     } catch (err) {
       console.error(t("errors.loginError"), err);
       let errorMessage;
@@ -111,6 +111,12 @@ const Login = () => {
             <p className="text-xs text-muted-foreground">{t("login.usernameOrEmailHelp")}</p>
           </div>
 
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-sm font-medium text-primary">
+              Password dimenticata?
+            </Link>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="password">{t("login.password")}</Label>
             <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring">
@@ -124,7 +130,13 @@ const Login = () => {
                 className="border-0 shadow-none focus-visible:ring-0"
                 autoComplete="current-password"
               />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-muted-foreground"
+                aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                aria-pressed={showPassword}
+              >
                 {showPassword ? <FiEyeOff /> : <FiEye />}
               </button>
             </div>

@@ -1,23 +1,26 @@
 import ReactDOM from "react-dom/client";
 import "./main.css";
 import App from "./App";
-import { BrowserRouter } from 'react-router-dom';
+import { RouterProvider } from './router/RouterProvider';
 import { ThemeProvider } from "./utils/ThemeProvider";
 import { NotificationProvider } from "./utils/notificationUtils";
 import { AuthProvider } from "./context/AuthProvider";
 import UnifiedTransactionProvider from "./context/UnifiedTransactionProvider";
 import './utils/i18n';
+import ErrorBoundary from "./components/ErrorBoundary";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <ThemeProvider>
-    <NotificationProvider>
-      <AuthProvider>
-        <UnifiedTransactionProvider>
-          <BrowserRouter basename="/soldi-sotto">
-            <App />
-          </BrowserRouter>
-        </UnifiedTransactionProvider>
-      </AuthProvider>
-    </NotificationProvider>
-  </ThemeProvider>
+  <ErrorBoundary>
+    <ThemeProvider>
+      <NotificationProvider>
+        <AuthProvider>
+          <UnifiedTransactionProvider>
+            <RouterProvider basename="/soldi-sotto">
+              <App />
+            </RouterProvider>
+          </UnifiedTransactionProvider>
+        </AuthProvider>
+      </NotificationProvider>
+    </ThemeProvider>
+  </ErrorBoundary>
 );

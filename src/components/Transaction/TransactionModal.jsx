@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useCategories } from "../../utils/categories.jsx";
 import { useNotification } from "../../utils/notificationUtils.jsx";
@@ -17,6 +17,9 @@ import {
   DialogFooter,
 } from "../ui/dialog";
 import { FiTrendingUp, FiTrendingDown, FiSave, FiPlus } from "react-icons/fi";
+import { minorToMajor, parseMoneyToMinor } from "../../utils/money";
+import { coerceDateKey, dateKeyToDate, todayDateKey } from "../../utils/dateUtils";
+import { readLocalValue, writeLocalValue } from "../../utils/storage.js";
 
 const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
   TransactionModal.propTypes = {
@@ -31,6 +34,8 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
   const { expenseCategories, incomeCategories } = useCategories();
   const notification = useNotification();
   const { t } = useTranslation();
+  const [submitting, setSubmitting] = useState(false);
+  const requestIdRef = useRef(crypto.randomUUID());
 
   const [categories, setCategories] = useState([]);
   const quickAmounts = useMemo(() => [5, 10, 20, 50, 100], []);
@@ -39,12 +44,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
     type: transaction?.type || "expense",
     amount: transaction?.amount?.toString() || "",
     description: transaction?.description || "",
-    date: transaction?.date
-      ? (transaction.date instanceof Date
-          ? transaction.date
-          : transaction.date?.toDate?.() || new Date(transaction.date)
-        ).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0],
+    date: transaction?.dateKey || (transaction?.date ? coerceDateKey(transaction.date) : todayDateKey()),
     category: transaction?.category || "",
   });
 
@@ -65,10 +65,11 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
 
   useEffect(() => {
     if (show && !isEdit) {
+      requestIdRef.current = crypto.randomUUID();
       let preferredCategory = expenseCategories[0]?.value || "";
       let preferredType = "expense";
       try {
-        const raw = localStorage.getItem(QUICK_ADD_PREF_KEY);
+        const raw = readLocalValue(QUICK_ADD_PREF_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
           preferredType = parsed.type || "expense";
@@ -81,7 +82,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
         type: preferredType,
         amount: "",
         description: "",
-        date: new Date().toISOString().split("T")[0],
+        date: todayDateKey(),
         category: preferredCategory,
       });
     }
@@ -90,10 +91,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
         type: transaction.type,
         amount: transaction.amount.toString(),
         description: transaction.description,
-        date: (transaction.date instanceof Date
-          ? transaction.date
-          : transaction.date?.toDate?.() || new Date(transaction.date)
-        ).toISOString().split("T")[0],
+        date: transaction.dateKey || coerceDateKey(transaction.date),
         category: transaction.category,
       });
     }
@@ -101,43 +99,44 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    const normalizedAmount = formData.amount.replace(",", ".");
-    const amountValue = parseFloat(normalizedAmount);
-    if (isNaN(amountValue) || amountValue <= 0) {
-      notification.error(t("transaction.invalidAmount"));
+    let amountMinor;
+    try {
+      amountMinor = parseMoneyToMinor(formData.amount);
+    } catch (error) {
+      notification.error(error.message || t("transaction.invalidAmount"));
       return;
     }
+    if (submitting) return;
+    setSubmitting(true);
 
-    let success;
-    if (isEdit) {
-      success = await (onSubmit
-        ? onSubmit(formData)
-        : updateTransaction(transaction.id, {
-            type: formData.type,
-            amount: amountValue,
-            description: formData.description.trim(),
-            date: new Date(formData.date),
-            category: formData.category,
-          }));
-    } else {
-      success = await (onSubmit
-        ? onSubmit(formData)
-        : addTransaction({
-            type: formData.type,
-            amount: amountValue,
-            description: formData.description.trim(),
-            date: new Date(formData.date),
-            category: formData.category,
-          }));
+    const payload = {
+      type: formData.type,
+      amountMinor,
+      amount: minorToMajor(amountMinor),
+      description: formData.description.trim(),
+      dateKey: formData.date,
+      date: dateKeyToDate(formData.date),
+      category: formData.category,
+      clientRequestId: requestIdRef.current,
+    };
+
+    let success = false;
+    try {
+      if (isEdit) {
+        success = await (onSubmit ? onSubmit(payload) : updateTransaction(transaction.id, payload));
+      } else {
+        success = await (onSubmit ? onSubmit(payload) : addTransaction(payload));
+      }
+    } finally {
+      setSubmitting(false);
     }
-    if (success) {
-      localStorage.setItem(
-        QUICK_ADD_PREF_KEY,
-        JSON.stringify({ type: formData.type, category: formData.category })
-      );
-      navigator.vibrate?.(50);
-      onClose();
-    }
+    if (!success) return;
+    writeLocalValue(
+      QUICK_ADD_PREF_KEY,
+      JSON.stringify({ type: formData.type, category: formData.category })
+    );
+    navigator.vibrate?.(50);
+    onClose();
   };
 
   return (
@@ -187,17 +186,14 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
 
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>{t("transactionModal.amount")}</Label>
+                <Label htmlFor="transaction-amount">{t("transactionModal.amount")}</Label>
                 <Input
+                  id="transaction-amount"
                   type="text"
                   inputMode="decimal"
                   placeholder={t("transactionModal.amountPlaceholder")}
                   value={formData.amount}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9.,]/g, "");
-                    const parts = value.split(/[,.]/);
-                    if (parts.length <= 2) setFormData((prev) => ({ ...prev, amount: value }));
-                  }}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, amount: e.target.value.replace(/[^0-9.,]/g, "") }))}
                   onBlur={(e) => {
                     const value = e.target.value;
                     if (value && value.includes(",")) {
@@ -206,6 +202,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
                     }
                   }}
                   required
+                  aria-label={t("transactionModal.amount")}
                   className="w-full"
                 />
                 <div className="flex gap-2 overflow-x-auto pb-1">
@@ -229,8 +226,9 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>{t("transactionModal.date")}</Label>
+                <Label htmlFor="transaction-date">{t("transactionModal.date")}</Label>
                 <Input
+                  id="transaction-date"
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
@@ -242,20 +240,23 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
             </div>
 
             <div className="space-y-2">
-              <Label>{t("transactionModal.description")}</Label>
+              <Label htmlFor="transaction-description">{t("transactionModal.description")}</Label>
               <Input
+                id="transaction-description"
                 type="text"
                 placeholder={t("transactionModal.descriptionPlaceholder")}
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 required
+                maxLength={200}
                 enterKeyHint="next"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>{t("transactionModal.category")}</Label>
+              <Label htmlFor="transaction-category">{t("transactionModal.category")}</Label>
               <Select
+                id="transaction-category"
                 value={formData.category}
                 onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
                 required
@@ -278,7 +279,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
             <Button
               type="submit"
               className="gap-2 w-full sm:w-auto"
-              disabled={!formData.amount || !formData.description || !formData.category}
+              disabled={submitting || !formData.amount || !formData.description || !formData.category}
             >
               {isEdit ? <FiSave className="h-4 w-4" /> : <FiPlus className="h-4 w-4" />}
               {isEdit

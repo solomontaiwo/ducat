@@ -36,7 +36,7 @@
     "dateNotAvailable": "Date not available",
     "emailAddress": "Email Address",
     "account": "Account",
-    "accountInfo": "Your settings are saved automatically. Your data is protected with end-to-end encryption.",
+    "accountInfo": "Preferences are stored in your browser; account data is protected by Firebase access rules.",
     "backToDashboard": "Back to Dashboard",
     "editUsername": "Edit Username",
     "newUsername": "New Username",

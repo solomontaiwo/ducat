@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [profileName, setProfileName] = useState(null);
   const [profileNameLoading, setProfileNameLoading] = useState(true);
+  const [, setAuthRevision] = useState(0);
 
   const refreshProfileName = useCallback(async (user) => {
     if (!user) {
@@ -33,22 +34,33 @@ export const AuthProvider = ({ children }) => {
   // Funzione per il logout
   const logout = async () => {
     try {
-      const [{ auth }, { signOut }] = await Promise.all([
-        import("../utils/firebase.jsx"),
-        import("firebase/auth"),
-      ]);
-      await signOut(auth);
       try {
         const { TransactionService } = await import("../services/transactionService.jsx");
         TransactionService.invalidateCache();
       } catch (cacheError) {
         console.warn("Unable to clear the transaction cache on logout", cacheError);
       }
+      const [{ auth }, { signOut }] = await Promise.all([
+        import("../utils/firebaseAuth.js"),
+        import("firebase/auth"),
+      ]);
+      await signOut(auth);
     } catch (error) {
       console.error("Errore durante il logout:", error);
       throw error;
     }
   };
+
+  const refreshCurrentUser = useCallback(async () => {
+    const { auth } = await import("../utils/firebaseAuth.js");
+    const user = auth.currentUser;
+    if (!user) return null;
+    await user.reload();
+    await user.getIdToken(true);
+    setCurrentUser(auth.currentUser);
+    setAuthRevision((revision) => revision + 1);
+    return auth.currentUser;
+  }, []);
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -60,7 +72,7 @@ export const AuthProvider = ({ children }) => {
       setProfileNameLoading(false);
     }, 5000);
 
-    Promise.all([import("../utils/firebase.jsx"), import("firebase/auth")])
+    Promise.all([import("../utils/firebaseAuth.js"), import("firebase/auth")])
       .then(([{ auth }, { onAuthStateChanged }]) => {
         if (cancelled) return;
         unsubscribe = onAuthStateChanged(
@@ -69,6 +81,11 @@ export const AuthProvider = ({ children }) => {
             clearTimeout(timeout);
             setCurrentUser(user);
             setLoading(false);
+            if (user) {
+              import("../services/profileService.js")
+                .then(({ ensureUserProfile }) => ensureUserProfile(user))
+                .catch((error) => console.warn("Unable to provision the user profile", error));
+            }
             refreshProfileName(user);
           },
           () => {
@@ -92,7 +109,7 @@ export const AuthProvider = ({ children }) => {
   }, [refreshProfileName]);
 
   return (
-    <AuthContext.Provider value={{ currentUser, loading, logout, profileName, profileNameLoading, refreshProfileName }}>
+    <AuthContext.Provider value={{ currentUser, loading, logout, profileName, profileNameLoading, refreshProfileName, refreshCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,4 @@
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getApps, initializeApp } from "firebase/app";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -29,13 +27,8 @@ if (missingFirebaseEnvVars.length > 0) {
   throw new Error(
     "[firebase] Missing required Firebase environment variables: " +
       missingFirebaseEnvVars.join(", ") +
-      ". For local dev, create a .env file based on .env.example. " +
-      "For CI/CD, add the VITE_FIREBASE_* values as GitHub repository secrets."
+      ". Create a local .env from .env.example or configure the CI secrets."
   );
 }
 
-// Inizializza Firebase
-const app = initializeApp(firebaseConfig);
-
-export const auth = getAuth(app);
-export const firestore = getFirestore(app);
+export const firebaseApp = getApps()[0] || initializeApp(firebaseConfig);

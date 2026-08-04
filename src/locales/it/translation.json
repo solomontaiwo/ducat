@@ -37,7 +37,7 @@
     "emailAddress": "Indirizzo Email",
     "newUsernamePlaceholder": "Inserisci nuovo nome utente",
     "account": "Account",
-    "accountInfo": "Le tue impostazioni vengono salvate automaticamente. I tuoi dati sono protetti con crittografia end-to-end.",
+    "accountInfo": "Le preferenze vengono salvate nel browser; i dati dell’account sono protetti dalle regole di accesso Firebase.",
     "backToDashboard": "Torna alla Dashboard",
     "editUsername": "Modifica Nome Utente",
     "newUsername": "Nuovo Nome Utente",
