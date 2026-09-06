@@ -233,7 +233,7 @@ const Dashboard = () => {
                       </div>
                     ))}
                   </div>
-                  <div className="mx-auto hidden h-36 w-36 shrink-0 rounded-full sm:block" style={{ background: spendingGradient }} aria-label={t("dashboard.spendingOverview")}>
+                  <div className="relative mx-auto hidden h-36 w-36 shrink-0 rounded-full sm:block" style={{ background: spendingGradient }} aria-label={t("dashboard.spendingOverview")}>
                     <div className="absolute inset-7 rounded-full bg-card" />
                   </div>
                 </div>
