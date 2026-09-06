@@ -27,6 +27,7 @@ const DEFAULT_PAGE_SIZE = 40;
 const dataCache = new Map();
 const countCache = new Map();
 const inFlight = new Map();
+let cacheRevision = 0;
 
 const safeId = (value) => String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
 
@@ -76,12 +77,15 @@ const queryKey = ({ userId, type = "all", startDate, endDate }) => [
 
 const dedupe = async (key, loader) => {
   if (inFlight.has(key)) return inFlight.get(key);
-  const promise = loader().finally(() => inFlight.delete(key));
+  const promise = loader().finally(() => {
+    if (inFlight.get(key) === promise) inFlight.delete(key);
+  });
   inFlight.set(key, promise);
   return promise;
 };
 
 const invalidateCache = () => {
+  cacheRevision += 1;
   dataCache.clear();
   countCache.clear();
   inFlight.clear();
@@ -114,6 +118,7 @@ export const TransactionService = {
     );
 
     return onSnapshot(recentQuery, (snapshot) => {
+      invalidateCache();
       onUpdate(normalizeSnapshot(snapshot, onInvalid), snapshot.docChanges().map((change) => ({
         type: change.type,
         id: change.doc.id,
@@ -137,11 +142,13 @@ export const TransactionService = {
     const isFresh = cached && Date.now() - cached.cachedAt < ttlMs;
 
     const load = () => dedupe(`range:${key}`, async () => {
+      const revision = cacheRevision;
       const rangeQuery = query(
         collection(firestore, COLLECTION_NAME),
         ...buildConstraints({ userId, type, startDate, endDate })
       );
       const snapshot = await getDocs(rangeQuery);
+      if (revision !== cacheRevision) return load();
       const data = normalizeSnapshot(snapshot, onInvalid);
       dataCache.set(key, { data, cachedAt: Date.now() });
       return data;
@@ -149,10 +156,6 @@ export const TransactionService = {
 
     if (!forceRefresh && isFresh) {
       if (revalidateIfFresh) load().then((data) => onRevalidated?.(data)).catch(() => {});
-      return cached.data;
-    }
-    if (!forceRefresh && cached) {
-      load().then((data) => onRevalidated?.(data)).catch(() => {});
       return cached.data;
     }
     return load();
@@ -178,16 +181,19 @@ export const TransactionService = {
     const cached = countCache.get(key);
     if (!forceRefresh && cached && Date.now() - cached.cachedAt < ttlMs) return cached.count;
 
-    return dedupe(`count:${key}`, async () => {
+    const load = () => dedupe(`count:${key}`, async () => {
+      const revision = cacheRevision;
       const countQuery = query(
         collection(firestore, COLLECTION_NAME),
         ...buildConstraints({ userId, type, startDate, endDate, ordered: false })
       );
       const snapshot = await getCountFromServer(countQuery);
+      if (revision !== cacheRevision) return load();
       const count = snapshot.data().count;
       countCache.set(key, { count, cachedAt: Date.now() });
       return count;
     });
+    return load();
   },
 
   add: async (userId, data, { requestId = crypto.randomUUID() } = {}) => {

@@ -148,6 +148,8 @@ const TransactionList = () => {
   const [totalTransactionCount, setTotalTransactionCount] = useState(0);
   const [loadError, setLoadError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const pageRevisionRef = useRef(0);
+  const loadingMoreRef = useRef(false);
 
   // Using custom hooks
   const { period, setPeriod, startDate, endDate } = useDateRange("monthly");
@@ -160,30 +162,38 @@ const TransactionList = () => {
     selectedType,
     setSelectedType,
   } = useTransactionFilter(
-    allLoadedTransactions.length > 0 ? allLoadedTransactions : transactions,
+    isDemo ? transactions : allLoadedTransactions,
     { startDate, endDate }
   );
   
   useEffect(() => {
+    let cancelled = false;
     const fetchCount = async () => {
       try {
         if (currentUser && !isDemo) {
-          setTotalTransactionCount(await getTotalTransactionCount({ startDate, endDate, type: selectedType }));
+          const count = await getTotalTransactionCount({ startDate, endDate, type: selectedType });
+          if (!cancelled) setTotalTransactionCount(count);
         } else if (isDemo) {
           setTotalTransactionCount(transactions.length);
         }
       } catch {
-        setLoadError("Impossibile caricare il conteggio delle transazioni.");
+        if (!cancelled) setLoadError("Impossibile caricare il conteggio delle transazioni.");
       }
     };
     fetchCount();
-  }, [currentUser, isDemo, getTotalTransactionCount, transactions, startDate, endDate, selectedType]);
+    return () => { cancelled = true; };
+  }, [currentUser, isDemo, getTotalTransactionCount, transactions, startDate, endDate, selectedType, recentRevision, reloadKey]);
 
   // Reset to the first deterministic date-ordered page whenever the realtime
   // stream changes. This prevents stale cross-device deletions from surviving
   // in an independently merged history.
   useEffect(() => {
     let cancelled = false;
+    pageRevisionRef.current += 1;
+    loadingMoreRef.current = false;
+    setIsLoadingMore(false);
+    setHasMore(false);
+    setPageCursor(null);
     const loadFirstPage = async () => {
       if (isDemo) {
         setAllLoadedTransactions(transactions);
@@ -211,28 +221,34 @@ const TransactionList = () => {
       }
     };
     loadFirstPage();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; pageRevisionRef.current += 1; };
   }, [currentUser, fetchTransactionPage, isDemo, recentRevision, reloadKey, transactions, startDate, endDate, selectedType]);
 
   const handleLoadMore = useCallback(async () => {
-    if (isLoadingMore || !hasMore) return;
+    if (loadingMoreRef.current || isLoadingInitial || !hasMore) return;
+    const revision = pageRevisionRef.current;
+    loadingMoreRef.current = true;
     setIsLoadingMore(true);
     setLoadError("");
     try {
       const page = await fetchTransactionPage({ pageSize: 40, cursor: pageCursor, startDate, endDate, type: selectedType });
+      if (revision !== pageRevisionRef.current) return;
       setAllLoadedTransactions((previous) => {
         const merged = new Map(previous.map((item) => [item.id, item]));
         page.items.forEach((item) => merged.set(item.id, item));
-        return Array.from(merged.values()).sort((a, b) => b.date - a.date);
+        return Array.from(merged.values()).sort((a, b) => b.date - a.date || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
       });
       setPageCursor(page.nextCursor);
       setHasMore(page.hasMore);
     } catch {
-      setLoadError("Impossibile caricare altre transazioni. Riprova.");
+      if (revision === pageRevisionRef.current) setLoadError("Impossibile caricare altre transazioni. Riprova.");
     } finally {
-      setIsLoadingMore(false);
+      if (revision === pageRevisionRef.current) {
+        loadingMoreRef.current = false;
+        setIsLoadingMore(false);
+      }
     }
-  }, [fetchTransactionPage, hasMore, isLoadingMore, pageCursor, startDate, endDate, selectedType]);
+  }, [fetchTransactionPage, hasMore, isLoadingInitial, pageCursor, startDate, endDate, selectedType]);
 
   const sentinelRef = useRef(null);
 
