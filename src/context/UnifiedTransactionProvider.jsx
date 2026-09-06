@@ -135,7 +135,8 @@ const FirebaseTransactionWrapper = ({ children }) => {
       value={{
         // Data
         transactions,
-        loading: loading || isProcessing,
+        loading,
+        isProcessing,
         
         // Actions
         addTransaction,
