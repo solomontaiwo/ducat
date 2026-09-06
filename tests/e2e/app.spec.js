@@ -40,3 +40,23 @@ test("unsafe deep links fall back to home", async ({ page }) => {
   await page.goto("does-not-exist");
   await expect(page).toHaveURL(/\/soldi-sotto\/$/);
 });
+
+test("transaction fields remain readable on mobile before and after focus", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "Mobile form regression");
+  await page.goto(".");
+  await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
+  await page.getByRole("button", { name: "Add transaction", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  for (const id of ["transaction-amount", "transaction-description", "transaction-date", "transaction-category"]) {
+    const field = dialog.locator(`#${id}`);
+    await expect(field).toHaveCSS("font-size", "16px");
+    await field.focus();
+    await expect(field).toHaveCSS("font-size", "16px");
+  }
+  await dialog.locator("#transaction-amount").fill("12.50");
+  await dialog.locator("#transaction-description").fill("Pranzo");
+  await expect(dialog.locator("#transaction-description")).toHaveValue("Pranzo");
+  const viewport = await page.locator('meta[name="viewport"]').getAttribute("content");
+  expect(viewport).not.toMatch(/user-scalable\s*=\s*no|maximum-scale\s*=\s*1/);
+});
