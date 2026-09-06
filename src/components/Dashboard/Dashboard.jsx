@@ -216,8 +216,8 @@ const Dashboard = () => {
               <Skeleton height={180} />
             ) : spendingCategories.length ? (
               <div className="space-y-4">
-                <div className="relative">
-                  <div className="space-y-3 sm:pr-44">
+                <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1 space-y-3">
                     {spendingCategories.map((category) => (
                       <div key={category.category} className="space-y-1.5">
                         <div className="flex items-center justify-between gap-3 text-sm">
@@ -233,7 +233,7 @@ const Dashboard = () => {
                       </div>
                     ))}
                   </div>
-                  <div className="absolute right-0 top-1/2 hidden h-36 w-36 -translate-y-1/2 rounded-full sm:block" style={{ background: spendingGradient }} aria-label={t("dashboard.spendingOverview")}>
+                  <div className="mx-auto hidden h-36 w-36 shrink-0 rounded-full sm:block" style={{ background: spendingGradient }} aria-label={t("dashboard.spendingOverview")}>
                     <div className="absolute inset-7 rounded-full bg-card" />
                   </div>
                 </div>
