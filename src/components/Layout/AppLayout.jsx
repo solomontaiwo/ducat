@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { lazy, Suspense, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
@@ -31,28 +31,9 @@ const AppLayout = ({ children }) => {
     ? BASE_SWIPE_ROUTES
     : BASE_SWIPE_ROUTES.filter((r) => r !== "/profile");
 
-  // Scroll-visibility state lives here so the FAB can react to it
-  const [navVisible, setNavVisible] = useState(true);
-  useEffect(() => {
-    let lastScrollY = window.scrollY;
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentY = window.scrollY;
-          const delta = currentY - lastScrollY;
-          if (Math.abs(delta) >= 8) {
-            setNavVisible(delta < 0 || currentY < 20);
-          }
-          lastScrollY = currentY;
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  // Keep the mobile navigation mounted and visible so scrolling cannot move it
+  // away while a user is trying to tap a destination.
+  const navVisible = true;
 
   // Swipe gesture navigation (mobile only)
   const touchStartRef = useRef(null);
