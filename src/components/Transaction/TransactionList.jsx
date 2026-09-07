@@ -122,7 +122,6 @@ const TransactionList = () => {
   const { currentUser, loading: authLoading } = useAuth();
   const {
     transactions, // This is the limited recent stream
-    loading: transactionsLoading,
     deleteTransaction,
     addTransaction,
     updateTransaction,
@@ -150,6 +149,7 @@ const TransactionList = () => {
   const [reloadKey, setReloadKey] = useState(0);
   const pageRevisionRef = useRef(0);
   const loadingMoreRef = useRef(false);
+  const hasLoadedPageRef = useRef(false);
 
   // Using custom hooks
   const { period, setPeriod, startDate, endDate } = useDateRange("monthly");
@@ -162,7 +162,7 @@ const TransactionList = () => {
     selectedType,
     setSelectedType,
   } = useTransactionFilter(
-    isDemo ? transactions : allLoadedTransactions,
+    isDemo || (!hasLoadedPageRef.current && allLoadedTransactions.length === 0) ? transactions : allLoadedTransactions,
     { startDate, endDate }
   );
   
@@ -197,6 +197,7 @@ const TransactionList = () => {
     const loadFirstPage = async () => {
       if (isDemo) {
         setAllLoadedTransactions(transactions);
+        hasLoadedPageRef.current = true;
         setHasMore(false);
         return;
       }
@@ -210,6 +211,7 @@ const TransactionList = () => {
         const page = await fetchTransactionPage({ pageSize: 40, startDate, endDate, type: selectedType });
         if (cancelled) return;
         setAllLoadedTransactions(page.items);
+        hasLoadedPageRef.current = true;
         setPageCursor(page.nextCursor);
         setHasMore(page.hasMore);
       } catch (error) {
@@ -274,7 +276,7 @@ const TransactionList = () => {
 
   const { t, i18n } = useTranslation();
 
-  const loading = authLoading || isLoadingInitial || (transactionsLoading && allLoadedTransactions.length === 0);
+  const loading = authLoading || (isLoadingInitial && allLoadedTransactions.length === 0 && transactions.length === 0);
   const hasActiveFilters = selectedCategory !== "all" || selectedType !== "all";
 
   const motivationalQuotes = useMemo(() => t("dashboard.motivationalQuotes", { returnObjects: true }), [t]);
