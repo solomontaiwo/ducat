@@ -8,7 +8,7 @@ vi.mock("firebase/firestore", async (original) => ({
 }));
 
 import { getDocs, getCountFromServer, onSnapshot } from "firebase/firestore";
-import { TransactionService as service } from "../src/services/transactionService.jsx";
+import { TransactionService as service, compareTransactions } from "../src/services/transactionService.jsx";
 
 const deferred = () => {
   let resolve, reject;
@@ -22,6 +22,11 @@ const snapshot = (id) => ({
 
 describe("transaction cache freshness", () => {
   beforeEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); service.invalidateCache(); });
+
+  it("orders transactions with the same civil date by a stable secondary key", () => {
+    const sameDay = (id) => ({ id, date: new Date("2026-09-06T00:00:00Z") });
+    expect([sameDay("b"), sameDay("a")].sort(compareTransactions).map((item) => item.id)).toEqual(["b", "a"]);
+  });
 
   it("awaits fresh data after TTL instead of returning the expired result", async () => {
     const clock = vi.spyOn(Date, "now").mockReturnValue(1000);

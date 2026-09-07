@@ -31,6 +31,11 @@ let cacheRevision = 0;
 
 const safeId = (value) => String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
 
+export const compareTransactions = (first, second) => {
+  const dateDifference = new Date(second.date).getTime() - new Date(first.date).getTime();
+  return dateDifference || String(second.id || "").localeCompare(String(first.id || ""));
+};
+
 const normalizeDocument = (snapshot) => {
   const raw = snapshot.data();
   const amountMinor = getTransactionAmountMinor(raw);
@@ -54,7 +59,7 @@ const normalizeSnapshot = (snapshot, onInvalid) => snapshot.docs.flatMap((item) 
     onInvalid?.({ id: item.id, code: "invalid-transaction", error });
     return [];
   }
-});
+}).sort(compareTransactions);
 
 const buildConstraints = ({ userId, type = "all", startDate, endDate, ordered = true }) => {
   const constraints = [where("userId", "==", userId)];

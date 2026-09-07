@@ -31,6 +31,10 @@ import PropTypes from "prop-types";
 const SWIPE_DELETE_THRESHOLD = 80;
 const SWIPE_VELOCITY_THRESHOLD = 0.5;
 const SNAP_ANIMATION = { type: "spring", stiffness: 500, damping: 40 };
+const compareTransactions = (first, second) => {
+  const dateDifference = new Date(second.date).getTime() - new Date(first.date).getTime();
+  return dateDifference || String(second.id || "").localeCompare(String(first.id || ""));
+};
 
 const SwipeableTransactionCard = ({ transaction, onActions, onDelete, language, getCategoryLabel }) => {
   const x = useMotionValue(0);
@@ -238,7 +242,7 @@ const TransactionList = () => {
       setAllLoadedTransactions((previous) => {
         const merged = new Map(previous.map((item) => [item.id, item]));
         page.items.forEach((item) => merged.set(item.id, item));
-        return Array.from(merged.values()).sort((a, b) => b.date - a.date || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
+        return Array.from(merged.values()).sort(compareTransactions);
       });
       setPageCursor(page.nextCursor);
       setHasMore(page.hasMore);
@@ -317,7 +321,9 @@ const TransactionList = () => {
       }
       groups[dateKey].transactions.push(transaction);
     });
-    return Object.values(groups).sort((a, b) => b.date - a.date);
+    return Object.values(groups)
+      .map((group) => ({ ...group, transactions: group.transactions.sort(compareTransactions) }))
+      .sort((a, b) => b.date - a.date);
   };
 
   const getCategoryLabel = (category) => {
