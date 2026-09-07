@@ -25,7 +25,7 @@ const pages = Object.fromEntries(
 );
 
 const PageLoader = () => (
-  <div className="flex min-h-screen items-center justify-center bg-background" role="status" aria-label="Caricamento pagina">
+  <div className="flex min-h-[40vh] items-center justify-center bg-transparent" role="status" aria-label="Caricamento pagina">
     <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
   </div>
 );
@@ -68,7 +68,12 @@ const AppRouter = () => {
       : currentUser
         ? loaders.verifyEmail
         : loaders.landing;
-    const preload = () => likelyLoader();
+    const preload = () => {
+      likelyLoader();
+      if (currentUser?.emailVerified) {
+        [loaders.transactions, loaders.analytics, loaders.profile].forEach((loader) => loader());
+      }
+    };
 
     if ("requestIdleCallback" in window) {
       const idleId = window.requestIdleCallback(preload, { timeout: 2000 });

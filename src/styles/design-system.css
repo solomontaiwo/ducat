@@ -168,7 +168,6 @@ body {
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   margin: 0;
   padding: 0;
-  transition: background-color var(--transition-base), color var(--transition-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
