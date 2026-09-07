@@ -40,7 +40,10 @@ const AppLayout = ({ children }) => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentY = window.scrollY;
-          setNavVisible(currentY < lastScrollY || currentY < 20);
+          const delta = currentY - lastScrollY;
+          if (Math.abs(delta) >= 8) {
+            setNavVisible(delta < 0 || currentY < 20);
+          }
           lastScrollY = currentY;
           ticking = false;
         });

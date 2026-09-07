@@ -48,6 +48,8 @@ const BottomNavigation = ({ navVisible }) => {
         navVisible ? "translate-y-0" : "translate-y-full"
       }`}
       style={{ minHeight: `${BOTTOM_NAV_HEIGHT_PX}px`, transition: "transform 0.25s ease" }}
+      onTouchStart={(event) => event.stopPropagation()}
+      onTouchEnd={(event) => event.stopPropagation()}
     >
       <div
         className="mx-auto grid max-w-5xl items-center px-2"
