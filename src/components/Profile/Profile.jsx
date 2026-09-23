@@ -114,10 +114,10 @@ const Profile = () => {
       const transactions = await fetchAllTransactions({ forceRefresh: true });
       const payload = buildAccountExport({ user: currentUser, profileName: currentUsername, transactions });
       downloadJson(payload, `soldi-sotto-account-${new Date().toISOString().slice(0, 10)}.json`);
-      notification.success("Archivio account esportato.");
+      notification.success(t("profile.exportSuccess"));
     } catch (error) {
       console.error("Unable to export account data", error);
-      notification.error("Impossibile esportare i dati. Riprova.");
+      notification.error(t("profile.exportError"));
     } finally {
       setAccountAction("");
     }
@@ -127,10 +127,10 @@ const Profile = () => {
     setAccountAction("password");
     try {
       await requestPasswordReset();
-      notification.success("Email per il reset della password inviata.");
+      notification.success(t("profile.passwordResetSuccess"));
     } catch (error) {
       console.error("Unable to request password reset", error);
-      notification.error("Invio non riuscito. Riprova più tardi.");
+      notification.error(t("profile.passwordResetError"));
     } finally {
       setAccountAction("");
     }
@@ -138,7 +138,7 @@ const Profile = () => {
 
   const handleEmailChange = async () => {
     if (!newEmail.trim() || !currentPassword) {
-      notification.error("Inserisci la nuova email e la password attuale.");
+      notification.error(t("profile.emailFieldsRequired"));
       return;
     }
     setAccountAction("email");
@@ -146,12 +146,12 @@ const Profile = () => {
       await requestEmailChange(newEmail, currentPassword);
       setNewEmail("");
       setCurrentPassword("");
-      notification.success("Controlla la nuova email per confermare la modifica.");
+      notification.success(t("profile.emailChangeSuccess"));
     } catch (error) {
       console.error("Unable to request email change", error);
       notification.error(error.code === "auth/invalid-credential"
-        ? "Password attuale non corretta."
-        : "Cambio email non riuscito. Verifica i dati e riprova.");
+        ? t("profile.invalidPassword")
+        : t("profile.emailChangeError"));
     } finally {
       setAccountAction("");
     }
@@ -159,12 +159,10 @@ const Profile = () => {
 
   const handleDeleteAccount = async () => {
     if (!currentPassword) {
-      notification.error("Inserisci la password attuale prima di eliminare l'account.");
+      notification.error(t("profile.deletePasswordRequired"));
       return;
     }
-    const confirmed = window.confirm(
-      "Eliminare definitivamente account e transazioni? Esporta prima i dati: l'operazione non è annullabile."
-    );
+    const confirmed = window.confirm(t("profile.deleteConfirm"));
     if (!confirmed) return;
 
     setAccountAction("delete");
@@ -175,8 +173,8 @@ const Profile = () => {
     } catch (error) {
       console.error("Unable to delete account", error);
       notification.error(error.code === "functions/failed-precondition"
-        ? "La sessione non è abbastanza recente. Accedi di nuovo e riprova."
-        : "Eliminazione non riuscita. Nessun dato locale è stato cancellato.");
+        ? t("profile.sessionExpired")
+        : t("profile.deleteError"));
     } finally {
       setCurrentPassword("");
       setAccountAction("");
@@ -291,18 +289,18 @@ const Profile = () => {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Dati e sicurezza</CardTitle>
-            <CardDescription>Esporta i tuoi dati o gestisci le credenziali dell’account.</CardDescription>
+            <CardTitle>{t("profile.dataSecurityTitle")}</CardTitle>
+            <CardDescription>{t("profile.dataSecurityDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button variant="outline" onClick={handleExport} disabled={Boolean(accountAction)}>
-              {accountAction === "export" ? "Preparazione…" : "Esporta tutti i dati (JSON)"}
+              {accountAction === "export" ? t("profile.exporting") : t("profile.exportAllData")}
             </Button>
             <Button variant="outline" onClick={handlePasswordReset} disabled={Boolean(accountAction)}>
-              {accountAction === "password" ? "Invio…" : "Invia email per cambiare password"}
+              {accountAction === "password" ? t("profile.sending") : t("profile.sendPasswordReset")}
             </Button>
             <div className="space-y-2 border-t border-border pt-4">
-              <Label htmlFor="newEmail">Nuovo indirizzo email</Label>
+              <Label htmlFor="newEmail">{t("profile.newEmail")}</Label>
               <Input
                 id="newEmail"
                 type="email"
@@ -311,7 +309,7 @@ const Profile = () => {
                 autoComplete="email"
                 maxLength={254}
               />
-              <Label htmlFor="currentPassword">Password attuale</Label>
+              <Label htmlFor="currentPassword">{t("profile.currentPassword")}</Label>
               <Input
                 id="currentPassword"
                 type="password"
@@ -320,7 +318,7 @@ const Profile = () => {
                 autoComplete="current-password"
               />
               <Button onClick={handleEmailChange} disabled={Boolean(accountAction)}>
-                {accountAction === "email" ? "Invio verifica…" : "Cambia email"}
+                {accountAction === "email" ? t("profile.sendingVerification") : t("profile.changeEmail")}
               </Button>
             </div>
           </CardContent>
@@ -328,17 +326,17 @@ const Profile = () => {
 
         <Card className="border-destructive/50">
           <CardHeader>
-            <CardTitle>Elimina account</CardTitle>
+            <CardTitle>{t("profile.deleteAccountTitle")}</CardTitle>
             <CardDescription>
-              Cancella in modo definitivo credenziale, profilo e tutte le transazioni. Prima puoi scaricare l’export JSON.
+              {t("profile.deleteAccountDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Per confermare usa la password attuale inserita nella sezione “Dati e sicurezza”.
+              {t("profile.deleteAccountHelp")}
             </p>
             <Button variant="destructive" onClick={handleDeleteAccount} disabled={Boolean(accountAction)}>
-              {accountAction === "delete" ? "Eliminazione…" : "Elimina definitivamente l’account"}
+              {accountAction === "delete" ? t("profile.deleting") : t("profile.deleteAccountButton")}
             </Button>
           </CardContent>
         </Card>
