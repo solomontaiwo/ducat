@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  EXPENSE_CHART_COLORS,
+  CATEGORY_CHART_COLORS,
   buildExtendedStats,
   buildMonthlyTrend,
   getAnalyticsQueryRange,
@@ -97,9 +97,9 @@ describe("readPeriodPreference", () => {
 
 describe("withChartColors", () => {
   it("cycles through the palette", () => {
-    const items = Array.from({ length: EXPENSE_CHART_COLORS.length + 1 }, (_, index) => ({ category: String(index) }));
-    const coloured = withChartColors(items, EXPENSE_CHART_COLORS);
-    expect(coloured.at(-1).fill).toBe(EXPENSE_CHART_COLORS[0]);
-    expect(withChartColors(undefined, EXPENSE_CHART_COLORS)).toEqual([]);
+    const items = Array.from({ length: CATEGORY_CHART_COLORS.length + 1 }, (_, index) => ({ category: String(index) }));
+    const coloured = withChartColors(items, CATEGORY_CHART_COLORS);
+    expect(coloured.at(-1).fill).toBe(CATEGORY_CHART_COLORS[0]);
+    expect(withChartColors(undefined, CATEGORY_CHART_COLORS)).toEqual([]);
   });
 });

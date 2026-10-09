@@ -33,7 +33,7 @@ test("landing supports demo navigation without serious accessibility violations"
   expect(pageErrors).toEqual([]);
   expect(consoleErrors).toEqual([]);
   expect(firstPartyFailures).toEqual([]);
-  await expect(page.getByRole("heading", { name: /transactions|transazioni/i })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /transactions|movimenti/i })).toBeVisible();
 });
 
 test("unsafe deep links fall back to home", async ({ page }) => {
@@ -41,18 +41,22 @@ test("unsafe deep links fall back to home", async ({ page }) => {
   await expect(page).toHaveURL(/\/soldi-sotto\/$/);
 });
 
+const ADD_BUTTON = /^(nuovo movimento|new transaction)$/i;
+
 test("transaction fields remain readable on mobile before and after focus", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Mobile form regression");
   await page.goto(".");
   await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
-  await page.getByRole("button", { name: "Add transaction", exact: true }).click();
+  await page.getByRole("button", { name: ADD_BUTTON }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  for (const id of ["transaction-amount", "transaction-description", "transaction-date", "transaction-category"]) {
+  await dialog.getByRole("radio", { name: /other date|altra data/i }).click();
+  for (const id of ["transaction-amount", "transaction-description", "transaction-date"]) {
     const field = dialog.locator(`#${id}`);
-    await expect(field).toHaveCSS("font-size", "16px");
+    const size = async () => parseFloat(await field.evaluate((element) => getComputedStyle(element).fontSize));
+    expect(await size()).toBeGreaterThanOrEqual(16);
     await field.focus();
-    await expect(field).toHaveCSS("font-size", "16px");
+    expect(await size()).toBeGreaterThanOrEqual(16);
   }
   await dialog.locator("#transaction-amount").fill("12.50");
   await dialog.locator("#transaction-description").fill("Pranzo");
@@ -60,3 +64,56 @@ test("transaction fields remain readable on mobile before and after focus", asyn
   const viewport = await page.locator('meta[name="viewport"]').getAttribute("content");
   expect(viewport).not.toMatch(/user-scalable\s*=\s*no|maximum-scale\s*=\s*1/);
 });
+
+test("adds, edits and deletes a transaction in demo mode", async ({ page, isMobile }) => {
+  await page.goto(".");
+  await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  await page.getByRole("button", { name: ADD_BUTTON }).first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#transaction-amount").fill("12,50");
+  await dialog.getByRole("radio", { name: /^(transportation|trasporti)$/i }).click();
+  await dialog.locator("#transaction-description").fill("Biglietto treno");
+  await dialog.getByRole("button", { name: /12,50|12\.50/ }).click();
+  await expect(dialog).toBeHidden();
+  const row = page.getByRole("button", { name: /Biglietto treno/ });
+  await expect(row).toBeVisible();
+  await expect(row).toContainText("12,50");
+
+  await row.click();
+  if (isMobile) {
+    await page.getByRole("dialog").getByRole("button", { name: /^(edit|modifica)$/i }).click();
+  }
+  const editor = isMobile ? page.getByRole("dialog") : page.getByRole("complementary", { name: /edit transaction|modifica movimento/i });
+  await editor.locator("input[inputmode=decimal]").fill("15");
+  await editor.getByRole("button", { name: /save changes|salva modifiche/i }).click();
+  await expect(page.getByRole("button", { name: /Biglietto treno/ })).toContainText("15,00");
+
+  await page.getByRole("button", { name: /Biglietto treno/ }).click();
+  if (isMobile) {
+    await page.getByRole("dialog").getByRole("button", { name: /^(delete|elimina)$/i }).click();
+  } else {
+    await page.getByRole("complementary").getByRole("button", { name: /^(delete|elimina)$/i }).click();
+  }
+  await page.getByRole("dialog").getByRole("button", { name: /elimina definitivamente|delete permanently/i }).click();
+  await expect(page.getByRole("button", { name: /Biglietto treno/ })).toHaveCount(0);
+});
+
+for (const colorScheme of ["light", "dark"]) {
+  test(`app pages have no serious accessibility violations (${colorScheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    await page.goto(".");
+    await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
+    await expect(page).toHaveURL(/\/transactions$/);
+    for (const path of ["dashboard", "transactions", "analytics"]) {
+      await page.evaluate((target) => {
+        window.history.pushState({}, "", `/soldi-sotto/${target}`);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }, path);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      const results = await new AxeBuilder({ page }).analyze();
+      const serious = results.violations.filter((violation) => ["critical", "serious"].includes(violation.impact));
+      expect(serious.map((violation) => `${path}: ${violation.id} ${violation.nodes.map((node) => node.target.join(" ")).join(", ")}`)).toEqual([]);
+    }
+  });
+}

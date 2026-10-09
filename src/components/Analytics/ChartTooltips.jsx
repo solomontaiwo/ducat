@@ -3,7 +3,7 @@ import formatCurrency from "../../utils/formatCurrency.jsx";
 
 const Panel = ({ colors, children }) => (
   <div
-    className="rounded-lg border px-3 py-2 text-sm shadow-lg"
+    className="rounded-xl border px-3 py-2 text-sm shadow-lg"
     style={{ background: colors.background, borderColor: colors.border, color: colors.text }}
   >
     {children}
@@ -36,7 +36,7 @@ export const SeriesTooltip = ({ active, payload, label, colors }) => {
     <Panel colors={colors}>
       <p className="font-semibold mb-1">{label}</p>
       {payload.map((entry, index) => (
-        <p key={index} style={{ color: entry.color }}>
+        <p key={index} className="flex items-center gap-2 tabular-nums"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: entry.color }} />
           {entry.name}: {formatCurrency(entry.value)}
         </p>
       ))}
@@ -44,24 +44,3 @@ export const SeriesTooltip = ({ active, payload, label, colors }) => {
   );
 };
 SeriesTooltip.propTypes = seriesPropTypes;
-
-export const PieTooltip = ({ active, payload, colors }) => {
-  if (!active || !payload?.length) return null;
-  const { name, value, payload: inner } = payload[0];
-  return (
-    <Panel colors={colors}>
-      <p className="font-semibold">{name}</p>
-      <p>{formatCurrency(value)}</p>
-      <p className="text-xs opacity-75">{inner.percentage.toFixed(1)}%</p>
-    </Panel>
-  );
-};
-PieTooltip.propTypes = {
-  active: PropTypes.bool,
-  colors: colorsShape.isRequired,
-  payload: PropTypes.arrayOf(PropTypes.shape({
-    name: PropTypes.string,
-    value: PropTypes.number,
-    payload: PropTypes.shape({ percentage: PropTypes.number.isRequired }),
-  })),
-};

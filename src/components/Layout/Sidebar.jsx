@@ -1,0 +1,124 @@
+import PropTypes from "prop-types";
+import { Link, useLocation, useNavigate } from "../../router/RouterProvider";
+import { useAuth } from "../../context/AuthProvider";
+import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
+import { FiBarChart2, FiHome, FiList, FiLogOut, FiPlus } from "react-icons/fi";
+import { useTranslation } from "react-i18next";
+import { Button } from "../ui/button";
+import { cn } from "../../lib/utils";
+
+const logo = `${import.meta.env.BASE_URL}icon-192.png`;
+
+/** Desktop navigation column. */
+const Sidebar = ({ onAdd, addDisabled = false }) => {
+  const { currentUser, logout, profileName } = useAuth();
+  const { isDemo, transactions, maxTransactions, clearTransactions, stopDemo } = useUnifiedTransactions();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const items = [
+    { label: t("navbar.dashboard"), path: "/dashboard", icon: FiHome },
+    { label: t("navbar.transactions"), path: "/transactions", icon: FiList },
+    { label: t("navbar.analytics"), path: "/analytics", icon: FiBarChart2 },
+  ];
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+  };
+
+  const handleExitDemo = async () => {
+    if (!window.confirm(t("navbar.demoExitConfirm"))) return;
+    await clearTransactions?.();
+    stopDemo?.();
+    navigate("/");
+  };
+
+  const displayName = profileName || currentUser?.email || "";
+  const demoCount = transactions.filter((item) => !item.isSample).length;
+
+  return (
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-[248px] flex-col gap-6 border-r border-border bg-card px-4 pb-5 pt-6">
+      <Link to="/" className="flex items-center gap-2.5 rounded-xl px-2 py-1">
+        <img src={logo} alt="" width="34" height="34" className="h-[34px] w-[34px] rounded-[11px]" />
+        <span className="font-display text-[19px] font-extrabold tracking-tight">Soldi Sotto</span>
+      </Link>
+
+      <Button onClick={onAdd} disabled={addDisabled} size="lg" className="w-full">
+        <FiPlus className="h-[18px] w-[18px]" strokeWidth={2.6} aria-hidden="true" />
+        {t("navbar.add")}
+      </Button>
+
+      <nav aria-label={t("navbar.mainNavigation")} className="flex flex-col gap-1">
+        {items.map((item) => {
+          const active = location.pathname === item.path;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold transition-colors",
+                active ? "bg-accent text-accent-foreground" : "text-foreground/80 hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="flex-1" />
+
+      {isDemo && !currentUser && (
+        <div className="space-y-3 rounded-2xl bg-muted p-4">
+          <p className="text-sm font-semibold">
+            {t("navbar.demoBadge", { count: demoCount, max: maxTransactions })}
+          </p>
+          <Button className="w-full" onClick={() => navigate("/register")}>{t("navbar.register")}</Button>
+          <Button variant="ghost" className="w-full" onClick={handleExitDemo}>{t("navbar.backToHome")}</Button>
+        </div>
+      )}
+
+      {currentUser && (
+        <div className="flex items-center gap-1">
+          <Link
+            to="/profile"
+            aria-current={location.pathname === "/profile" ? "page" : undefined}
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 transition-colors hover:bg-muted",
+              location.pathname === "/profile" && "bg-accent"
+            )}
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent font-display text-sm font-bold text-accent-foreground">
+              {(displayName || "?").charAt(0).toUpperCase()}
+            </span>
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-bold">{displayName}</span>
+              <span className="truncate text-xs font-medium text-muted-foreground">{t("navbar.profileAndSettings")}</span>
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            aria-label={t("navbar.logout")}
+            title={t("navbar.logout")}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <FiLogOut className="h-[18px] w-[18px]" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+    </aside>
+  );
+};
+
+Sidebar.propTypes = {
+  onAdd: PropTypes.func.isRequired,
+  addDisabled: PropTypes.bool,
+};
+
+export default Sidebar;

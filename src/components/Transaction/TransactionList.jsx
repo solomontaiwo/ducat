@@ -1,23 +1,28 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useMediaQuery } from "react-responsive";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import TransactionModal from "./TransactionModal.jsx";
+import TransactionForm from "./TransactionForm.jsx";
 import SwipeableTransactionCard from "./SwipeableTransactionCard.jsx";
 import TransactionActionsDialog from "./TransactionActionsDialog.jsx";
 import DeleteTransactionDialog from "./DeleteTransactionDialog.jsx";
 import { compareTransactions } from "../../utils/transactionOrder.js";
-import { formatGroupDate as formatGroupDateLabel, groupTransactionsByDate } from "../../utils/transactionGrouping.js";
-import { FiFilter, FiSearch } from "react-icons/fi";
+import { formatGroupDate as formatGroupDateLabel, groupNetAmount, groupTransactionsByDate } from "../../utils/transactionGrouping.js";
+import { FiChevronDown, FiCopy, FiSearch, FiTrash2, FiX } from "react-icons/fi";
 import { useCategories } from "../../utils/categories.jsx";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Select } from "../ui/select";
-import { Badge } from "../ui/badge";
-import { useDateRange } from "../../hooks/useDateRange.jsx";
+import MonthSwitcher from "../ui/MonthSwitcher.jsx";
+import { useMonthRange } from "../../hooks/useMonthRange.js";
 import { useTransactionFilter } from "../../hooks/useTransactionFilter.jsx";
+import { getPeriodRange } from "../../utils/statsUtils.jsx";
+import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
+import { cn } from "../../lib/utils";
+
+const TYPE_FILTERS = ["all", "expense", "income"];
 
 const TransactionList = () => {
   const { t, i18n } = useTranslation();
@@ -35,12 +40,13 @@ const TransactionList = () => {
   } = useUnifiedTransactions();
 
   const { expenseCategories, incomeCategories } = useCategories();
+  const isDesktop = useMediaQuery({ minWidth: 1024 });
 
   const [editTransaction, setEditTransaction] = useState(null);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [actionTransaction, setActionTransaction] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
-  
+
   const [allLoadedTransactions, setAllLoadedTransactions] = useState([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isLoadingInitial, setIsLoadingInitial] = useState(false);
@@ -53,8 +59,14 @@ const TransactionList = () => {
   const loadingMoreRef = useRef(false);
   const hasLoadedPageRef = useRef(false);
 
-  // Using custom hooks
-  const { period, setPeriod, startDate, endDate } = useDateRange("monthly");
+  const monthRange = useMonthRange();
+  const [allTime, setAllTime] = useState(false);
+  const { startDate, endDate } = useMemo(() => {
+    if (!allTime) return { startDate: monthRange.startDate, endDate: monthRange.endDate };
+    const range = getPeriodRange("all");
+    return { startDate: range.start, endDate: range.end };
+  }, [allTime, monthRange.startDate, monthRange.endDate]);
+
   const {
     filteredTransactions,
     searchTerm,
@@ -67,7 +79,7 @@ const TransactionList = () => {
     isDemo || (!hasLoadedPageRef.current && allLoadedTransactions.length === 0) ? transactions : allLoadedTransactions,
     { startDate, endDate }
   );
-  
+
   useEffect(() => {
     let cancelled = false;
     const fetchCount = async () => {
@@ -163,63 +175,59 @@ const TransactionList = () => {
           handleLoadMore();
         }
       },
-      { threshold: 0.1, rootMargin: '100px' }
+      { threshold: 0.1, rootMargin: "100px" }
     );
-    
     const currentRef = sentinelRef.current;
-    if (currentRef) {
-      observer.observe(currentRef);
-    }
-    
+    if (currentRef) observer.observe(currentRef);
     return () => {
       if (currentRef) observer.unobserve(currentRef);
     };
   }, [hasMore, isLoadingMore, isDemo, allLoadedTransactions.length, handleLoadMore]);
 
+  // Keep the side panel in sync with the list (edits, deletions, period changes).
+  useEffect(() => {
+    if (!selectedTransaction) return;
+    const fresh = allLoadedTransactions.find((item) => item.id === selectedTransaction.id);
+    if (!fresh) setSelectedTransaction(null);
+    else if (fresh !== selectedTransaction) setSelectedTransaction(fresh);
+  }, [allLoadedTransactions, selectedTransaction]);
 
   const loading = authLoading || (isLoadingInitial && allLoadedTransactions.length === 0 && transactions.length === 0);
-  const hasActiveFilters = selectedCategory !== "all" || selectedType !== "all";
-
-  const motivationalQuotes = useMemo(() => t("dashboard.motivationalQuotes", { returnObjects: true }), [t]);
-  const [quote, setQuote] = useState("");
-  useEffect(() => {
-    if (motivationalQuotes && motivationalQuotes.length > 0) {
-      setQuote(motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
-    }
-  }, [motivationalQuotes]);
 
   const formatGroupDate = (date) => formatGroupDateLabel(date, i18n.language, t);
 
-  const getCategoryLabel = (category) => {
-    const allCategories = [...expenseCategories, ...incomeCategories];
-    const categoryData = allCategories.find((c) => c.value === category);
+  const getCategoryLabel = useCallback((category) => {
+    const categoryData = [...expenseCategories, ...incomeCategories].find((c) => c.value === category);
     if (categoryData) return categoryData.label;
     return t(`categories.${category}`, { defaultValue: category });
-  };
+  }, [expenseCategories, incomeCategories, t]);
 
-  const handleDeleteClick = useCallback(async (transactionId) => {
+  const handleDeleteClick = useCallback((transactionId) => {
     setDeleteConfirm(transactionId);
   }, []);
 
-  const handleDuplicate = useCallback(async () => {
-    if (!actionTransaction) return;
-
-    const success = await addTransaction({
-      type: actionTransaction.type,
-      amount: actionTransaction.amount,
-      description: actionTransaction.description,
-      date: actionTransaction.date,
-      category: actionTransaction.category,
+  const duplicate = useCallback(async (transaction) => {
+    if (!transaction) return false;
+    return addTransaction({
+      type: transaction.type,
+      amount: transaction.amount,
+      description: transaction.description,
+      date: transaction.date,
+      category: transaction.category,
     });
-    if (success) setActionTransaction(null);
-  }, [actionTransaction, addTransaction]);
+  }, [addTransaction]);
+
+  const handleDuplicate = useCallback(async () => {
+    if (await duplicate(actionTransaction)) setActionTransaction(null);
+  }, [actionTransaction, duplicate]);
 
   const confirmDelete = useCallback(async () => {
     if (deleteConfirm) {
       const success = await deleteTransaction(deleteConfirm);
       if (success) {
         setDeleteConfirm(null);
-        setAllLoadedTransactions(prev => prev.filter(t => t.id !== deleteConfirm));
+        setAllLoadedTransactions((prev) => prev.filter((item) => item.id !== deleteConfirm));
+        setSelectedTransaction((current) => (current?.id === deleteConfirm ? null : current));
       }
     }
   }, [deleteConfirm, deleteTransaction]);
@@ -228,41 +236,48 @@ const TransactionList = () => {
     ? allLoadedTransactions.find((item) => item.id === deleteConfirm) || transactions.find((item) => item.id === deleteConfirm)
     : null;
 
-  const categories = [...new Set(allLoadedTransactions.length > 0 ? allLoadedTransactions.map(t => t.category) : transactions.map(t => t.category))];
+  const categories = useMemo(() => {
+    const source = allLoadedTransactions.length > 0 ? allLoadedTransactions : transactions;
+    return [...new Set(source.map((item) => item.category))].sort((first, second) =>
+      getCategoryLabel(first).localeCompare(getCategoryLabel(second)));
+  }, [allLoadedTransactions, transactions, getCategoryLabel]);
 
-  const periodOptions = [
-    { value: "daily", label: t("transactions.filters.today") },
-    { value: "weekly", label: t("transactions.filters.week") },
-    { value: "monthly", label: t("transactions.filters.month") },
-    { value: "annually", label: t("transactions.filters.year") },
-    { value: "all", label: t("transactions.filters.all") },
-  ];
+  const saveEdit = useCallback(async (target, payload) => {
+    const success = await updateTransaction(target.id, payload);
+    if (success) {
+      setAllLoadedTransactions((prev) => prev.map((item) => (item.id === target.id ? { ...item, ...payload } : item)));
+    }
+    return success;
+  }, [updateTransaction]);
 
   const handleModalSubmit = useCallback(async (payload) => {
-    if (editTransaction) {
-      const success = await updateTransaction(editTransaction.id, payload);
-      if (success) {
-        setAllLoadedTransactions((prev) =>
-          prev.map((t) => (t.id === editTransaction.id ? { ...t, ...payload } : t))
-        );
-      }
-      return success;
-    }
-
+    if (editTransaction) return saveEdit(editTransaction, payload);
     return addTransaction(payload);
-  }, [addTransaction, updateTransaction, editTransaction]);
+  }, [addTransaction, editTransaction, saveEdit]);
+
+  const handleSelect = useCallback((transaction) => {
+    if (isDesktop) setSelectedTransaction(transaction);
+    else setActionTransaction(transaction);
+  }, [isDesktop]);
+
+  const totals = useMemo(() => filteredTransactions.reduce(
+    (sum, item) => {
+      if (item.type === "income") sum.income += item.amount;
+      else sum.expense += item.amount;
+      return sum;
+    },
+    { income: 0, expense: 0 }
+  ), [filteredTransactions]);
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          <Skeleton height={120} borderRadius={16} />
-          <Skeleton height={120} borderRadius={16} />
-        </div>
-        {[...Array(4)].map((_, idx) => (
-          <div key={idx} className="space-y-3">
-            <Skeleton width={140} height={20} />
-            <Skeleton height={72} borderRadius={18} />
+      <div className="page-shell">
+        <Skeleton height={44} width={220} borderRadius={12} />
+        <Skeleton height={48} borderRadius={16} />
+        {[...Array(3)].map((_, idx) => (
+          <div key={idx} className="space-y-2">
+            <Skeleton width={140} height={16} />
+            <Skeleton height={140} borderRadius={18} />
           </div>
         ))}
       </div>
@@ -271,9 +286,9 @@ const TransactionList = () => {
 
   if (!currentUser && !isDemo) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <h2 className="text-2xl font-semibold">{t("transactions.accessRequired")}</h2>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="space-y-3 text-center">
+          <h2 className="text-2xl font-bold">{t("transactions.accessRequired")}</h2>
           <p className="text-muted-foreground">{t("transactions.loginRequired")}</p>
         </div>
       </div>
@@ -281,154 +296,191 @@ const TransactionList = () => {
   }
 
   const groupedTransactions = groupTransactionsByDate(filteredTransactions, formatGroupDate);
+  const hasFilters = searchTerm || selectedCategory !== "all" || selectedType !== "all";
+  const showPanel = isDesktop && selectedTransaction;
+  const demoCount = transactions.filter((item) => !item.isSample).length;
 
   return (
-    <div className="page-shell -mt-6 pt-0">
-      {loadError && (
-        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          <span>{loadError}</span>
-          <Button variant="outline" size="sm" onClick={() => setReloadKey((value) => value + 1)}>{t("common.retry")}</Button>
-        </div>
-      )}
-      <div className="sticky top-0 z-20 rounded-2xl border border-border bg-card/90 backdrop-blur-md p-3 md:p-4 shadow-md">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              💳 {t("transactions.title")}
-            </h1>
-            <div className="hidden text-primary text-sm italic md:block">{quote}</div>
-            {!isDemo && totalTransactionCount > 0 && (
-              <div className="text-xs text-muted-foreground">{allLoadedTransactions.length} / {totalTransactionCount}</div>
-            )}
+    <div className={cn("mx-auto flex w-full gap-6", showPanel ? "max-w-[1400px]" : "max-w-6xl")}>
+      <div className="min-w-0 flex-1 space-y-4">
+        {loadError && (
+          <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <span>{loadError}</span>
+            <Button variant="outline" size="sm" onClick={() => setReloadKey((value) => value + 1)}>{t("common.retry")}</Button>
           </div>
-        </div>
+        )}
 
-        <div className="mt-3 flex flex-col gap-2">
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="pl-10"
+        <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <h1 className="pl-1 text-[1.75rem] font-extrabold leading-tight md:pl-0 md:text-3xl">{t("transactions.title")}</h1>
+          <MonthSwitcher
+            size="sm"
+            month={monthRange.month}
+            onPrevious={monthRange.goToPrevious}
+            onNext={monthRange.goToNext}
+            canGoNext={!monthRange.isCurrentMonth}
+            disabled={allTime}
+            className="rounded-full border border-border bg-card px-0.5"
+          />
+        </header>
+
+        <div className="space-y-3">
+          <label className="relative block">
+            <span className="sr-only">{t("searchTransactions")}</span>
+            <FiSearch className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="search"
+              className="h-12 w-full rounded-2xl border border-input bg-card pl-11 pr-4 text-base outline-none transition placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
               placeholder={t("searchTransactions")}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(event) => setSearchTerm(event.target.value)}
               aria-describedby={searchTerm && hasMore ? "search-scope-help" : undefined}
             />
-            {searchTerm && hasMore && (
-              <p id="search-scope-help" className="mt-1 text-xs text-muted-foreground">
-                {t("transactions.searchScope", { count: allLoadedTransactions.length })}
-              </p>
-            )}
-          </div>
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-            <Select value={period} onChange={(e) => setPeriod(e.target.value)} className="min-w-0">
-              {periodOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-            <Button
-              variant={showFilters ? "default" : "outline"}
-              size="icon"
-              onClick={() => setShowFilters(!showFilters)}
-              className="relative shrink-0 sm:w-auto sm:px-3"
-              aria-label={showFilters ? t("transactions.filters.hide") : t("transactions.filters.show")}
-            >
-              <FiFilter />
-              <span className="hidden sm:inline">
-                {showFilters ? t("transactions.filters.hide") : t("transactions.filters.show")}
-              </span>
-              {hasActiveFilters && (
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary-foreground sm:right-2" aria-hidden="true" />
-              )}
-            </Button>
-          </div>
+          </label>
+          {searchTerm && hasMore && (
+            <p id="search-scope-help" className="px-1 text-xs text-muted-foreground">
+              {t("transactions.searchScope", { count: allLoadedTransactions.length })}
+            </p>
+          )}
 
-          {isDemo && (
-            <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary flex items-center gap-2">
-              <Badge variant="secondary">{transactions.filter(t => !t.isSample).length}/{maxTransactions}</Badge>
-              <span>{t("transactions.demoMode")}</span>
+          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 scrollbar-none md:mx-0 md:flex-wrap md:px-0" data-swipe-ignore="true">
+            {TYPE_FILTERS.map((type) => (
+              <button
+                key={type}
+                type="button"
+                className="chip"
+                aria-pressed={selectedType === type}
+                onClick={() => setSelectedType(type)}
+              >
+                {t(`transactions.filters.type.${type}`)}
+              </button>
+            ))}
+            <label className="relative shrink-0">
+              <span className="sr-only">{t("transactions.filters.category")}</span>
+              <select
+                value={selectedCategory}
+                onChange={(event) => setSelectedCategory(event.target.value)}
+                data-active={selectedCategory !== "all"}
+                className="chip appearance-none pr-9 text-sm"
+              >
+                <option value="all">{t("transactions.filters.allCategories")}</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>{getCategoryLabel(category)}</option>
+                ))}
+              </select>
+              <FiChevronDown className={cn("pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2", selectedCategory !== "all" ? "text-background" : "text-muted-foreground")} aria-hidden="true" />
+            </label>
+            <button type="button" className="chip" aria-pressed={allTime} onClick={() => setAllTime((value) => !value)}>
+              {t("transactions.filters.allTime")}
+            </button>
+          </div>
+        </div>
+
+        <div className="surface grid grid-cols-3 divide-x divide-border py-3 text-center">
+          <div className="px-2">
+            <p className="text-xs font-semibold text-muted-foreground">{t("transactions.summary.label")}</p>
+            <p className="amount text-base sm:text-lg">{filteredTransactions.length}</p>
+          </div>
+          <div className="px-2">
+            <p className="text-xs font-semibold text-muted-foreground">{t("dashboard.income")}</p>
+            <p className="amount truncate text-base text-income sm:text-lg">{formatSignedAmount(totals.income, "income")}</p>
+          </div>
+          <div className="px-2">
+            <p className="text-xs font-semibold text-muted-foreground">{t("dashboard.expenses")}</p>
+            <p className="amount truncate text-base sm:text-lg">{formatSignedAmount(totals.expense, "expense")}</p>
+          </div>
+        </div>
+        {(isDemo || (totalTransactionCount > 0 && allLoadedTransactions.length < totalTransactionCount)) && (
+          <p className="px-1 text-xs font-medium text-muted-foreground">
+            {isDemo
+              ? t("navbar.demoBadge", { count: demoCount, max: maxTransactions })
+              : t("transactions.loadedOfTotal")}
+            {!isDemo && <span className="ml-1 tabular-nums">{allLoadedTransactions.length} / {totalTransactionCount}</span>}
+          </p>
+        )}
+
+        <div className="space-y-5 pb-6">
+          {groupedTransactions.length > 0 ? (
+            groupedTransactions.map((group) => {
+              const net = groupNetAmount(group.transactions);
+              return (
+                <section key={group.date.toISOString()} aria-label={group.displayDate} className="space-y-2">
+                  <div className="flex items-baseline justify-between px-1 text-[13px] font-bold text-muted-foreground">
+                    <h2 className="font-sans text-[13px] font-bold uppercase tracking-wide">{group.displayDate}</h2>
+                    <span className={cn("tabular-nums", net > 0 && "text-income")}>{formatSignedAmount(net, net >= 0 ? "income" : "expense")}</span>
+                  </div>
+                  <div className="surface divide-y divide-border overflow-hidden px-2">
+                    {group.transactions.map((transaction) => (
+                      <SwipeableTransactionCard
+                        key={transaction.id}
+                        transaction={transaction}
+                        meta={getCategoryLabel(transaction.category)}
+                        onSelect={handleSelect}
+                        onDelete={handleDeleteClick}
+                        selected={showPanel && selectedTransaction.id === transaction.id}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })
+          ) : (
+            <div className="surface px-6 py-12 text-center">
+              <h2 className="text-lg font-bold">{t("transactions.empty.title")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {hasFilters ? t("transactions.empty.tryFilters") : t("transactions.empty.addFirst")}
+              </p>
             </div>
           )}
 
-          {showFilters && (
-              <div className="grid gap-3 md:grid-cols-2">
-                <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
-                  <option value="all">{t("transactions.filters.allTypes")}</option>
-                  <option value="income">{t("income")}</option>
-                  <option value="expense">{t("expense")}</option>
-                </Select>
-                <Select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-                  <option value="all">{t("transactions.filters.allCategories")}</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category.charAt(0).toUpperCase() + category.slice(1)}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            )}
+          {hasMore && !isDemo && allLoadedTransactions.length > 0 && (
+            <div ref={sentinelRef} className="flex justify-center py-6">
+              {isLoadingMore && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  {t("loading")}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="space-y-4 pb-6 pt-3">
-        {groupedTransactions.length > 0 ? (
-          groupedTransactions.map((group) => (
-            <div
-              key={group.date.toISOString()}
-              className="space-y-2"
+      {showPanel && (
+        <aside
+          aria-label={t("transactionModal.editTitle")}
+          className="surface sticky top-8 flex max-h-[calc(100vh-4rem)] w-[380px] shrink-0 flex-col self-start overflow-hidden"
+        >
+          <div className="flex items-center justify-between gap-2 px-5 pb-2 pt-5">
+            <h2 className="text-lg font-bold">{t("transactionModal.editTitle")}</h2>
+            <button
+              type="button"
+              onClick={() => setSelectedTransaction(null)}
+              aria-label={t("common.close")}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
-                  {group.displayDate}
-                </span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              <div className="space-y-2">
-                {group.transactions.map((transaction) => (
-                  <div key={transaction.id}>
-                    <SwipeableTransactionCard
-                      transaction={transaction}
-                      onActions={setActionTransaction}
-                      onDelete={handleDeleteClick}
-                      language={i18n.language}
-                      getCategoryLabel={getCategoryLabel}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-10">
-            <h3 className="text-xl font-semibold text-foreground">{t("transactions.empty.title")}</h3>
-            <p className="text-muted-foreground">
-              {searchTerm || selectedCategory !== "all" || selectedType !== "all"
-                ? t("transactions.empty.tryFilters")
-                : t("transactions.empty.addFirst")}
-            </p>
+              <FiX className="h-5 w-5" aria-hidden="true" />
+            </button>
           </div>
-        )}
-        
-        {/* Infinite Scroll Sentinel */}
-        {hasMore && !isDemo && allLoadedTransactions.length > 0 && (
-          <div ref={sentinelRef} className="flex justify-center py-6">
-            {isLoadingMore && (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                {t("loading")}
-              </div>
-            )}
+          <div className="flex gap-2 px-5 pb-3">
+            <Button variant="outline" size="sm" onClick={() => duplicate(selectedTransaction)}>
+              <FiCopy aria-hidden="true" /> {t("transactions.actions.duplicate")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setDeleteConfirm(selectedTransaction.id)}>
+              <FiTrash2 aria-hidden="true" /> {t("transactions.actions.delete")}
+            </Button>
           </div>
-        )}
-      </div>
+          <TransactionForm
+            key={selectedTransaction.id}
+            transaction={selectedTransaction}
+            idPrefix="panel-transaction"
+            onSubmit={(payload) => saveEdit(selectedTransaction, payload)}
+          />
+        </aside>
+      )}
 
       <TransactionModal
         show={!!editTransaction}
-        onClose={() => {
-          setEditTransaction(null);
-        }}
+        onClose={() => setEditTransaction(null)}
         onSubmit={handleModalSubmit}
         transaction={editTransaction}
       />

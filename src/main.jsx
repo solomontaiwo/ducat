@@ -1,4 +1,6 @@
 import ReactDOM from "react-dom/client";
+import "@fontsource-variable/figtree";
+import "@fontsource-variable/bricolage-grotesque";
 import "./main.css";
 import App from "./App";
 import { RouterProvider } from './router/RouterProvider';
@@ -16,13 +18,15 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <ErrorBoundary>
     <ThemeProvider>
       <NotificationProvider>
-        <AuthProvider>
-          <UnifiedTransactionProvider>
-            <RouterProvider basename="/soldi-sotto">
+        {/* The router sits above the data providers: switching between demo and
+            Firestore mode remounts them, and must not reset the current route. */}
+        <RouterProvider basename="/soldi-sotto">
+          <AuthProvider>
+            <UnifiedTransactionProvider>
               <App />
-            </RouterProvider>
-          </UnifiedTransactionProvider>
-        </AuthProvider>
+            </UnifiedTransactionProvider>
+          </AuthProvider>
+        </RouterProvider>
       </NotificationProvider>
     </ThemeProvider>
   </ErrorBoundary>

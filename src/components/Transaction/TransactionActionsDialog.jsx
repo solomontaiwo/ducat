@@ -9,21 +9,21 @@ const TransactionActionsDialog = ({ transaction, onClose, onEdit, onDuplicate, o
   const { t } = useTranslation();
   return (
     <Dialog open={!!transaction} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm p-5">
+      <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{transaction?.description}</DialogTitle>
+          <DialogTitle className="pr-10">{transaction?.description}</DialogTitle>
           <DialogDescription>{t("transactions.actions.description")}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-2 pt-2">
-          <Button variant="outline" className="justify-start" onClick={() => onEdit(transaction)}>
+          <Button variant="outline" className="h-12 justify-start" onClick={() => onEdit(transaction)}>
             <FiEdit2 />
             {t("transactions.actions.edit")}
           </Button>
-          <Button variant="outline" className="justify-start" onClick={onDuplicate}>
+          <Button variant="outline" className="h-12 justify-start" onClick={onDuplicate}>
             <FiCopy />
             {t("transactions.actions.duplicate")}
           </Button>
-          <Button variant="destructive" className="justify-start" onClick={() => onDelete(transaction.id)}>
+          <Button variant="outline" className="h-12 justify-start text-destructive hover:text-destructive" onClick={() => onDelete(transaction.id)}>
             <FiTrash2 />
             {t("transactions.actions.delete")}
           </Button>

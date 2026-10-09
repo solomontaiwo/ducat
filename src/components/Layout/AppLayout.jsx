@@ -1,12 +1,12 @@
-import { lazy, Suspense, useState, useRef, useCallback } from "react";
+import { lazy, Suspense, useState, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
-import Navbar from "../Navbar/Navbar";
+import { AddTransactionContext } from "../../context/AddTransactionContext.jsx";
+import Sidebar from "./Sidebar";
 import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
 import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
-import { FiPlus } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 
 const TransactionModal = lazy(() => import("../Transaction/TransactionModal"));
@@ -15,6 +15,7 @@ const TransactionModal = lazy(() => import("../Transaction/TransactionModal"));
 const BASE_SWIPE_ROUTES = ["/dashboard", "/transactions", "/analytics", "/profile"];
 const SWIPE_THRESHOLD = 60; // px minimum horizontal swipe distance
 const SWIPE_MAX_VERTICAL = 80; // px maximum vertical movement to count as horizontal swipe
+const PUBLIC_ROUTES = ["/", "/landing", "/login", "/register", "/forgot-password", "/verify-email", "/privacy", "/terms"];
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
@@ -22,29 +23,20 @@ const AppLayout = ({ children }) => {
   const { currentUser } = useAuth();
   const { isDemo, canAddMoreTransactions } = useUnifiedTransactions();
   const { t } = useTranslation();
-  const isMobile = useMediaQuery({ maxWidth: 768 });
-  const [showFabModal, setShowFabModal] = useState(false);
+  const isMobile = useMediaQuery({ maxWidth: 767 });
+  const [showAddModal, setShowAddModal] = useState(false);
   const [isSendingVerification, setIsSendingVerification] = useState(false);
 
-  // Only include /profile in swipe routes when authenticated
   const swipeRoutes = currentUser
     ? BASE_SWIPE_ROUTES
     : BASE_SWIPE_ROUTES.filter((r) => r !== "/profile");
 
-  // Keep the mobile navigation mounted and visible so scrolling cannot move it
-  // away while a user is trying to tap a destination.
-  const navVisible = true;
-
-  // Swipe gesture navigation (mobile only)
   const touchStartRef = useRef(null);
   const handleTouchStart = useCallback((e) => {
-    // Ignore multi-touch gestures
     if (!e.touches || e.touches.length !== 1) {
       touchStartRef.current = null;
       return;
     }
-
-    // Ignore touches that start on interactive elements or elements opting out
     const target = e.target;
     if (target instanceof HTMLElement) {
       const interactiveSelector =
@@ -54,15 +46,12 @@ const AppLayout = ({ children }) => {
         return;
       }
     }
-
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
   }, []);
 
   const handleTouchEnd = useCallback((e) => {
     if (!touchStartRef.current) return;
-
-    // Only handle single-touch end events
     if (!e.changedTouches || e.changedTouches.length !== 1) {
       touchStartRef.current = null;
       return;
@@ -71,38 +60,25 @@ const AppLayout = ({ children }) => {
     const dx = touch.clientX - touchStartRef.current.x;
     const dy = touch.clientY - touchStartRef.current.y;
     touchStartRef.current = null;
-
-    // Only treat as a horizontal swipe if vertical movement is small
     if (Math.abs(dy) > SWIPE_MAX_VERTICAL) return;
     if (Math.abs(dx) < SWIPE_THRESHOLD) return;
-
     const currentIndex = swipeRoutes.indexOf(location.pathname);
     if (currentIndex === -1) return;
-
     if (dx < 0 && currentIndex < swipeRoutes.length - 1) {
-      // Swipe left → next page
       navigate(swipeRoutes[currentIndex + 1]);
     } else if (dx > 0 && currentIndex > 0) {
-      // Swipe right → previous page
       navigate(swipeRoutes[currentIndex - 1]);
     }
   }, [swipeRoutes, location.pathname, navigate]);
 
-  // Define public routes where navigation is not shown
-  const publicRoutes = ["/", "/landing", "/login", "/register", "/forgot-password", "/verify-email", "/privacy", "/terms"];
-  const isPublicRoute = publicRoutes.includes(location.pathname);
-
-  // Show navigation if:
-  // 1. It is not a public route AND
-  // 2. (User is authenticated OR is in demo mode)
+  const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
   const showNavigation = !isPublicRoute && (currentUser || isDemo);
+  const addDisabled = isDemo && !canAddMoreTransactions;
 
-  // FAB sits above the nav bar when it's visible; drops to the viewport edge when nav is hidden
-  const fabBottom = isMobile
-    ? navVisible
-      ? `calc(${BOTTOM_NAV_HEIGHT_PX}px + env(safe-area-inset-bottom) + 1rem)`
-      : `calc(env(safe-area-inset-bottom) + 1rem)`
-    : "1.5rem";
+  const openAddTransaction = useCallback(() => {
+    if (!addDisabled) setShowAddModal(true);
+  }, [addDisabled]);
+  const addContext = useMemo(() => ({ openAddTransaction, canAdd: !addDisabled }), [openAddTransaction, addDisabled]);
 
   const sendVerificationEmail = async () => {
     if (!currentUser) return;
@@ -118,63 +94,49 @@ const AppLayout = ({ children }) => {
   };
 
   return (
-    <div
-      className="min-h-screen bg-background text-foreground flex flex-col"
-      style={{ "--mobile-nav-height": `${BOTTOM_NAV_HEIGHT_PX}px` }}
-      onTouchStart={isMobile && showNavigation ? handleTouchStart : undefined}
-      onTouchEnd={isMobile && showNavigation ? handleTouchEnd : undefined}
-    >
-      {showNavigation && !isMobile && <Navbar />}
+    <AddTransactionContext.Provider value={addContext}>
+      <div
+        className="flex min-h-screen flex-col bg-background text-foreground"
+        style={{ "--mobile-nav-height": `${BOTTOM_NAV_HEIGHT_PX}px` }}
+        onTouchStart={isMobile && showNavigation ? handleTouchStart : undefined}
+        onTouchEnd={isMobile && showNavigation ? handleTouchEnd : undefined}
+      >
+        {showNavigation && !isMobile && <Sidebar onAdd={openAddTransaction} addDisabled={addDisabled} />}
 
         <main
-          className={`flex-1 relative overflow-x-hidden transition-all ${
+          className={
             showNavigation
-              ? `pt-[calc(env(safe-area-inset-top)+1.5rem)] ${isMobile ? "app-content-safe-mobile" : ""} md:pt-20 md:pb-6 px-4 md:px-8`
-              : "p-0"
-          }`}
+              ? `relative flex-1 overflow-x-hidden px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pl-[calc(248px+2.5rem)] md:pr-10 md:pt-8 md:pb-12 ${isMobile ? "app-content-safe-mobile" : ""}`
+              : "relative flex-1 overflow-x-hidden p-0"
+          }
         >
-        <div className="w-full space-y-6">
-          {showNavigation && currentUser && !currentUser.emailVerified && (
-            <div className="flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <p>{t("security.emailVerificationRequired")}</p>
-              <button
-                type="button"
-                onClick={sendVerificationEmail}
-                disabled={isSendingVerification}
-                className="shrink-0 rounded-lg border border-amber-500/40 px-3 py-2 font-semibold disabled:opacity-60"
-              >
-                {isSendingVerification ? t("security.sendingVerification") : t("security.resendVerification")}
-              </button>
-            </div>
-          )}
-          {children}
-        </div>
-      </main>
+          <div className="w-full space-y-5">
+            {showNavigation && currentUser && !currentUser.emailVerified && (
+              <div className="mx-auto flex max-w-6xl flex-col gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <p>{t("security.emailVerificationRequired")}</p>
+                <button
+                  type="button"
+                  onClick={sendVerificationEmail}
+                  disabled={isSendingVerification}
+                  className="shrink-0 rounded-xl border border-warning/50 px-3 py-2 font-semibold disabled:opacity-60"
+                >
+                  {isSendingVerification ? t("security.sendingVerification") : t("security.resendVerification")}
+                </button>
+              </div>
+            )}
+            {children}
+          </div>
+        </main>
 
-      {showNavigation && isMobile && <BottomNavigation navVisible={navVisible} />}
+        {showNavigation && isMobile && <BottomNavigation onAdd={openAddTransaction} addDisabled={addDisabled} />}
 
-      {showNavigation && (
-        <>
-          <button
-            onClick={() => setShowFabModal(true)}
-            disabled={isDemo && !canAddMoreTransactions}
-            aria-label="Add transaction"
-            style={{ bottom: fabBottom, right: "1rem", transition: "bottom 0.3s ease", touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="fixed z-50 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl h-14 w-14 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FiPlus className="h-6 w-6" />
-          </button>
-          {showFabModal && (
-            <Suspense fallback={null}>
-              <TransactionModal
-                show
-                onClose={() => setShowFabModal(false)}
-              />
-            </Suspense>
-          )}
-        </>
-      )}
-    </div>
+        {showNavigation && showAddModal && (
+          <Suspense fallback={null}>
+            <TransactionModal show onClose={() => setShowAddModal(false)} />
+          </Suspense>
+        )}
+      </div>
+    </AddTransactionContext.Provider>
   );
 };
 

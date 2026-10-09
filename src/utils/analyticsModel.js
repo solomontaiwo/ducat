@@ -2,8 +2,8 @@ import { endOfMonth, format, isWithinInterval, startOfMonth, subMonths } from "d
 import { getTransactionAmountMinor, minorToMajor } from "./money";
 import { readLocalValue, removeLocalValue } from "./storage.js";
 
-export const EXPENSE_CHART_COLORS = ["#f43f5e", "#fb923c", "#facc15", "#f97316", "#fb7185", "#ef4444"];
-export const INCOME_CHART_COLORS = ["#059669", "#0d9488", "#0284c7", "#2563eb", "#7c3aed", "#c026d3"];
+/** Category palette: theme-aware CSS variables, adjacent entries differ in lightness. */
+export const CATEGORY_CHART_COLORS = [1, 2, 3, 4, 5].map((index) => `hsl(var(--cat-${index}))`);
 
 export const PERIOD_PREFERENCE_KEY = "analytics-period";
 const ALLOWED_PERIODS = ["month", "lastMonth", "last3Months", "year", "custom"];
@@ -71,7 +71,7 @@ export const buildMonthlyTrend = (transactions, now = new Date()) => {
     const inMonth = transactions.filter((item) => item.date && isWithinInterval(item.date, { start: monthStart, end: monthEnd }));
     const income = minorToMajor(sumMinor(inMonth.filter((item) => item.type === "income")));
     const expense = minorToMajor(sumMinor(inMonth.filter((item) => item.type === "expense")));
-    trend.push({ month: format(monthStart, "MMM yyyy"), income, expense, balance: income - expense });
+    trend.push({ month: format(monthStart, "MMM yyyy"), monthStart, income, expense, balance: income - expense });
   }
   return trend;
 };

@@ -61,11 +61,10 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-background">
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 via-emerald-500/5 to-transparent" />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md rounded-2xl border border-border bg-card/80 p-6 shadow-2xl backdrop-blur-xl"
+        className="surface w-full max-w-md rounded-3xl p-6 sm:p-8"
       >
         <Button
           variant="ghost"
@@ -78,11 +77,9 @@ const Login = () => {
         </Button>
 
         <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary text-2xl">
-            💰
-          </div>
+          <img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="" width="44" height="44" className="h-11 w-11 rounded-xl" />
           <div>
-            <h2 className="text-2xl font-semibold">{t("login.title")}</h2>
+            <h1 className="text-2xl font-extrabold">{t("login.title")}</h1>
             <p className="text-muted-foreground text-sm">{t("login.subtitle")}</p>
           </div>
         </div>
@@ -96,7 +93,7 @@ const Login = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">{t("login.usernameOrEmail")}</Label>
-            <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring">
+            <div className="flex items-center gap-2 rounded-xl border border-input bg-card px-3.5 focus-within:ring-2 focus-within:ring-ring">
               <FiUser className="text-muted-foreground" />
               <Input
                 id="email"
@@ -119,7 +116,7 @@ const Login = () => {
 
           <div className="space-y-2">
             <Label htmlFor="password">{t("login.password")}</Label>
-            <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring">
+            <div className="flex items-center gap-2 rounded-xl border border-input bg-card px-3.5 focus-within:ring-2 focus-within:ring-ring">
               <FiLock className="text-muted-foreground" />
               <Input
                 id="password"

@@ -8,8 +8,8 @@ export function Badge({ className, children, variant = "secondary", ...props }) 
     default: "bg-primary text-primary-foreground",
     secondary: "bg-secondary text-secondary-foreground",
     outline: "border border-border text-foreground",
-    success: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
-    danger: "bg-rose-500/15 text-rose-800 dark:text-rose-300",
+    success: "bg-income/15 text-income",
+    danger: "bg-destructive/15 text-destructive",
   };
 
   return (

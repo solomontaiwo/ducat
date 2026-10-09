@@ -1,15 +1,15 @@
 {
   "appName": "SoldiSotto",
   "welcome": "Ciao!",
-  "addTransaction": "Aggiungi Transazione",
+  "addTransaction": "Aggiungi movimento",
   "quickActions": "Azioni Rapide",
   "recentTransactions": {
-    "title": "Transazioni Recenti",
-    "viewAll": "Vedi tutte",
-    "manageAll": "Gestisci tutte le transazioni",
-    "emptyTitle": "Nessuna transazione ancora",
-    "emptyDescription": "Inizia aggiungendo la tua prima transazione per vedere il riepilogo qui.",
-    "addFirst": "Aggiungi la prima transazione"
+    "title": "Ultimi movimenti",
+    "viewAll": "Vedi tutti",
+    "manageAll": "Gestisci tutti i movimenti",
+    "emptyTitle": "Ancora nessun movimento",
+    "emptyDescription": "Ancora nessun movimento. Aggiungine uno per vedere il riepilogo qui.",
+    "addFirst": "Aggiungi il primo movimento"
   },
   "income": "Entrata",
   "expense": "Spesa",
@@ -27,7 +27,7 @@
     "username": "Nome Utente",
     "edit": "Modifica",
     "currentUsername": "Username attuale",
-    "totalTransactions": "Transazioni Totali",
+    "totalTransactions": "Movimenti totali",
     "currentBalance": "Saldo Attuale",
     "daysActive": "Giorni Attivi",
     "days": "giorni",
@@ -63,7 +63,7 @@
     "sendingVerification": "Invio verifica…",
     "changeEmail": "Cambia email",
     "deleteAccountTitle": "Elimina account",
-    "deleteAccountDescription": "Cancella in modo definitivo credenziale, profilo e tutte le transazioni. Prima puoi scaricare l’export JSON.",
+    "deleteAccountDescription": "Cancella in modo definitivo credenziale, profilo e tutti i movimenti. Prima puoi scaricare l’export JSON.",
     "deleteAccountHelp": "Per confermare usa la password attuale inserita nella sezione “Dati e sicurezza”.",
     "deleting": "Eliminazione…",
     "deleteAccountButton": "Elimina definitivamente l’account",
@@ -76,7 +76,7 @@
     "invalidPassword": "Password attuale non corretta.",
     "emailChangeError": "Cambio email non riuscito. Verifica i dati e riprova.",
     "deletePasswordRequired": "Inserisci la password attuale prima di eliminare l'account.",
-    "deleteConfirm": "Eliminare definitivamente account e transazioni? Esporta prima i dati: l'operazione non è annullabile.",
+    "deleteConfirm": "Eliminare definitivamente account e movimenti? Esporta prima i dati: l'operazione non è annullabile.",
     "sessionExpired": "La sessione non è abbastanza recente. Accedi di nuovo e riprova.",
     "deleteError": "Eliminazione non riuscita. Nessun dato locale è stato cancellato."
   },
@@ -85,9 +85,9 @@
   "navRegister": "Registrati",
   "whatToRegister": "Cosa vuoi registrare oggi?",
   "motivationalQuote": "Gestire le tue finanze è il primo passo verso la libertà.",
-  "noTransactions": "Nessuna transazione ancora. Aggiungi la prima!",
-  "yourTransactions": "Le tue transazioni",
-  "searchTransactions": "Cerca transazioni...",
+  "noTransactions": "Ancora nessun movimento. Aggiungi il primo!",
+  "yourTransactions": "I tuoi movimenti",
+  "searchTransactions": "Cerca movimenti...",
   "type": "Tipo",
   "amount": "Importo (€)",
   "date": "Data",
@@ -96,7 +96,7 @@
   "cancel": "Annulla",
   "add": "Aggiungi",
   "delete": "Elimina",
-  "confirmDelete": "Sei sicuro di voler eliminare questa transazione? Questa azione non può essere annullata.",
+  "confirmDelete": "Sei sicuro di voler eliminare questo movimento? Questa azione non può essere annullata.",
   "edit": "Modifica",
   "save": "Salva",
   "actions": "Azioni",
@@ -110,8 +110,8 @@
     "sendingVerification": "Invio..."
   },
   "dashboard": {
-    "title": "Dashboard",
-    "addTransaction": "Aggiungi Transazione",
+    "title": "Panoramica",
+    "addTransaction": "Aggiungi movimento",
     "greetingMorning": "Buongiorno, {{name}}",
     "greetingAfternoon": "Buon pomeriggio, {{name}}",
     "greetingEvening": "Buonasera, {{name}}",
@@ -124,8 +124,8 @@
     "largestExpense": "Uscita più alta",
     "topExpenseCategory": "Categoria di spesa principale",
     "other": "Altro",
-    "remainingCategories": "Categorie rimanenti",
-    "noExpenses": "Nessuna uscita nel periodo selezionato",
+    "remainingCategories": "Altre categorie",
+    "noExpenses": "Nessuna uscita in questo mese",
     "motivationalQuotes": [
       "Ogni euro risparmiato è un euro guadagnato.",
       "Il miglior investimento sei tu.",
@@ -137,19 +137,31 @@
       "Risparmiare oggi per vivere meglio domani.",
       "Non è quanto guadagni, ma quanto risparmi che conta.",
       "La disciplina finanziaria è la chiave del successo."
-    ]
+    ],
+    "summary": "Riepilogo del mese",
+    "leftThisMonth": "Ti restano questo mese",
+    "monthBalance": "Saldo di {{month}}",
+    "overspent": "Hai speso più di quanto è entrato",
+    "expenseShare": "Le uscite sono il {{percent}}% delle entrate",
+    "income": "Entrate",
+    "expenses": "Uscite",
+    "expensesWithShare": "Uscite · {{percent}}% delle entrate",
+    "whereMoneyGoes": "Dove vanno i soldi",
+    "noTransactionsInMonth": "Nessun movimento a {{month}}.",
+    "quickAdd": "Aggiunta rapida",
+    "quickAddSubmit": "Aggiungi"
   },
   "transaction": {
-    "add": "Aggiungi Transazione",
-    "edit": "Modifica Transazione",
-    "delete": "Elimina Transazione",
-    "confirmDelete": "Sei sicuro di voler eliminare questa transazione? Questa azione non può essere annullata.",
-    "empty": "Nessuna transazione ancora. Aggiungi la prima!",
+    "add": "Aggiungi movimento",
+    "edit": "Modifica movimento",
+    "delete": "Elimina movimento",
+    "confirmDelete": "Sei sicuro di voler eliminare questo movimento? Questa azione non può essere annullata.",
+    "empty": "Ancora nessun movimento. Aggiungi il primo!",
     "amount": "Importo (€)",
     "date": "Data",
     "description": "Descrizione",
     "category": "Categoria",
-    "type": "Tipo di Transazione",
+    "type": "Tipo di movimento",
     "income": "Entrata",
     "expense": "Spesa",
     "addIncome": "Aggiungi Entrata",
@@ -159,20 +171,24 @@
     "invalidAmount": "Inserisci un importo valido"
   },
   "navbar": {
-    "dashboard": "Dashboard",
-    "transactions": "Transazioni",
-    "analytics": "Analytics",
+    "dashboard": "Panoramica",
+    "transactions": "Movimenti",
+    "analytics": "Analisi",
     "profile": "Profilo",
     "logout": "Logout",
     "register": "Registrati",
     "backToHome": "Torna alla Home",
-    "demoExitConfirm": "Uscirai dalla modalità demo e tornerai alla pagina iniziale. Continuare?"
+    "demoExitConfirm": "Uscirai dalla modalità demo e tornerai alla pagina iniziale. Continuare?",
+    "add": "Nuovo movimento",
+    "mainNavigation": "Navigazione principale",
+    "demoBadge": "Demo: {{count}} di {{max}} movimenti",
+    "profileAndSettings": "Profilo e impostazioni"
   },
   "landing": {
     "heroTitle": "Soldi Sotto",
     "heroSubtitle": "La tua finanza personale sotto controllo. Gestisci entrate e uscite, visualizza statistiche dettagliate e prendi decisioni informate per il tuo futuro finanziario.",
-    "tryDemo": "Prova Demo Gratuita",
-    "register": "Registrati Gratis",
+    "tryDemo": "Prova demo gratuita",
+    "register": "Registrati gratis",
     "login": "Accedi",
     "mainFeatures": "Funzionalità Principali",
     "mainFeaturesDescription": "Tutto quello che ti serve per gestire le tue finanze in modo professionale",
@@ -182,13 +198,13 @@
     "premium": "Account Completo",
     "free": "Gratis",
     "demoFeatures": [
-      "✓ Fino a 10 transazioni demo",
+      "✓ Fino a 10 movimenti demo",
       "✓ Tutte le funzionalità base",
       "✓ Visualizzazione statistiche",
       "✓ Nessuna registrazione richiesta"
     ],
     "premiumFeatures": [
-      "✓ Transazioni illimitate",
+      "✓ Movimenti illimitati",
       "✓ Export PDF avanzato",
       "✓ Statistiche dettagliate",
       "✓ Backup cloud sicuro",
@@ -200,27 +216,32 @@
       "security": "Auth + cloud ready"
     },
     "features": {
-      "analyticsDesc": "Analisi chiare e confronti per periodo.",
-      "pdfDesc": "Report PDF pronti all'uso.",
-      "securityTitle": "Cloud + sicurezza",
-      "securityDesc": "Dati protetti con backup e auth Firebase."
+      "analyticsDesc": "Entrate, uscite e categorie a colpo d'occhio, mese per mese.",
+      "pdfDesc": "Esporta il periodo che ti serve in PDF o CSV.",
+      "securityTitle": "Dati al sicuro",
+      "securityDesc": "Accesso protetto e dati salvati nel cloud.",
+      "analyticsTitle": "Analisi chiare",
+      "pdfTitle": "Report PDF"
     },
     "ctaTitle": "Pronto a Prendere il Controllo delle Tue Finanze?",
     "ctaSubtitle": "Unisciti a migliaia di utenti che hanno già trasformato la loro gestione finanziaria",
     "footer": {
       "privacy": "Privacy",
       "terms": "Termini d’uso"
-    }
+    },
+    "headline": "I tuoi soldi, sotto controllo.",
+    "lead": "Registra entrate e uscite in pochi secondi, scopri dove vanno i soldi e scarica report PDF. Sul telefono e sul computer.",
+    "previewLabel": "Anteprima della panoramica di Soldi Sotto"
   },
   "financialOverview": {
     "title": "Panoramica Finanziaria",
     "totalIncome": "Entrate Totali",
     "totalExpense": "Uscite Totali",
     "balance": "Bilancio",
-    "totalTransactions": "Transazioni totali"
+    "totalTransactions": "Movimenti totali"
   },
   "analytics": {
-    "title": "Analytics",
+    "title": "Analisi",
     "subtitle": "Analizza le tue abitudini finanziarie e scopri pattern nascosti",
     "thisMonth": "Questo mese",
     "lastMonth": "Mese scorso",
@@ -230,7 +251,7 @@
     "from": "Dal",
     "to": "al",
     "demoMode": "Modalità Demo Attiva",
-    "demoDescription": "Visualizzi statistiche demo con {{current}}/{{max}} transazioni. Registrati per statistiche complete e storiche!",
+    "demoDescription": "Modalità demo: {{current}} di {{max}} movimenti. Registrati per conservare lo storico completo.",
     "totalIncome": "Entrate Totali",
     "totalExpense": "Uscite Totali",
     "balance": "Bilancio",
@@ -239,28 +260,41 @@
     "exportPdf": "Esporta PDF",
     "topExpenseCategories": "Top Categorie Spesa",
     "topIncomeCategories": "Top Categorie Entrata",
-    "topExpenseTransactions": "Top 3 Uscite Maggiori",
-    "topIncomeTransactions": "Top 3 Entrate Maggiori",
+    "topExpenseTransactions": "Uscite più alte",
+    "topIncomeTransactions": "Entrate più alte",
     "ofTotal": "del totale",
-    "noExpenseData": "Nessuna spesa nel periodo selezionato",
+    "noExpenseData": "Nessuna uscita nel periodo selezionato",
     "noIncomeData": "Nessuna entrata nel periodo selezionato",
-    "monthlyTrend": "Trend Ultimi 6 Mesi",
+    "monthlyTrend": "Entrate e uscite, ultimi 6 mesi",
     "insufficientData": "Dati insufficienti per mostrare il trend",
-    "avgDailyExpense": "Spesa Media Giornaliera",
-    "avgTransaction": "Transazione Media",
-    "avgTransactionDescription": "Importo medio per transazione",
-    "totalTransactions": "Transazioni Totali",
-    "inSelectedPeriod": "Nel periodo selezionato"
+    "avgDailyExpense": "Spesa media al giorno",
+    "avgTransaction": "Movimento medio",
+    "avgTransactionDescription": "Importo medio per movimento",
+    "totalTransactions": "Movimenti totali",
+    "inSelectedPeriod": "Nel periodo selezionato",
+    "period": "Periodo",
+    "periods": {
+      "month": "Questo mese",
+      "lastMonth": "Mese scorso",
+      "last3Months": "Ultimi 3 mesi",
+      "year": "Quest'anno",
+      "custom": "Personalizzato"
+    },
+    "summary": "Indicatori del periodo",
+    "saved": "Risparmiato",
+    "savedAmount": "{{amount}} messi da parte",
+    "overspentAmount": "{{amount}} spesi in più",
+    "byCategory": "Per categoria"
   },
   "statsPage": {
     "title": "Statistiche",
-    "subtitle": "Riepilogo delle tue transazioni e indicatori chiave per restare in controllo",
+    "subtitle": "Riepilogo dei tuoi movimenti e indicatori chiave per restare in controllo",
     "loginTitle": "Statistiche disponibili dopo il login",
     "loginSubtitle": "Accedi o avvia la demo per vedere grafici, medie e report PDF.",
     "tryDemo": "Prova demo",
     "downloadPdf": "Scarica Report PDF",
     "pdfLoginNotice": "Il download del PDF è disponibile dopo l'accesso.",
-    "transactions": "Transazioni",
+    "transactions": "Movimenti",
     "dailyAverages": "Medie giornaliere",
     "avgIncome": "Entrata media",
     "avgExpense": "Spesa media",
@@ -272,48 +306,51 @@
     "period": "Su periodo selezionato",
     "categoryBreakdown": "Spese per categoria",
     "ofExpenses": "delle uscite",
-    "emptyTitle": "Nessuna transazione trovata",
-    "emptySubtitle": "Non ci sono transazioni per il periodo selezionato. Prova a cambiare periodo o aggiungi nuove transazioni."
+    "emptyTitle": "Nessun movimento trovato",
+    "emptySubtitle": "Non ci sono movimenti per il periodo selezionato. Prova a cambiare periodo o aggiungi nuovi movimenti."
   },
   "transactionModal": {
-    "editTitle": "Modifica Transazione",
-    "newTitle": "Nuova Transazione",
-    "editSubtitle": "Modifica i dettagli della transazione",
-    "newSubtitle": "Aggiungi velocemente una nuova transazione",
-    "type": "Tipo di Transazione",
-    "expense": "Spesa",
+    "editTitle": "Modifica movimento",
+    "newTitle": "Nuovo movimento",
+    "editSubtitle": "Modifica i dettagli del movimento",
+    "newSubtitle": "Registra una nuova uscita o entrata",
+    "type": "Tipo di movimento",
+    "expense": "Uscita",
     "income": "Entrata",
-    "amount": "Importo (€)",
+    "amount": "Importo",
     "amountPlaceholder": "0,00",
     "date": "Data",
     "description": "Descrizione",
-    "descriptionPlaceholder": "Es. Spesa alimentare, Stipendio...",
+    "descriptionPlaceholder": "Es. Spesa alimentare",
     "category": "Categoria",
     "selectCategory": "Seleziona una categoria",
     "cancel": "Annulla",
     "saving": "Salvando...",
     "adding": "Aggiungendo...",
-    "saveChanges": "Salva Modifiche",
-    "addButton": "Aggiungi {{type}}"
+    "saveChanges": "Salva modifiche",
+    "addButton": "Aggiungi {{type}}",
+    "optional": "(facoltativa)",
+    "otherDate": "Altra data",
+    "saveWithAmount": "Salva {{type}} di {{amount}}"
   },
   "transactions": {
-    "title": "Le tue transazioni",
-    "loadingTransactions": "Caricamento transazioni...",
+    "title": "Movimenti",
+    "loadingTransactions": "Caricamento movimenti...",
     "accessRequired": "Accesso richiesto",
-    "loginRequired": "Effettua il login per visualizzare le tue transazioni",
+    "loginRequired": "Effettua il login per visualizzare i tuoi movimenti",
     "today": "Oggi",
     "yesterday": "Ieri",
     "of": "di",
     "demoMode": "Modalità Demo",
-    "transactions": "transazioni",
+    "transactions": "movimenti",
     "deleteConfirm": "Elimina Definitivamente",
     "loadMore": "Carica cronologia completa",
     "actions": {
-      "description": "Scegli cosa fare con questa transazione.",
+      "description": "Cosa vuoi fare con questo movimento?",
       "edit": "Modifica",
       "duplicate": "Duplica",
       "delete": "Elimina",
-      "open": "Azioni transazione"
+      "open": "Azioni movimento"
     },
     "filters": {
       "label": "Filtri",
@@ -325,17 +362,30 @@
       "year": "Anno",
       "all": "Tutto",
       "allTypes": "Tutti",
-      "allCategories": "Categorie"
+      "allCategories": "Tutte le categorie",
+      "type": {
+        "all": "Tutti",
+        "expense": "Uscite",
+        "income": "Entrate"
+      },
+      "category": "Categoria",
+      "allTime": "Tutto lo storico"
     },
     "empty": {
-      "title": "Nessuna transazione trovata",
+      "title": "Nessun movimento trovato",
       "tryFilters": "Prova a modificare i filtri di ricerca",
-      "addFirst": "Inizia aggiungendo la tua prima transazione"
+      "addFirst": "Aggiungi il primo movimento con il pulsante +"
     },
-    "countLoadError": "Impossibile caricare il conteggio delle transazioni.",
-    "loadError": "Impossibile caricare le transazioni. Riprova.",
-    "loadMoreError": "Impossibile caricare altre transazioni. Riprova.",
-    "searchScope": "La ricerca considera le {{count}} transazioni già caricate. Scorri per estenderla."
+    "countLoadError": "Impossibile caricare il conteggio dei movimenti.",
+    "loadError": "Impossibile caricare i movimenti. Riprova.",
+    "loadMoreError": "Impossibile caricare altri movimenti. Riprova.",
+    "searchScope": "La ricerca considera i {{count}} movimenti già caricati. Scorri per estenderla.",
+    "summary": {
+      "count_one": "{{count}} movimento",
+      "count_other": "{{count}} movimenti",
+      "label": "Movimenti"
+    },
+    "loadedOfTotal": "Caricati"
   },
   "pdf": {
     "reportTitle": "Report Statistiche Finanziarie",
@@ -351,8 +401,8 @@
     "expenseDistribution": "Distribuzione delle spese e importo medio per categoria",
     "topExpenses": "Top 3 Spese Maggiori",
     "topIncomes": "Top 3 Entrate Maggiori",
-    "fullList": "Elenco Completo delle Transazioni",
-    "noTransactions": "Nessuna transazione trovata per il periodo selezionato.",
+    "fullList": "Elenco completo dei movimenti",
+    "noTransactions": "Nessun movimento trovato per il periodo selezionato.",
     "date": "Data",
     "type": "Tipo",
     "description": "Descrizione",
@@ -384,25 +434,25 @@
   },
   "demo": {
     "modalityActive": "Modalità Demo Attiva",
-    "transactionsUsed": "Hai utilizzato {{used}}/{{total}} transazioni demo.",
+    "transactionsUsed": "Hai utilizzato {{used}}/{{total}} movimenti demo.",
     "registerForComplete": "Registrati per funzionalità complete",
-    "limitReached": "Hai raggiunto il limite di {{limit}} transazioni nella modalità demo. Registrati per funzionalità complete!",
-    "transactionAdded": "Transazione aggiunta in modalità demo!",
-    "transactionUpdated": "Transazione aggiornata!",
-    "transactionDeleted": "Transazione eliminata!",
-    "allTransactionsCleared": "Tutte le transazioni demo sono state rimosse!",
+    "limitReached": "Hai raggiunto il limite di {{limit}} movimenti nella modalità demo. Registrati per funzionalità complete!",
+    "transactionAdded": "Movimento aggiunto in modalità demo!",
+    "transactionUpdated": "Movimento aggiornato!",
+    "transactionDeleted": "Movimento eliminato!",
+    "allTransactionsCleared": "Tutti i movimenti demo sono stati rimossi!",
     "sampleSalary": "Stipendio",
     "sampleGroceries": "Spesa alimentare",
     "sampleFuel": "Benzina",
-    "sampleTransactionsAdded": "Sono state aggiunte alcune transazioni di esempio!"
+    "sampleTransactionsAdded": "Sono stati aggiunti alcuni movimenti di esempio!"
   },
   "notifications": {
-    "addSuccess": "Transazione aggiunta con successo!",
-    "addError": "Errore nell'aggiunta della transazione",
-    "updateSuccess": "Transazione aggiornata con successo!",
-    "updateError": "Errore nell'aggiornamento della transazione",
-    "deleteSuccess": "Transazione eliminata con successo!",
-    "deleteError": "Errore nell'eliminazione della transazione",
+    "addSuccess": "Movimento aggiunto con successo!",
+    "addError": "Errore nell'aggiunta del movimento",
+    "updateSuccess": "Movimento aggiornato con successo!",
+    "updateError": "Errore nell'aggiornamento del movimento",
+    "deleteSuccess": "Movimento eliminato con successo!",
+    "deleteError": "Errore nell'eliminazione del movimento",
     "warning": "Attenzione",
     "success": "Operazione riuscita",
     "error": "Errore",
@@ -516,7 +566,7 @@
     "invalidEmail": "Email non valida",
     "passwordMin": "La password deve contenere almeno 8 caratteri",
     "passwordMismatch": "Le password non coincidono",
-    "invalidTransaction": "I dati della transazione non sono validi"
+    "invalidTransaction": "I dati del movimento non sono validi"
   },
   "money": {
     "decimals": "L’importo deve avere al massimo due cifre decimali",
@@ -524,5 +574,9 @@
     "notPositive": "L’importo deve essere maggiore di zero",
     "tooLarge": "L’importo supera il massimo consentito",
     "invalid": "Importo non valido"
+  },
+  "monthSwitcher": {
+    "previous": "Mese precedente",
+    "next": "Mese successivo"
   }
 }

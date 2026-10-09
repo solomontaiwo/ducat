@@ -73,8 +73,10 @@ describe("TransactionAnalytics", () => {
     expect(range.startDate).toBeInstanceOf(Date);
     expect(range.endDate).toBeInstanceOf(Date);
     expect(screen.getAllByText("Cibo").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Stipendio").length).toBeGreaterThan(0);
     expect(screen.getByText("desc-a")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "dashboard.income" }));
+    expect(screen.getAllByText("Stipendio").length).toBeGreaterThan(0);
+    expect(screen.getByText("desc-b")).toBeInTheDocument();
   });
 
   it("explains a permission error instead of showing stale data", async () => {
@@ -86,8 +88,7 @@ describe("TransactionAnalytics", () => {
   it("persists the chosen period and reloads for the new range", async () => {
     mocks.fetchAll.mockResolvedValue([tx("a", "expense", "cibo", 100, 1)]);
     render(<TransactionAnalytics />);
-    const select = (await screen.findAllByRole("combobox"))[0];
-    fireEvent.change(select, { target: { value: "year" } });
+    fireEvent.click(await screen.findByRole("radio", { name: "analytics.periods.year" }));
     await waitFor(() => expect(JSON.parse(localStorage.getItem("analytics-period")).period).toBe("year"));
     await waitFor(() => expect(mocks.fetchAll.mock.calls.length).toBeGreaterThan(1));
   });
