@@ -136,34 +136,3 @@ export const generatePeriodPDFReport = async (
   doc.save(filename);
   return { success: true, filename, transactionCount: model.transactionCount };
 };
-
-export const generatePDFReport = async (
-  transactions = [],
-  lang = "it",
-  user = "user",
-  filenameOverride = null,
-  range = null
-) => {
-  const sortedDates = transactions.map((transaction) => transaction.date).filter(Boolean).sort((a, b) => a - b);
-  const startDate = range?.startDate || sortedDates[0] || new Date();
-  const endDate = range?.endDate || sortedDates.at(-1) || new Date();
-  const profileName = await getCurrentProfileName(user);
-  const { doc, model } = createPDFReport({ transactions, startDate, endDate, periodLabel: range?.periodLabel || "snapshot", lang });
-  const filename = filenameOverride || generateExportFileName("snapshot", startDate, endDate, profileName, "pdf");
-  doc.save(filename);
-  return { success: true, filename, transactionCount: model.transactionCount };
-};
-
-// Backwards-compatible entry point used by the Stats page.
-export const generatePDF = async (
-  currentUser,
-  transactions = [],
-  _stats,
-  periodText,
-  _logoUrl,
-  _appUrl,
-  _instagramUrl,
-  startDate,
-  endDate,
-  lang = "it"
-) => generatePeriodPDFReport(transactions, startDate, endDate, periodText, lang, currentUser);
