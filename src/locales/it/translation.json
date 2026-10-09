@@ -385,7 +385,9 @@
       "count_other": "{{count}} movimenti",
       "label": "Movimenti"
     },
-    "loadedOfTotal": "Caricati"
+    "loadedOfTotal": "Caricati",
+    "loadAll": "Carica tutti",
+    "partialResults": "Filtri attivi: totali calcolati sui movimenti caricati"
   },
   "pdf": {
     "reportTitle": "Report Statistiche Finanziarie",

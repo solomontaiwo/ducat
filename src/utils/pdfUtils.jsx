@@ -61,7 +61,7 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
   autoTable(doc, {
     startY: 48,
     head: [[strings.totalIncome, strings.totalExpense, strings.balance, strings.avgDailyIncome, strings.avgDailyExpense]],
-    body: [[model.totalIncome, model.totalExpense, model.balance, model.avgDailyIncome, model.avgDailyExpense].map(formatCurrency)],
+    body: [[model.totalIncome, model.totalExpense, model.balance, model.avgDailyIncome, model.avgDailyExpense].map((value) => formatCurrency(value))],
     styles: { fontSize: 8 },
   });
 

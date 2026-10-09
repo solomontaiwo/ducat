@@ -1,9 +1,15 @@
-const formatCurrency = (value, locale = "it-IT", currency = "EUR") =>
-  value.toLocaleString(locale, {
+/**
+ * Formats an amount in euro. Extra arguments that are not strings are ignored,
+ * so the function is safe to pass straight to `Array.prototype.map`.
+ */
+const formatCurrency = (value, locale, currency) =>
+  Number(value || 0).toLocaleString(typeof locale === "string" ? locale : "it-IT", {
     style: "currency",
-    currency,
+    currency: typeof currency === "string" ? currency : "EUR",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+    // Italian locale data skips the separator for 4-digit numbers ("7444,00 €").
+    useGrouping: "always",
   });
 
 export default formatCurrency;
