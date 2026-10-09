@@ -15,6 +15,12 @@ import formatCurrency, { formatSignedAmount } from "../../utils/formatCurrency.j
 import { calculateStats } from "../../utils/statsUtils.jsx";
 import { formatMonthLabel } from "../../utils/monthLabel";
 import { useMonthRange } from "../../hooks/useMonthRange.js";
+import UpcomingCard from "../Planning/UpcomingCard.jsx";
+import BudgetCard from "../Planning/BudgetCard.jsx";
+import { usePlanning } from "../../context/PlanningProvider.jsx";
+import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
+import { todayDateKey } from "../../utils/dateUtils.js";
+import { upcomingOccurrences } from "../../utils/recurrence.js";
 
 const CATEGORY_COLORS = ["hsl(var(--cat-1))", "hsl(var(--cat-2))", "hsl(var(--cat-3))", "hsl(var(--cat-4))", "hsl(var(--cat-5))"];
 const MAX_VISIBLE_CATEGORIES = 4;
@@ -29,6 +35,7 @@ const Dashboard = () => {
   const { currentUser, profileName, profileNameLoading } = useAuth();
   const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions } = useUnifiedTransactions();
   const { openAddTransaction, canAdd } = useAddTransaction();
+  const { recurring, budgets } = usePlanning();
   const { t, i18n } = useTranslation();
   const { month, startDate, endDate, isCurrentMonth, goToPrevious, goToNext } = useMonthRange();
   const [monthData, setMonthData] = useState([]);
@@ -95,6 +102,8 @@ const Dashboard = () => {
   }, [stats, t]);
 
   const isLoading = transactionsLoading || monthLoading || !stats;
+  const showUpcoming = isCurrentMonth && upcomingOccurrences(recurring, todayDateKey()).length > 0;
+  const hasBudgets = Object.values(budgets).some((limit) => limit > 0);
   const monthName = formatMonthLabel(month, i18n.language);
   const balance = stats?.balance || 0;
   const expenseShare = stats?.totalIncome > 0 ? (stats.totalExpense / stats.totalIncome) * 100 : null;
@@ -104,7 +113,7 @@ const Dashboard = () => {
 
   return (
     <div className="page-shell">
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <header className="flex items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <p className="pl-1 text-sm font-semibold text-muted-foreground md:pl-0">
             {profileNameLoading
@@ -120,6 +129,7 @@ const Dashboard = () => {
             className="-ml-3 md:-ml-3"
           />
         </div>
+        <HeaderProfileButton className="mt-1" />
       </header>
 
       {loadError && (
@@ -200,6 +210,13 @@ const Dashboard = () => {
           )}
         </section>
       </div>
+
+      {(showUpcoming || hasBudgets) && !isLoading && (
+        <div className={showUpcoming && hasBudgets ? "grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5" : "grid grid-cols-1 gap-4"}>
+          {showUpcoming && <UpcomingCard />}
+          {hasBudgets && <BudgetCard breakdown={stats?.categoryBreakdown || {}} isCurrentMonth={isCurrentMonth} />}
+        </div>
+      )}
 
       <section className="surface space-y-3 p-4 sm:p-6" aria-labelledby="recent-transactions">
         <div className="flex items-baseline justify-between gap-3 px-1">

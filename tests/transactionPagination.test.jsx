@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn(), count: vi.fn(), totals: undefined, observers: [],
   t: (key, options) => options?.returnObjects ? [] : key,
 }));
+vi.mock("../src/components/Layout/HeaderProfileButton.jsx", () => ({ default: () => null }));
 vi.mock("../src/context/AuthProvider.jsx", () => ({ useAuth: () => ({ currentUser: mocks.user, loading: false }) }));
 vi.mock("../src/context/UnifiedTransactionProvider.jsx", () => ({ useUnifiedTransactions: () => ({
   transactions: mocks.transactions, loading: false, isDemo: false,

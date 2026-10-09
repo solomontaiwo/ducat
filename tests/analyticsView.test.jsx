@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   state: { isDemo: false, user: { uid: "owner" } },
 }));
 
+vi.mock("../src/components/Layout/HeaderProfileButton.jsx", () => ({ default: () => null }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: mocks.t, i18n: mocks.i18n }),
 }));

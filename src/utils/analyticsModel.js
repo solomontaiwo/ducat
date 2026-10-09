@@ -1,4 +1,4 @@
-import { endOfMonth, format, isWithinInterval, startOfMonth, subMonths } from "date-fns";
+import { addMilliseconds, differenceInCalendarDays, endOfDay, endOfMonth, format, isWithinInterval, startOfDay, startOfMonth, subDays, subMonths } from "date-fns";
 import { getTransactionAmountMinor, minorToMajor } from "./money";
 import { readLocalValue, removeLocalValue } from "./storage.js";
 
@@ -27,12 +27,71 @@ export const readPeriodPreference = () => {
  * The range the analytics view has to load: the selected period, widened so it
  * also covers the monthly trend (last six months up to the end of this month).
  */
-export const getAnalyticsQueryRange = (startDate, endDate, now = new Date()) => {
+export const getAnalyticsQueryRange = (startDate, endDate, now = new Date(), compareStart = null) => {
   const trendStart = startOfMonth(subMonths(now, TREND_MONTHS - 1));
+  let start = startDate < trendStart ? startDate : trendStart;
+  if (compareStart && compareStart < start) start = compareStart;
   return {
-    startDate: startDate < trendStart ? startDate : trendStart,
+    startDate: start,
     endDate: endDate > now ? endDate : endOfMonth(now),
   };
+};
+
+const PERIOD_MONTH_SHIFT = { month: 1, lastMonth: 1, last3Months: 3, year: 12 };
+
+/** The end of the period that has actually happened: never later than today. */
+export const getEffectiveEnd = (endDate, now = new Date()) => (endDate > now ? endOfDay(now) : endDate);
+
+/**
+ * The period to compare against, with the same number of elapsed days: on
+ * 9 October "this month" is compared with 1–9 September, not all of it.
+ */
+export const getComparisonRange = (period, startDate, endDate, now = new Date()) => {
+  const effectiveEnd = getEffectiveEnd(endDate, now);
+  const months = PERIOD_MONTH_SHIFT[period];
+  if (months) {
+    return {
+      kind: period === "year" ? "year" : period === "last3Months" ? "previousPeriod" : "month",
+      startDate: startOfDay(subMonths(startDate, months)),
+      endDate: endOfDay(subMonths(effectiveEnd, months)),
+    };
+  }
+  const days = differenceInCalendarDays(effectiveEnd, startDate) + 1;
+  return {
+    kind: "previousPeriod",
+    startDate: startOfDay(subDays(startDate, days)),
+    endDate: addMilliseconds(startOfDay(startDate), -1),
+  };
+};
+
+/**
+ * Relative change between two values. `null` when there is nothing sensible to
+ * compare against (previous value of zero).
+ */
+export const compareValues = (current, previous) => {
+  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) return null;
+  const pct = ((current - previous) / Math.abs(previous)) * 100;
+  if (Math.abs(pct) < 1) return { direction: "flat", pct: 0, diff: current - previous };
+  return { direction: pct > 0 ? "up" : "down", pct: Math.round(Math.abs(pct)), diff: current - previous };
+};
+
+/** Per-category change in euro between two ranges, biggest movers first. */
+export const categoryDeltas = (transactions, type, current, previous) => {
+  const totals = (range) => {
+    const map = {};
+    transactions.forEach((item) => {
+      if (item.type !== type || !item.date || !isWithinInterval(item.date, { start: range.startDate, end: range.endDate })) return;
+      map[item.category] = (map[item.category] || 0) + getTransactionAmountMinor(item);
+    });
+    return map;
+  };
+  const now = totals(current);
+  const before = totals(previous);
+  const result = {};
+  new Set([...Object.keys(now), ...Object.keys(before)]).forEach((category) => {
+    result[category] = minorToMajor((now[category] || 0) - (before[category] || 0));
+  });
+  return result;
 };
 
 const sumMinor = (transactions) => transactions.reduce((sum, item) => sum + getTransactionAmountMinor(item), 0);

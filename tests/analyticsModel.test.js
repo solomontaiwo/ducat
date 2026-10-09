@@ -3,7 +3,10 @@ import {
   CATEGORY_CHART_COLORS,
   buildExtendedStats,
   buildMonthlyTrend,
+  categoryDeltas,
+  compareValues,
   getAnalyticsQueryRange,
+  getComparisonRange,
   readPeriodPreference,
   withChartColors,
 } from "../src/utils/analyticsModel.js";
@@ -101,5 +104,57 @@ describe("withChartColors", () => {
     const coloured = withChartColors(items, CATEGORY_CHART_COLORS);
     expect(coloured.at(-1).fill).toBe(CATEGORY_CHART_COLORS[0]);
     expect(withChartColors(undefined, CATEGORY_CHART_COLORS)).toEqual([]);
+  });
+});
+
+describe("comparison with the previous period", () => {
+  const OCT_9 = new Date(2026, 9, 9, 15, 0);
+
+  it("compares the running month with the same days of the previous one", () => {
+    const range = getComparisonRange("month", new Date(2026, 9, 1), new Date(2026, 9, 31, 23, 59, 59), OCT_9);
+    expect(range.kind).toBe("month");
+    expect(range.startDate).toEqual(new Date(2026, 8, 1));
+    expect(range.endDate.getDate()).toBe(9);
+    expect(range.endDate.getMonth()).toBe(8);
+  });
+
+  it("clamps to the end of a shorter month", () => {
+    const range = getComparisonRange("month", new Date(2026, 2, 1), new Date(2026, 2, 31, 23, 59, 59), new Date(2026, 2, 31, 12));
+    expect(range.endDate.getMonth()).toBe(1);
+    expect(range.endDate.getDate()).toBe(28);
+  });
+
+  it("uses the previous year for the year period", () => {
+    const range = getComparisonRange("year", new Date(2026, 0, 1), new Date(2026, 11, 31, 23, 59), OCT_9);
+    expect(range.kind).toBe("year");
+    expect(range.startDate).toEqual(new Date(2025, 0, 1));
+    expect(range.endDate.getFullYear()).toBe(2025);
+    expect(range.endDate.getMonth()).toBe(9);
+  });
+
+  it("uses an equally long window right before a custom range", () => {
+    const range = getComparisonRange("custom", new Date(2026, 8, 11), new Date(2026, 8, 20, 23, 59, 59, 999), OCT_9);
+    expect(range.startDate).toEqual(new Date(2026, 8, 1));
+    expect(range.endDate).toEqual(new Date(2026, 8, 10, 23, 59, 59, 999));
+  });
+
+  it("describes the change between two values", () => {
+    expect(compareValues(112, 100)).toMatchObject({ direction: "up", pct: 12 });
+    expect(compareValues(80, 100)).toMatchObject({ direction: "down", pct: 20 });
+    expect(compareValues(100.4, 100)).toMatchObject({ direction: "flat" });
+    expect(compareValues(10, 0)).toBeNull();
+  });
+
+  it("computes per-category deltas", () => {
+    const tx = (day, month, category, amount) => ({ type: "expense", category, amount, amountMinor: amount * 100, date: new Date(2026, month, day) });
+    const data = [tx(2, 9, "supermercato", 50), tx(3, 8, "supermercato", 20), tx(4, 8, "shopping", 30), tx(20, 8, "shopping", 999)];
+    const current = { startDate: new Date(2026, 9, 1), endDate: new Date(2026, 9, 9, 23, 59) };
+    const previous = { startDate: new Date(2026, 8, 1), endDate: new Date(2026, 8, 9, 23, 59) };
+    expect(categoryDeltas(data, "expense", current, previous)).toEqual({ supermercato: 30, shopping: -30 });
+  });
+
+  it("widens the query to cover the comparison range", () => {
+    const compareStart = new Date(2025, 0, 1);
+    expect(getAnalyticsQueryRange(new Date(2026, 0, 1), new Date(2026, 11, 31), OCT_9, compareStart).startDate).toEqual(compareStart);
   });
 });

@@ -27,6 +27,7 @@ const createDatabase = ({ transactionIds = [], failDeleteOf = null, userError = 
     database: {
       collection(name) {
         if (name === "transactions") return { where: () => query };
+        if (name === "recurring") return { where: () => ({ limit: () => ({ get: async () => ({ empty: true, size: 0, docs: [] }) }) }) };
         return { doc: () => ({ delete: async () => {
           if (userError) throw userError;
           calls.userDeleted = true;

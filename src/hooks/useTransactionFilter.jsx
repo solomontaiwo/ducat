@@ -1,53 +1,43 @@
 import { useMemo, useState } from 'react';
 import { isWithinInterval } from 'date-fns';
+import { matchesSearch, MIN_SEARCH_LENGTH } from '../utils/transactionSearch.js';
 
-export const useTransactionFilter = (transactions, dateRange) => {
+/**
+ * Filters for the movements list. While a search is active it runs over
+ * `searchSource` (the whole history) and ignores the selected month.
+ */
+export const useTransactionFilter = (transactions, dateRange, { searchSource = null, getCategoryLabel } = {}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
 
+  const isSearching = searchTerm.trim().length >= MIN_SEARCH_LENGTH;
+
   const filteredTransactions = useMemo(() => {
-    if (!transactions || transactions.length === 0) return [];
+    const source = isSearching && searchSource ? searchSource : transactions;
+    if (!source || source.length === 0) return [];
 
     const { startDate, endDate } = dateRange;
-
-    // Pre-sort by date descending
-    const sorted = [...transactions].sort((a, b) => b.date - a.date);
+    const sorted = [...source].sort((a, b) => b.date - a.date);
 
     return sorted.filter((transaction) => {
-      // 1. Date Filter
-      if (startDate && endDate) {
+      if (!isSearching && startDate && endDate) {
         if (!transaction.date || !isWithinInterval(transaction.date, { start: startDate, end: endDate })) {
           return false;
         }
       }
-
-      // 2. Search Filter
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        const matchesDescription = transaction.description.toLowerCase().includes(term);
-        const matchesCategory = transaction.category.toLowerCase().includes(term);
-        if (!matchesDescription && !matchesCategory) return false;
-      }
-
-      // 3. Category Filter
-      if (selectedCategory !== "all" && transaction.category !== selectedCategory) {
-        return false;
-      }
-
-      // 4. Type Filter
-      if (selectedType !== "all" && transaction.type !== selectedType) {
-        return false;
-      }
-
+      if (searchTerm.trim() && !matchesSearch(transaction, searchTerm, getCategoryLabel)) return false;
+      if (selectedCategory !== "all" && transaction.category !== selectedCategory) return false;
+      if (selectedType !== "all" && transaction.type !== selectedType) return false;
       return true;
     });
-  }, [transactions, dateRange, searchTerm, selectedCategory, selectedType]);
+  }, [transactions, searchSource, isSearching, dateRange, searchTerm, selectedCategory, selectedType, getCategoryLabel]);
 
   return {
     filteredTransactions,
     searchTerm,
     setSearchTerm,
+    isSearching,
     selectedCategory,
     setSelectedCategory,
     selectedType,

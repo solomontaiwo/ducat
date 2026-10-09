@@ -87,7 +87,7 @@
   "motivationalQuote": "Gestire le tue finanze è il primo passo verso la libertà.",
   "noTransactions": "Ancora nessun movimento. Aggiungi il primo!",
   "yourTransactions": "I tuoi movimenti",
-  "searchTransactions": "Cerca movimenti...",
+  "searchTransactions": "Cerca descrizione, categoria o importo",
   "type": "Tipo",
   "amount": "Importo (€)",
   "date": "Data",
@@ -284,7 +284,14 @@
     "saved": "Risparmiato",
     "savedAmount": "{{amount}} messi da parte",
     "overspentAmount": "{{amount}} spesi in più",
-    "byCategory": "Per categoria"
+    "byCategory": "Per categoria",
+    "compare": {
+      "previousPeriod": "periodo prima",
+      "up": "▲ {{pct}}% vs {{ref}}",
+      "down": "▼ {{pct}}% vs {{ref}}",
+      "flat": "= stabile vs {{ref}}",
+      "categoryLabel": "Differenza rispetto a {{ref}}"
+    }
   },
   "transactionModal": {
     "editTitle": "Modifica movimento",
@@ -298,7 +305,7 @@
     "amountPlaceholder": "0,00",
     "date": "Data",
     "description": "Descrizione",
-    "descriptionPlaceholder": "Es. Spesa alimentare",
+    "descriptionPlaceholder": "Es. Esselunga, Netflix, affitto",
     "category": "Categoria",
     "selectCategory": "Seleziona una categoria",
     "cancel": "Annulla",
@@ -308,7 +315,11 @@
     "addButton": "Aggiungi {{type}}",
     "optional": "(facoltativa)",
     "otherDate": "Altra data",
-    "saveWithAmount": "Salva {{type}} di {{amount}}"
+    "saveWithAmount": "Salva {{type}} di {{amount}}",
+    "suggested": "Suggerita",
+    "suggestedFromHistory_one": "come un movimento simile",
+    "suggestedFromHistory_other": "come altri {{count}} movimenti simili",
+    "suggestedFromDescription": "in base alla descrizione"
   },
   "transactions": {
     "title": "Movimenti",
@@ -356,7 +367,7 @@
     "countLoadError": "Impossibile caricare il conteggio dei movimenti.",
     "loadError": "Impossibile caricare i movimenti. Riprova.",
     "loadMoreError": "Impossibile caricare altri movimenti. Riprova.",
-    "searchScope": "La ricerca considera i {{count}} movimenti già caricati. Scorri per estenderla.",
+    "searchScope": "Ricerca in tutto lo storico",
     "summary": {
       "count_one": "{{count}} movimento",
       "count_other": "{{count}} movimenti",
@@ -364,7 +375,8 @@
     },
     "loadedOfTotal": "Caricati",
     "loadAll": "Carica tutti",
-    "partialResults": "Filtri attivi: totali calcolati sui movimenti caricati"
+    "partialResults": "Filtri attivi: totali calcolati sui movimenti caricati",
+    "searchLoading": "Carico tutto lo storico per la ricerca…"
   },
   "pdf": {
     "reportTitle": "Report Statistiche Finanziarie",
@@ -558,5 +570,81 @@
   "monthSwitcher": {
     "previous": "Mese precedente",
     "next": "Mese successivo"
+  },
+  "recurring": {
+    "title": "Ricorrenti",
+    "repeats": "Si ripete",
+    "repeatsHint": "Lo ritrovi tra i movimenti ricorrenti",
+    "frequencyLabel": "Ogni quanto",
+    "modeLabel": "Come registrarlo",
+    "frequency": {
+      "weekly": "Settimana",
+      "monthly": "Mese",
+      "yearly": "Anno"
+    },
+    "every": {
+      "weekly": "Ogni settimana",
+      "monthly": "Ogni mese",
+      "yearly": "Ogni anno"
+    },
+    "mode": {
+      "auto": "Registra da solo",
+      "confirm": "Chiedimi prima"
+    },
+    "modeShort": {
+      "auto": "automatico",
+      "confirm": "chiede conferma"
+    },
+    "nextOn": "Prossimo: {{date}}",
+    "upcoming": "In arrivo",
+    "upcomingHint": "Prossimi 7 giorni",
+    "manage": "Ricorrenti",
+    "register": "Registra",
+    "skip": "Salta il prossimo",
+    "today": "oggi",
+    "tomorrow": "domani",
+    "inDays": "tra {{count}} giorni",
+    "overdue": "dal {{date}}",
+    "fixedExpenses": "Uscite fisse al mese",
+    "fixedIncome": "Entrate fisse al mese",
+    "all": "Tutti",
+    "paused": "In pausa",
+    "pause": "Metti in pausa",
+    "resume": "Riprendi",
+    "delete": "Elimina ricorrente",
+    "deleteHint": "I movimenti già registrati restano.",
+    "switchToAuto": "Registra da solo",
+    "switchToConfirm": "Chiedimi prima di registrarlo",
+    "actionsDescription": "Cosa vuoi fare con questo ricorrente?",
+    "next": "prossimo {{date}}",
+    "empty": "Nessun movimento ricorrente.",
+    "emptyHint": "Quando aggiungi un movimento, attiva «Si ripete»: affitto, stipendio e abbonamenti si registreranno da soli.",
+    "addFirst": "Nuovo movimento",
+    "saveError": "Impossibile salvare il movimento ricorrente",
+    "autoRegistered_one": "Registrato 1 movimento ricorrente",
+    "autoRegistered_other": "Registrati {{count}} movimenti ricorrenti",
+    "back": "Indietro"
+  },
+  "budgets": {
+    "title": "Budget mensili",
+    "cardTitle": "Budget del mese",
+    "edit": "Modifica",
+    "intro": "Imposta un limite solo dove ti serve. Il suggerimento è la tua spesa media degli ultimi 3 mesi.",
+    "average": "Media ultimi 3 mesi: {{amount}}",
+    "noAverage": "Nessuna spesa negli ultimi 3 mesi",
+    "useSuggestions": "Usa i suggerimenti",
+    "save": "Salva budget",
+    "saved": "Budget salvati",
+    "saveError": "Impossibile salvare i budget",
+    "total": "Totale budget",
+    "of": "{{spent}} di {{limit}}",
+    "over": "Superato di {{amount}}",
+    "daysLeft_one": "Manca 1 giorno alla fine del mese",
+    "daysLeft_other": "Mancano {{count}} giorni alla fine del mese",
+    "invite": "Vuoi un limite di spesa per categoria?",
+    "inviteAction": "Imposta un budget",
+    "limitFor": "Budget mensile per {{category}}",
+    "planning": "Pianificazione",
+    "planningHint": "Movimenti che si ripetono e limiti di spesa"
   }
 }

@@ -9,11 +9,18 @@ import { coerceDateKey, dateKeyToDate, DATE_KEY_FORMAT, todayDateKey } from "../
 import formatCurrency from "../../utils/formatCurrency.jsx";
 import { readLocalValue, writeLocalValue } from "../../utils/storage.js";
 import { cn } from "../../lib/utils";
+import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
+import { suggestCategory } from "../../utils/categorySuggest.js";
+import { usePlanning } from "../../context/PlanningProvider.jsx";
+import { FREQUENCIES, occurrenceDateKey } from "../../utils/recurrence.js";
+import { enUS, it as itLocale } from "date-fns/locale";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
 const QUICK_ADD_PREF_KEY = "soldi-sotto-quick-add-preferences";
 const QUICK_AMOUNTS = [5, 10, 20, 50, 100];
+
+const DEFAULT_REPEAT = Object.freeze({ enabled: false, frequency: "monthly", mode: "auto" });
 
 const yesterdayDateKey = () => format(subDays(new Date(), 1), DATE_KEY_FORMAT);
 
@@ -51,17 +58,24 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
   const isEdit = !!transaction;
   const { expenseCategories, incomeCategories } = useCategories();
   const notification = useNotification();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const requestIdRef = useRef(crypto.randomUUID());
   const [formData, setFormData] = useState(() => initialState(transaction, expenseCategories));
   const [showDatePicker, setShowDatePicker] = useState(false);
+  // Once the user picks a category by hand, suggestions stop overriding it.
+  const [categoryTouched, setCategoryTouched] = useState(false);
+  const { transactions: history } = useUnifiedTransactions();
+  const { addRecurring } = usePlanning();
+  const [repeat, setRepeat] = useState(DEFAULT_REPEAT);
 
   // Reset whenever another transaction is opened in the same form instance.
   const transactionKey = transaction?.id || "new";
   useEffect(() => {
     setFormData(initialState(transaction, expenseCategories));
     setShowDatePicker(false);
+    setCategoryTouched(false);
+    setRepeat(DEFAULT_REPEAT);
     requestIdRef.current = crypto.randomUUID();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactionKey]);
@@ -74,6 +88,23 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
       setFormData((previous) => ({ ...previous, category: categories[0]?.value || "" }));
     }
   }, [categories, formData.category]);
+
+  const suggestion = useMemo(() => {
+    if (isEdit) return null;
+    return suggestCategory(formData.description, {
+      type: formData.type,
+      history,
+      categories: categories.map((category) => category.value),
+    });
+  }, [isEdit, formData.description, formData.type, history, categories]);
+
+  useEffect(() => {
+    if (suggestion && !categoryTouched && formData.category !== suggestion.category) {
+      setFormData((previous) => ({ ...previous, category: suggestion.category }));
+    }
+  }, [suggestion, categoryTouched, formData.category]);
+
+  const showSuggestionHint = Boolean(suggestion && formData.category === suggestion.category);
 
   const today = todayDateKey();
   const yesterday = yesterdayDateKey();
@@ -120,11 +151,32 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
       setSubmitting(false);
     }
     if (!success) return;
+    if (!isEdit && repeat.enabled) {
+      await addRecurring({
+        type: payload.type,
+        amountMinor: payload.amountMinor,
+        description: payload.description,
+        category: payload.category,
+        frequency: repeat.frequency,
+        mode: repeat.mode,
+        anchorDateKey: payload.dateKey,
+      });
+    }
     if (!isEdit) {
       writeLocalValue(QUICK_ADD_PREF_KEY, JSON.stringify({ type: formData.type, category: formData.category }));
     }
     navigator.vibrate?.(50);
-  }, [categoryLabel, formData, isEdit, notification, onSubmit, submitting, t]);
+  }, [addRecurring, categoryLabel, formData, isEdit, notification, onSubmit, repeat, submitting, t]);
+
+  const nextRepeatLabel = useMemo(() => {
+    if (!repeat.enabled) return "";
+    try {
+      const next = dateKeyToDate(occurrenceDateKey(formData.date, repeat.frequency, 1));
+      return format(next, "d MMMM", { locale: i18n.language === "en" ? enUS : itLocale });
+    } catch {
+      return "";
+    }
+  }, [repeat.enabled, repeat.frequency, formData.date, i18n.language]);
 
   const setField = (field, value) => setFormData((previous) => ({ ...previous, [field]: value }));
 
@@ -185,24 +237,6 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
           </div>
         </div>
 
-        <fieldset className="space-y-3">
-          <legend className="mb-3 text-sm font-bold">{t("transactionModal.category")}</legend>
-          <div role="radiogroup" aria-label={t("transactionModal.category")} className="flex flex-wrap gap-2">
-            {categories.map((category) => (
-              <button
-                key={category.value}
-                type="button"
-                role="radio"
-                aria-checked={formData.category === category.value}
-                className="chip"
-                onClick={() => setField("category", category.value)}
-              >
-                {category.label}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
         <div className="space-y-2">
           <div className="flex items-baseline gap-1.5">
             <label htmlFor={`${idPrefix}-description`} className="text-sm font-bold">{t("transactionModal.description")}</label>
@@ -211,7 +245,7 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
           <Input
             id={`${idPrefix}-description`}
             type="text"
-            placeholder={categoryLabel || t("transactionModal.descriptionPlaceholder")}
+            placeholder={t("transactionModal.descriptionPlaceholder")}
             value={formData.description}
             onChange={(event) => setField("description", event.target.value)}
             maxLength={200}
@@ -220,6 +254,34 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
             aria-describedby={`${idPrefix}-description-hint`}
           />
         </div>
+
+        <fieldset className="space-y-3">
+          <legend className="mb-3 text-sm font-bold">{t("transactionModal.category")}</legend>
+          {showSuggestionHint && (
+            <p className="flex items-center gap-2 rounded-xl bg-accent px-3 py-2 text-[13px] text-accent-foreground" data-testid="category-suggestion">
+              <span className="font-bold">{t("transactionModal.suggested")}</span>
+              <span className="text-foreground/80">
+                {suggestion.source === "history"
+                  ? t("transactionModal.suggestedFromHistory", { count: suggestion.count })
+                  : t("transactionModal.suggestedFromDescription")}
+              </span>
+            </p>
+          )}
+          <div role="radiogroup" aria-label={t("transactionModal.category")} className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <button
+                key={category.value}
+                type="button"
+                role="radio"
+                aria-checked={formData.category === category.value}
+                className="chip"
+                onClick={() => { setCategoryTouched(true); setField("category", category.value); }}
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
 
         <fieldset className="space-y-3">
           <legend className="mb-3 text-sm font-bold">{t("transactionModal.date")}</legend>
@@ -247,6 +309,69 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
             />
           )}
         </fieldset>
+
+        {!isEdit && (
+          <section className="space-y-3 rounded-2xl border border-border p-4" aria-labelledby={`${idPrefix}-repeat-label`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p id={`${idPrefix}-repeat-label`} className="text-sm font-bold">{t("recurring.repeats")}</p>
+                <p className="text-[13px] text-muted-foreground">{t("recurring.repeatsHint")}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={repeat.enabled}
+                aria-labelledby={`${idPrefix}-repeat-label`}
+                onClick={() => setRepeat((current) => ({ ...current, enabled: !current.enabled }))}
+                className={cn(
+                  "relative h-8 w-[52px] shrink-0 rounded-full transition-colors",
+                  repeat.enabled ? "bg-primary" : "bg-input"
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-[left]",
+                    repeat.enabled ? "left-[24px]" : "left-1"
+                  )}
+                />
+              </button>
+            </div>
+            {repeat.enabled && (
+              <>
+                <div role="radiogroup" aria-label={t("recurring.frequencyLabel")} className="segmented grid-cols-3">
+                  {FREQUENCIES.map((frequency) => (
+                    <button
+                      key={frequency}
+                      type="button"
+                      role="radio"
+                      aria-checked={repeat.frequency === frequency}
+                      onClick={() => setRepeat((current) => ({ ...current, frequency }))}
+                    >
+                      {t(`recurring.frequency.${frequency}`)}
+                    </button>
+                  ))}
+                </div>
+                <div role="radiogroup" aria-label={t("recurring.modeLabel")} className="segmented grid-cols-2">
+                  {["auto", "confirm"].map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      role="radio"
+                      aria-checked={repeat.mode === mode}
+                      onClick={() => setRepeat((current) => ({ ...current, mode }))}
+                    >
+                      {t(`recurring.mode.${mode}`)}
+                    </button>
+                  ))}
+                </div>
+                {nextRepeatLabel && (
+                  <p className="text-[13px] text-muted-foreground">{t("recurring.nextOn", { date: nextRepeatLabel })}</p>
+                )}
+              </>
+            )}
+          </section>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-card px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:flex-row sm:justify-end sm:pb-4">

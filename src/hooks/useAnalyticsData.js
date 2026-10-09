@@ -6,7 +6,7 @@ import { getAnalyticsQueryRange } from "../utils/analyticsModel";
  * Loads the transactions the analytics view needs (one bounded range, never the
  * full history) and ignores answers that arrive after a newer request.
  */
-export const useAnalyticsData = ({ isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate }) => {
+export const useAnalyticsData = ({ isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate, compareStart = null }) => {
   const { t } = useTranslation();
   const [analyticsData, setAnalyticsData] = useState([]);
   const [isLoadingAnalyticsData, setIsLoadingAnalyticsData] = useState(true);
@@ -23,7 +23,7 @@ export const useAnalyticsData = ({ isDemo, recentTransactions, currentUser, fetc
         setIsLoadingAnalyticsData(true);
         setAnalyticsError("");
         try {
-          const data = await fetchAllTransactions(getAnalyticsQueryRange(startDate, endDate));
+          const data = await fetchAllTransactions(getAnalyticsQueryRange(startDate, endDate, new Date(), compareStart));
           if (requestId === requestIdRef.current) setAnalyticsData(data);
         } catch (error) {
           if (requestId === requestIdRef.current) {
@@ -39,7 +39,7 @@ export const useAnalyticsData = ({ isDemo, recentTransactions, currentUser, fetc
       }
     };
     loadData();
-  }, [isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate, t]);
+  }, [isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate, compareStart, t]);
 
   return { analyticsData, isLoadingAnalyticsData, analyticsError };
 };

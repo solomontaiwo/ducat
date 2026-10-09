@@ -46,6 +46,9 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
   const [demoTransactions, setDemoTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const hasSeededRef = useRef(false);
+  // Latest list, so several adds in a row (recurring catch-up) don't overwrite each other.
+  const latestRef = useRef(demoTransactions);
+  latestRef.current = demoTransactions;
   const notification = useNotification();
   const { t } = useTranslation();
 
@@ -81,8 +84,9 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
   }, []);
 
   // Adds a new demo transaction
-  const addDemoTransaction = useCallback(async (transactionData) => {
-    const userTransactionCount = demoTransactions.filter(t => !t.isSample).length;
+  const addDemoTransaction = useCallback(async (transactionData, { silent = false } = {}) => {
+    const current = latestRef.current;
+    const userTransactionCount = current.filter(t => !t.isSample).length;
     if (userTransactionCount >= MAX_DEMO_TRANSACTIONS) {
       notification.warning(t('demo.limitReached', { limit: MAX_DEMO_TRANSACTIONS }));
       return false;
@@ -99,13 +103,14 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
       isSample: false, 
     });
 
-    const updatedTransactions = [newTransaction, ...demoTransactions];
+    const updatedTransactions = [newTransaction, ...current];
+    latestRef.current = updatedTransactions;
     setDemoTransactions(updatedTransactions);
     saveDemoTransactions(updatedTransactions);
     
-    notification.success(t('demo.transactionAdded'));
+    if (!silent) notification.success(t('demo.transactionAdded'));
     return true;
-  }, [demoTransactions, saveDemoTransactions, notification, t]);
+  }, [saveDemoTransactions, notification, t]);
 
   // Updates an existing demo transaction
   const updateDemoTransaction = useCallback(async (transactionId, updatedData) => {

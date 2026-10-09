@@ -167,4 +167,36 @@ describe("Firestore rules", () => {
       updatedAt: serverTimestamp(),
     }));
   });
+
+  it("lets the owner manage recurring rules, with nextIndex only moving forward", async () => {
+    const owner = environment.authenticatedContext("owner", { email: "owner@example.com", email_verified: true }).firestore();
+    const rule = {
+      userId: "owner", type: "expense", amountMinor: 2100, currency: "EUR", description: "Claude Pro",
+      category: "abbonamenti", frequency: "monthly", anchorDateKey: "2026-10-09", nextIndex: 1,
+      mode: "auto", paused: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    };
+    const reference = doc(owner, "recurring", "rule-1");
+    await assertSucceeds(setDoc(reference, rule));
+    await assertSucceeds(getDocs(query(collection(owner, "recurring"), where("userId", "==", "owner"))));
+    await assertSucceeds(updateDoc(reference, { nextIndex: 2, updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(reference, { nextIndex: 1, updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(reference, { frequency: "daily", updatedAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(owner, "recurring", "rule-2"), { ...rule, extra: true }));
+
+    const attacker = environment.authenticatedContext("attacker", { email: "attacker@example.com", email_verified: true }).firestore();
+    await assertFails(getDoc(doc(attacker, "recurring", "rule-1")));
+    await assertFails(setDoc(doc(attacker, "recurring", "rule-3"), rule));
+    await assertSucceeds(deleteDoc(reference));
+  });
+
+  it("keeps budgets private to their owner", async () => {
+    const owner = environment.authenticatedContext("owner", { email: "owner@example.com", email_verified: true }).firestore();
+    const reference = doc(owner, "budgets", "owner");
+    await assertSucceeds(setDoc(reference, { userId: "owner", limits: { supermercato: 40000 }, updatedAt: serverTimestamp() }));
+    await assertSucceeds(getDoc(reference));
+    await assertFails(setDoc(doc(owner, "budgets", "other"), { userId: "other", limits: {}, updatedAt: serverTimestamp() }));
+    await assertFails(setDoc(reference, { userId: "owner", limits: {}, updatedAt: serverTimestamp(), role: "admin" }));
+    const attacker = environment.authenticatedContext("attacker", { email: "attacker@example.com", email_verified: true }).firestore();
+    await assertFails(getDoc(doc(attacker, "budgets", "owner")));
+  });
 });

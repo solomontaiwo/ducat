@@ -64,7 +64,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
   const { t } = useTranslation();
 
   // Adds Firebase transaction
-  const addTransaction = useCallback(async (transactionData) => {
+  const addTransaction = useCallback(async (transactionData, { silent = false } = {}) => {
     if (!currentUser) return false;
     
     setIsProcessing(true);
@@ -72,7 +72,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
       const { TransactionService } = await import("../services/transactionService.jsx");
       const { clientRequestId, ...payload } = transactionData;
       await TransactionService.add(currentUser.uid, payload, { requestId: clientRequestId });
-      notification.success(t('notifications.addSuccess'));
+      if (!silent) notification.success(t('notifications.addSuccess'));
       return true;
     } catch (error) {
       console.error("Error adding transaction:", error);
