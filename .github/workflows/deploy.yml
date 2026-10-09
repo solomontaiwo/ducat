@@ -145,6 +145,7 @@ jobs:
           VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
           VITE_FIREBASE_APPCHECK_PROVIDER: enterprise
           VITE_FIREBASE_FUNCTIONS_REGION: europe-west1
+          VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
