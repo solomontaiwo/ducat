@@ -105,7 +105,7 @@ for (const colorScheme of ["light", "dark"]) {
     await page.goto(".");
     await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
     await expect(page).toHaveURL(/\/transactions$/);
-    for (const path of ["dashboard", "transactions", "analytics"]) {
+    for (const path of ["dashboard", "transactions", "analytics", "recurring", "budgets"]) {
       await page.evaluate((target) => {
         window.history.pushState({}, "", `/soldi-sotto/${target}`);
         window.dispatchEvent(new PopStateEvent("popstate"));
@@ -128,7 +128,7 @@ test("pages never scroll horizontally on mobile, even with long descriptions", a
   await dialog.locator("#transaction-description").fill("Canone di competenza ottobre 2026 Via La Salle 14 appartamento secondo piano interno 7");
   await dialog.getByRole("button", { name: /1\.234,56/ }).click();
   await expect(dialog).toBeHidden();
-  for (const path of ["dashboard", "transactions", "analytics"]) {
+  for (const path of ["dashboard", "transactions", "analytics", "recurring", "budgets"]) {
     await page.evaluate((target) => {
       window.history.pushState({}, "", `/soldi-sotto/${target}`);
       window.dispatchEvent(new PopStateEvent("popstate"));
@@ -154,3 +154,84 @@ test("a horizontal swipe does not change page on mobile", async ({ page, isMobil
   await page.waitForTimeout(300);
   await expect(page).toHaveURL(/\/transactions$/);
 });
+
+const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const goTo = (page, path) => page.evaluate((target) => {
+  window.history.pushState({}, "", `/soldi-sotto/${target}`);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}, path);
+
+test("suggests the category and turns a movement into a recurring one", async ({ page }) => {
+  await page.goto(".");
+  await page.getByRole("button", { name: /prova demo/i }).first().click();
+  await page.getByRole("button", { name: ADD_BUTTON }).first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#transaction-amount").fill("13,99");
+  await dialog.locator("#transaction-description").fill("Netflix");
+  await expect(dialog.getByTestId("category-suggestion")).toBeVisible();
+  await expect(dialog.getByRole("radio", { name: /^abbonamenti$/i })).toHaveAttribute("aria-checked", "true");
+  await dialog.getByRole("radio", { name: /altra data/i }).click();
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  await dialog.locator("#transaction-date").fill(iso(weekAgo));
+  await dialog.getByRole("switch").click();
+  await dialog.getByRole("radio", { name: /^settimana$/i }).click();
+  await dialog.getByRole("radio", { name: /chiedimi prima/i }).click();
+  await dialog.getByRole("button", { name: /13,99/ }).click();
+  await expect(dialog).toBeHidden();
+
+  await goTo(page, "dashboard");
+  const upcoming = page.getByRole("region", { name: /in arrivo/i });
+  await expect(upcoming.getByText("Netflix")).toBeVisible();
+  await upcoming.getByRole("button", { name: /registra/i }).click();
+  // The next weekly occurrence is still within the 7-day window, but no longer waits for confirmation.
+  await expect(upcoming.getByRole("button", { name: /registra/i })).toHaveCount(0);
+
+  await goTo(page, "transactions");
+  await page.getByRole("searchbox").fill("netf");
+  await expect(page.getByRole("button", { name: /Netflix/ })).toHaveCount(2);
+
+  await goTo(page, "recurring");
+  await expect(page.getByRole("heading", { level: 1, name: /ricorrenti/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Netflix.*ogni settimana/i })).toBeVisible();
+});
+
+test("budgets appear on the overview only once set", async ({ page }) => {
+  await page.goto(".");
+  await page.getByRole("button", { name: /prova demo/i }).first().click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  await goTo(page, "dashboard");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("region", { name: /budget del mese/i })).toHaveCount(0);
+  await goTo(page, "budgets");
+  await page.getByLabel(/budget mensile per spesa$/i).fill("40");
+  await page.getByRole("button", { name: /salva budget/i }).click();
+  await expect(page).toHaveURL(/dashboard$/);
+  const card = page.getByRole("region", { name: /budget del mese/i });
+  await expect(card.getByTestId("budget-row")).toHaveAttribute("data-status", "over");
+});
+
+test("mobile header keeps the profile shortcut clear of other controls", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "Mobile header");
+  await page.goto(".");
+  await page.getByRole("button", { name: /prova demo/i }).first().click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  const nav = page.getByRole("navigation", { name: /navigazione principale/i });
+  await expect(nav.getByRole("button")).toHaveCount(4);
+  for (const path of ["dashboard", "transactions", "analytics"]) {
+    await goTo(page, path);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const shortcut = page.getByRole("link", { name: /registrati/i });
+    await expect(shortcut).toBeVisible();
+    const box = await shortcut.boundingBox();
+    const overlaps = await page.evaluate(({ x, y, width, height }) => [...document.querySelectorAll("main header *")]
+      .filter((element) => !element.closest("a") && element.children.length === 0 && element.getBoundingClientRect().width > 0)
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.left < x + width && rect.right > x && rect.top < y + height && rect.bottom > y;
+      }).length, box);
+    expect(overlaps, `${path} header overlaps the profile shortcut`).toBe(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize().width);
+  }
+});
+

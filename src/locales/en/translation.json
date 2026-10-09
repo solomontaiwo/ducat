@@ -87,7 +87,7 @@
   "motivationalQuote": "Managing your finances is the first step to freedom.",
   "noTransactions": "No transactions yet. Add your first one!",
   "yourTransactions": "Your Transactions",
-  "searchTransactions": "Search transactions...",
+  "searchTransactions": "Search description, category or amount",
   "type": "Type",
   "amount": "Amount (€)",
   "date": "Date",
@@ -284,7 +284,14 @@
     "saved": "Saved",
     "savedAmount": "{{amount}} put aside",
     "overspentAmount": "{{amount}} overspent",
-    "byCategory": "By category"
+    "byCategory": "By category",
+    "compare": {
+      "previousPeriod": "previous period",
+      "up": "▲ {{pct}}% vs {{ref}}",
+      "down": "▼ {{pct}}% vs {{ref}}",
+      "flat": "= steady vs {{ref}}",
+      "categoryLabel": "Change compared with {{ref}}"
+    }
   },
   "transactionModal": {
     "editTitle": "Edit transaction",
@@ -298,7 +305,7 @@
     "amountPlaceholder": "0.00",
     "date": "Date",
     "description": "Description",
-    "descriptionPlaceholder": "E.g. Groceries",
+    "descriptionPlaceholder": "E.g. groceries, Netflix, rent",
     "category": "Category",
     "selectCategory": "Select a category",
     "cancel": "Cancel",
@@ -308,7 +315,11 @@
     "addButton": "Add {{type}}",
     "optional": "(optional)",
     "otherDate": "Other date",
-    "saveWithAmount": "Save {{type}} of {{amount}}"
+    "saveWithAmount": "Save {{type}} of {{amount}}",
+    "suggested": "Suggested",
+    "suggestedFromHistory_one": "like a similar movement",
+    "suggestedFromHistory_other": "like {{count}} similar movements",
+    "suggestedFromDescription": "based on the description"
   },
   "transactions": {
     "title": "Transactions",
@@ -356,7 +367,7 @@
     "countLoadError": "Unable to load the transaction count.",
     "loadError": "Unable to load transactions. Please try again.",
     "loadMoreError": "Unable to load more transactions. Please try again.",
-    "searchScope": "Search covers the {{count}} transactions already loaded. Scroll to extend it.",
+    "searchScope": "Searching your whole history",
     "summary": {
       "count_one": "{{count}} transaction",
       "count_other": "{{count}} transactions",
@@ -364,7 +375,8 @@
     },
     "loadedOfTotal": "Loaded",
     "loadAll": "Load all",
-    "partialResults": "Filters active: totals based on loaded transactions"
+    "partialResults": "Filters active: totals based on loaded transactions",
+    "searchLoading": "Loading your whole history for search…"
   },
   "pdf": {
     "reportTitle": "Financial Statistics Report",
@@ -558,5 +570,81 @@
   "monthSwitcher": {
     "previous": "Previous month",
     "next": "Next month"
+  },
+  "recurring": {
+    "title": "Recurring",
+    "repeats": "Repeats",
+    "repeatsHint": "You'll find it among recurring movements",
+    "frequencyLabel": "How often",
+    "modeLabel": "How to record it",
+    "frequency": {
+      "weekly": "Week",
+      "monthly": "Month",
+      "yearly": "Year"
+    },
+    "every": {
+      "weekly": "Every week",
+      "monthly": "Every month",
+      "yearly": "Every year"
+    },
+    "mode": {
+      "auto": "Record it for me",
+      "confirm": "Ask me first"
+    },
+    "modeShort": {
+      "auto": "automatic",
+      "confirm": "asks first"
+    },
+    "nextOn": "Next: {{date}}",
+    "upcoming": "Coming up",
+    "upcomingHint": "Next 7 days",
+    "manage": "Recurring",
+    "register": "Record",
+    "skip": "Skip the next one",
+    "today": "today",
+    "tomorrow": "tomorrow",
+    "inDays": "in {{count}} days",
+    "overdue": "since {{date}}",
+    "fixedExpenses": "Fixed expenses per month",
+    "fixedIncome": "Fixed income per month",
+    "all": "All",
+    "paused": "Paused",
+    "pause": "Pause",
+    "resume": "Resume",
+    "delete": "Delete recurring",
+    "deleteHint": "Movements already recorded stay.",
+    "switchToAuto": "Record it for me",
+    "switchToConfirm": "Ask me before recording",
+    "actionsDescription": "What do you want to do with this recurring movement?",
+    "next": "next {{date}}",
+    "empty": "No recurring movements.",
+    "emptyHint": "When you add a movement, turn on “Repeats”: rent, salary and subscriptions will record themselves.",
+    "addFirst": "New movement",
+    "saveError": "Unable to save the recurring movement",
+    "autoRegistered_one": "Recorded 1 recurring movement",
+    "autoRegistered_other": "Recorded {{count}} recurring movements",
+    "back": "Back"
+  },
+  "budgets": {
+    "title": "Monthly budgets",
+    "cardTitle": "Monthly budget",
+    "edit": "Edit",
+    "intro": "Set a limit only where you need one. The suggestion is your average spending over the last 3 months.",
+    "average": "Last 3 months average: {{amount}}",
+    "noAverage": "No spending in the last 3 months",
+    "useSuggestions": "Use suggestions",
+    "save": "Save budgets",
+    "saved": "Budgets saved",
+    "saveError": "Unable to save budgets",
+    "total": "Total budget",
+    "of": "{{spent}} of {{limit}}",
+    "over": "Over by {{amount}}",
+    "daysLeft_one": "1 day left in the month",
+    "daysLeft_other": "{{count}} days left in the month",
+    "invite": "Want a spending limit per category?",
+    "inviteAction": "Set a budget",
+    "limitFor": "Monthly budget for {{category}}",
+    "planning": "Planning",
+    "planningHint": "Movements that repeat and spending limits"
   }
 }

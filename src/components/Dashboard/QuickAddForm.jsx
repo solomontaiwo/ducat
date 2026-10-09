@@ -8,11 +8,12 @@ import { dateKeyToDate, todayDateKey } from "../../utils/dateUtils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
+import { suggestCategory } from "../../utils/categorySuggest.js";
 
 /** One-line entry for desktop: type, amount, description, category, date, Enter. */
 const QuickAddForm = () => {
   const { t } = useTranslation();
-  const { addTransaction, isDemo, canAddMoreTransactions } = useUnifiedTransactions();
+  const { addTransaction, isDemo, canAddMoreTransactions, transactions: history } = useUnifiedTransactions();
   const { expenseCategories, incomeCategories } = useCategories();
   const notification = useNotification();
   const [type, setType] = useState("expense");
@@ -21,6 +22,7 @@ const QuickAddForm = () => {
   const [category, setCategory] = useState(expenseCategories[0]?.value || "");
   const [date, setDate] = useState(todayDateKey);
   const [submitting, setSubmitting] = useState(false);
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const categories = type === "expense" ? expenseCategories : incomeCategories;
   const disabled = isDemo && !canAddMoreTransactions;
 
@@ -28,6 +30,13 @@ const QuickAddForm = () => {
     setType(nextType);
     const list = nextType === "expense" ? expenseCategories : incomeCategories;
     setCategory(list[0]?.value || "");
+  };
+
+  const changeDescription = (value) => {
+    setDescription(value);
+    if (categoryTouched) return;
+    const suggestion = suggestCategory(value, { type, history, categories: categories.map((item) => item.value) });
+    if (suggestion) setCategory(suggestion.category);
   };
 
   const handleSubmit = async (event) => {
@@ -55,6 +64,7 @@ const QuickAddForm = () => {
       if (success) {
         setAmount("");
         setDescription("");
+        setCategoryTouched(false);
       }
     } finally {
       setSubmitting(false);
@@ -76,11 +86,11 @@ const QuickAddForm = () => {
       </label>
       <label className="min-w-[10rem] flex-1">
         <span className="sr-only">{t("transactionModal.description")}</span>
-        <Input value={description} onChange={(event) => setDescription(event.target.value)} maxLength={200} placeholder={t("transactionModal.description")} className="h-11" disabled={disabled} />
+        <Input value={description} onChange={(event) => changeDescription(event.target.value)} maxLength={200} placeholder={t("transactionModal.description")} className="h-11" disabled={disabled} />
       </label>
       <label className="w-40">
         <span className="sr-only">{t("transactionModal.category")}</span>
-        <Select value={category} onChange={(event) => setCategory(event.target.value)} className="[&_select]:h-11" disabled={disabled}>
+        <Select value={category} onChange={(event) => { setCategoryTouched(true); setCategory(event.target.value); }} className="[&_select]:h-11" disabled={disabled}>
           {categories.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </Select>
       </label>

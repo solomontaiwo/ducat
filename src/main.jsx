@@ -8,6 +8,7 @@ import { ThemeProvider } from "./utils/ThemeProvider";
 import { NotificationProvider } from "./utils/notificationUtils";
 import { AuthProvider } from "./context/AuthProvider";
 import UnifiedTransactionProvider from "./context/UnifiedTransactionProvider";
+import PlanningProvider from "./context/PlanningProvider";
 import './utils/i18n';
 import ErrorBoundary from "./components/ErrorBoundary";
 import { installGlobalErrorReporting } from "./utils/errorReporting";
@@ -23,7 +24,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <RouterProvider basename="/soldi-sotto">
           <AuthProvider>
             <UnifiedTransactionProvider>
-              <App />
+              <PlanningProvider>
+                <App />
+              </PlanningProvider>
             </UnifiedTransactionProvider>
           </AuthProvider>
         </RouterProvider>

@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui
 import { buildAccountExport, downloadJson } from "../../utils/accountExport.js";
 import { deleteCurrentAccount, requestEmailChange, requestPasswordReset } from "../../services/accountService.js";
 import { removeLocalValue, writeLocalValue } from "../../utils/storage.js";
+import { Link } from "../../router/RouterProvider";
+import { FiChevronRight, FiRepeat, FiTarget } from "react-icons/fi";
 
 // Account deletion relies on the deleteAccount Cloud Function (Blaze plan).
 // Enable it at build time with VITE_ENABLE_ACCOUNT_DELETION=true once it is deployed.
@@ -225,6 +227,25 @@ const Profile = () => {
           </CardHeader>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>{t("budgets.planning")}</CardTitle>
+          <CardDescription>{t("budgets.planningHint")}</CardDescription>
+        </CardHeader>
+        <CardContent className="divide-y divide-border pt-0">
+          {[
+            { to: "/recurring", icon: FiRepeat, label: t("recurring.title") },
+            { to: "/budgets", icon: FiTarget, label: t("budgets.title") },
+          ].map(({ to, icon: Icon, label }) => (
+            <Link key={to} to={to} className="flex items-center gap-3 py-3 text-[15px] font-semibold hover:text-primary">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted" aria-hidden="true"><Icon className="h-4 w-4" /></span>
+              <span className="flex-1">{label}</span>
+              <FiChevronRight className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            </Link>
+          ))}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

@@ -47,7 +47,10 @@ export default {
           foreground: "hsl(var(--card-foreground) / <alpha-value>)",
         },
         income: "hsl(var(--income) / <alpha-value>)",
-        warning: "hsl(var(--warning) / <alpha-value>)",
+        warning: {
+          DEFAULT: "hsl(var(--warning) / <alpha-value>)",
+          strong: "hsl(var(--warning-strong) / <alpha-value>)",
+        },
         hero: {
           DEFAULT: "hsl(var(--hero) / <alpha-value>)",
           foreground: "hsl(var(--hero-foreground) / <alpha-value>)",

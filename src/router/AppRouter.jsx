@@ -11,6 +11,8 @@ const loaders = {
   transactions: () => import("../components/Transaction/TransactionList"),
   analytics: () => import("../components/Analytics/TransactionAnalytics"),
   profile: () => import("../components/Profile/Profile"),
+  recurring: () => import("../components/Planning/RecurringPage"),
+  budgets: () => import("../components/Planning/BudgetsPage"),
   home: () => import("../components/Home/Home"),
   landing: () => import("../components/Home/LandingPage"),
   login: () => import("../components/Auth/Login"),
@@ -54,6 +56,8 @@ const routeDefinitions = [
   { path: "/transactions", page: "transactions", access: "app" },
   { path: "/analytics", page: "analytics", access: "app" },
   { path: "/profile", page: "profile", access: "authenticated" },
+  { path: "/recurring", page: "recurring", access: "app" },
+  { path: "/budgets", page: "budgets", access: "app" },
 ];
 
 const AppRouter = () => {

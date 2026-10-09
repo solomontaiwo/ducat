@@ -8,7 +8,8 @@ import SwipeableTransactionCard from "./SwipeableTransactionCard.jsx";
 import TransactionActionsDialog from "./TransactionActionsDialog.jsx";
 import DeleteTransactionDialog from "./DeleteTransactionDialog.jsx";
 import { compareTransactions } from "../../utils/transactionOrder.js";
-import { formatGroupDate as formatGroupDateLabel, groupNetAmount, groupTransactionsByDate } from "../../utils/transactionGrouping.js";
+import { formatGroupDate as formatGroupDateLabel, formatRowDate, groupNetAmount, groupTransactionsByDate } from "../../utils/transactionGrouping.js";
+import { groupTransactionsByMonth, mergeTransactions } from "../../utils/transactionSearch.js";
 import { FiChevronDown, FiCopy, FiSearch, FiTrash2, FiX } from "react-icons/fi";
 import { useCategories } from "../../utils/categories.jsx";
 import { useTranslation } from "react-i18next";
@@ -21,6 +22,7 @@ import { useTransactionFilter } from "../../hooks/useTransactionFilter.jsx";
 import { getPeriodRange } from "../../utils/statsUtils.jsx";
 import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { cn } from "../../lib/utils";
+import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
 
 const TYPE_FILTERS = ["all", "expense", "income"];
 
@@ -37,6 +39,7 @@ const TransactionList = () => {
     fetchTransactionPage,
     getTotalTransactionCount,
     getTransactionTotals,
+    fetchAllTransactions,
     recentRevision,
   } = useUnifiedTransactions();
 
@@ -70,18 +73,47 @@ const TransactionList = () => {
     return { startDate: range.start, endDate: range.end };
   }, [allTime, monthRange.startDate, monthRange.endDate]);
 
+  const getCategoryLabel = useCallback((category) => {
+    const categoryData = [...expenseCategories, ...incomeCategories].find((c) => c.value === category);
+    if (categoryData) return categoryData.label;
+    return t(`categories.${category}`, { defaultValue: category });
+  }, [expenseCategories, incomeCategories, t]);
+
+  // Full-history snapshot used by search, loaded once on the first search.
+  const [historyIndex, setHistoryIndex] = useState(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [removedIds, setRemovedIds] = useState(() => new Set());
+  const searchSource = useMemo(() => {
+    if (isDemo) return transactions;
+    return mergeTransactions(historyIndex || allLoadedTransactions, transactions, removedIds);
+  }, [isDemo, historyIndex, allLoadedTransactions, transactions, removedIds]);
+
   const {
     filteredTransactions,
     searchTerm,
     setSearchTerm,
+    isSearching,
     selectedCategory,
     setSelectedCategory,
     selectedType,
     setSelectedType,
   } = useTransactionFilter(
     isDemo || (!hasLoadedPageRef.current && allLoadedTransactions.length === 0) ? transactions : allLoadedTransactions,
-    { startDate, endDate }
+    { startDate, endDate },
+    { searchSource, getCategoryLabel }
   );
+
+  useEffect(() => {
+    if (!isSearching || isDemo || !currentUser || historyIndex || isLoadingHistory) return;
+    let cancelled = false;
+    setIsLoadingHistory(true);
+    fetchAllTransactions()
+      .then((data) => { if (!cancelled) setHistoryIndex(data); })
+      .catch(() => { if (!cancelled) setLoadError(t("transactions.loadError")); })
+      .finally(() => { if (!cancelled) setIsLoadingHistory(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSearching, isDemo, currentUser, historyIndex, fetchAllTransactions, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -242,12 +274,6 @@ const TransactionList = () => {
 
   const formatGroupDate = (date) => formatGroupDateLabel(date, i18n.language, t);
 
-  const getCategoryLabel = useCallback((category) => {
-    const categoryData = [...expenseCategories, ...incomeCategories].find((c) => c.value === category);
-    if (categoryData) return categoryData.label;
-    return t(`categories.${category}`, { defaultValue: category });
-  }, [expenseCategories, incomeCategories, t]);
-
   const handleDeleteClick = useCallback((transactionId) => {
     setDeleteConfirm(transactionId);
   }, []);
@@ -273,6 +299,7 @@ const TransactionList = () => {
       if (success) {
         setDeleteConfirm(null);
         setAllLoadedTransactions((prev) => prev.filter((item) => item.id !== deleteConfirm));
+        setRemovedIds((previous) => new Set(previous).add(deleteConfirm));
         setSelectedTransaction((current) => (current?.id === deleteConfirm ? null : current));
       }
     }
@@ -292,6 +319,7 @@ const TransactionList = () => {
     const success = await updateTransaction(target.id, payload);
     if (success) {
       setAllLoadedTransactions((prev) => prev.map((item) => (item.id === target.id ? { ...item, ...payload } : item)));
+      setHistoryIndex((prev) => prev && prev.map((item) => (item.id === target.id ? { ...item, ...payload } : item)));
     }
     return success;
   }, [updateTransaction]);
@@ -347,7 +375,9 @@ const TransactionList = () => {
     );
   }
 
-  const groupedTransactions = groupTransactionsByDate(filteredTransactions, formatGroupDate);
+  const groupedTransactions = isSearching
+    ? groupTransactionsByMonth(filteredTransactions, i18n.language)
+    : groupTransactionsByDate(filteredTransactions, formatGroupDate);
   const hasFilters = searchTerm || selectedCategory !== "all" || selectedType !== "all";
   const showPanel = isDesktop && selectedTransaction;
   const demoCount = transactions.filter((item) => !item.isSample).length;
@@ -364,15 +394,18 @@ const TransactionList = () => {
 
         <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <h1 className="pl-1 text-[1.75rem] font-extrabold leading-tight md:pl-0 md:text-3xl">{t("transactions.title")}</h1>
-          <MonthSwitcher
-            size="sm"
-            month={monthRange.month}
-            onPrevious={monthRange.goToPrevious}
-            onNext={monthRange.goToNext}
-            canGoNext={!monthRange.isCurrentMonth}
-            disabled={allTime}
-            className="rounded-full border border-border bg-card px-0.5"
-          />
+          <HeaderProfileButton />
+          <div className="max-md:order-last max-md:basis-full">
+            <MonthSwitcher
+              size="sm"
+              month={monthRange.month}
+              onPrevious={monthRange.goToPrevious}
+              onNext={monthRange.goToNext}
+              canGoNext={!monthRange.isCurrentMonth}
+              disabled={allTime || isSearching}
+              className="w-fit rounded-full border border-border bg-card px-0.5"
+            />
+          </div>
         </header>
 
         <div className="space-y-3">
@@ -385,12 +418,12 @@ const TransactionList = () => {
               placeholder={t("searchTransactions")}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              aria-describedby={searchTerm && hasMore ? "search-scope-help" : undefined}
+              aria-describedby={isSearching ? "search-scope-help" : undefined}
             />
           </label>
-          {searchTerm && hasMore && (
-            <p id="search-scope-help" className="px-1 text-xs text-muted-foreground">
-              {t("transactions.searchScope", { count: allLoadedTransactions.length })}
+          {isSearching && (
+            <p id="search-scope-help" className="px-1 text-xs font-medium text-muted-foreground" aria-live="polite">
+              {isLoadingHistory ? t("transactions.searchLoading") : t("transactions.searchScope")}
             </p>
           )}
 
@@ -421,7 +454,7 @@ const TransactionList = () => {
               </select>
               <FiChevronDown className={cn("pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2", selectedCategory !== "all" ? "text-background" : "text-muted-foreground")} aria-hidden="true" />
             </label>
-            <button type="button" className="chip" aria-pressed={allTime} onClick={() => setAllTime((value) => !value)}>
+            <button type="button" className="chip" aria-pressed={allTime || isSearching} disabled={isSearching} onClick={() => setAllTime((value) => !value)}>
               {t("transactions.filters.allTime")}
             </button>
           </div>
@@ -441,7 +474,7 @@ const TransactionList = () => {
             <p className="amount truncate text-base sm:text-lg">{formatSignedAmount(totals.expense, "expense")}</p>
           </div>
         </div>
-        {(isDemo || (totalTransactionCount > 0 && allLoadedTransactions.length < totalTransactionCount)) && (
+        {!isSearching && (isDemo || (totalTransactionCount > 0 && allLoadedTransactions.length < totalTransactionCount)) && (
           <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs font-medium text-muted-foreground">
             <p>
               {isDemo
@@ -472,7 +505,9 @@ const TransactionList = () => {
                       <SwipeableTransactionCard
                         key={transaction.id}
                         transaction={transaction}
-                        meta={getCategoryLabel(transaction.category)}
+                        meta={isSearching
+                          ? `${getCategoryLabel(transaction.category)} · ${formatRowDate(transaction.date, i18n.language, t)}`
+                          : getCategoryLabel(transaction.category)}
                         onSelect={handleSelect}
                         onDelete={handleDeleteClick}
                         selected={showPanel && selectedTransaction.id === transaction.id}
@@ -491,7 +526,7 @@ const TransactionList = () => {
             </div>
           )}
 
-          {hasMore && !isDemo && allLoadedTransactions.length > 0 && (
+          {!isSearching && hasMore && !isDemo && allLoadedTransactions.length > 0 && (
             <div ref={sentinelRef} className="flex justify-center py-6">
               {isLoadingMore && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

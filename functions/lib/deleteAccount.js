@@ -48,11 +48,15 @@ export const deleteQueryWithBulkWriter = async (database, query, { pageSize = PA
 export const deleteAccountData = async ({ database, auth, uid, logger }) => {
   const transactions = database.collection("transactions").where("userId", "==", uid);
   const deletedTransactions = await deleteQueryWithBulkWriter(database, transactions);
+  // Recurring rules and the budget document belong to the same account.
+  await deleteQueryWithBulkWriter(database, database.collection("recurring").where("userId", "==", uid));
 
-  try {
-    await database.collection("users").doc(uid).delete();
-  } catch (error) {
-    if (error.code !== FIRESTORE_NOT_FOUND) throw error;
+  for (const [collection, id] of [["budgets", uid], ["users", uid]]) {
+    try {
+      await database.collection(collection).doc(id).delete();
+    } catch (error) {
+      if (error.code !== FIRESTORE_NOT_FOUND) throw error;
+    }
   }
 
   try {
