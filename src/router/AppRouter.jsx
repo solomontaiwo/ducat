@@ -10,7 +10,6 @@ const loaders = {
   dashboard: () => import("../components/Dashboard/Dashboard"),
   transactions: () => import("../components/Transaction/TransactionList"),
   analytics: () => import("../components/Analytics/TransactionAnalytics"),
-  stats: () => import("../components/Stats/Stats"),
   profile: () => import("../components/Profile/Profile"),
   home: () => import("../components/Home/Home"),
   landing: () => import("../components/Home/LandingPage"),
@@ -54,7 +53,6 @@ const routeDefinitions = [
   { path: "/dashboard", page: "dashboard", access: "app" },
   { path: "/transactions", page: "transactions", access: "app" },
   { path: "/analytics", page: "analytics", access: "app" },
-  { path: "/stats", page: "stats", access: "app" },
   { path: "/profile", page: "profile", access: "authenticated" },
 ];
 
