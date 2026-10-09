@@ -140,3 +140,17 @@ test("pages never scroll horizontally on mobile, even with long descriptions", a
     expect(overflow, `${path} overflows by ${overflow}px`).toBeLessThanOrEqual(0);
   }
 });
+
+test("a horizontal swipe does not change page on mobile", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "Touch gesture regression");
+  await page.goto(".");
+  await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  await page.locator("main h1").evaluate((element) => {
+    const touch = (x) => new Touch({ identifier: 1, target: element, clientX: x, clientY: 200 });
+    element.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [touch(320)], changedTouches: [touch(320)] }));
+    element.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [], changedTouches: [touch(40)] }));
+  });
+  await page.waitForTimeout(300);
+  await expect(page).toHaveURL(/\/transactions$/);
+});

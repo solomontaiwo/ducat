@@ -57,8 +57,6 @@ const BottomNavigation = ({ onAdd, addDisabled = false }) => {
     <nav
       aria-label={t("navbar.mainNavigation")}
       className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),12px)]"
-      onTouchStart={(event) => event.stopPropagation()}
-      onTouchEnd={(event) => event.stopPropagation()}
     >
       <div
         className="mx-auto grid max-w-md grid-cols-5 items-center rounded-[26px] border border-border bg-card/95 px-1.5 shadow-[0_10px_30px_rgb(20_25_36/0.12)] backdrop-blur-xl dark:shadow-[0_10px_30px_rgb(0_0_0/0.5)]"
