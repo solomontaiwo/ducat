@@ -416,10 +416,10 @@
     "unspecifiedPeriod": "Periodo non specificato"
   },
   "categories": {
-    "alimentazione": "Alimentazione",
+    "alimentazione": "Ristoranti e bar",
     "supermercato": "Spesa",
     "trasporti": "Trasporti",
-    "casa": "Casa",
+    "casa": "Casa e bollette",
     "intrattenimento": "Svago",
     "abbonamenti": "Abbonamenti",
     "salute": "Salute",
@@ -432,7 +432,8 @@
     "vendite": "Vendite",
     "rimborso": "Rimborso",
     "freelance": "Freelance",
-    "investimenti": "Investimenti"
+    "investimenti": "Investimenti",
+    "tasse": "Tasse e commissioni"
   },
   "demo": {
     "modalityActive": "Modalità Demo Attiva",
