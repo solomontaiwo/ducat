@@ -17,6 +17,10 @@ import { buildAccountExport, downloadJson } from "../../utils/accountExport.js";
 import { deleteCurrentAccount, requestEmailChange, requestPasswordReset } from "../../services/accountService.js";
 import { removeLocalValue, writeLocalValue } from "../../utils/storage.js";
 
+// Account deletion relies on the deleteAccount Cloud Function (Blaze plan).
+// Enable it at build time with VITE_ENABLE_ACCOUNT_DELETION=true once it is deployed.
+const ACCOUNT_DELETION_ENABLED = import.meta.env.VITE_ENABLE_ACCOUNT_DELETION === "true";
+
 const Profile = () => {
   const { currentUser, loading: userLoading, logout, profileName, profileNameLoading, refreshProfileName } = useAuth();
   const { loading: transactionsLoading, fetchAllTransactions } = useUnifiedTransactions();
@@ -324,22 +328,24 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-destructive/50">
-          <CardHeader>
-            <CardTitle>{t("profile.deleteAccountTitle")}</CardTitle>
-            <CardDescription>
-              {t("profile.deleteAccountDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {t("profile.deleteAccountHelp")}
-            </p>
-            <Button variant="destructive" onClick={handleDeleteAccount} disabled={Boolean(accountAction)}>
-              {accountAction === "delete" ? t("profile.deleting") : t("profile.deleteAccountButton")}
-            </Button>
-          </CardContent>
-        </Card>
+        {ACCOUNT_DELETION_ENABLED && (
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <CardTitle>{t("profile.deleteAccountTitle")}</CardTitle>
+              <CardDescription>
+                {t("profile.deleteAccountDescription")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {t("profile.deleteAccountHelp")}
+              </p>
+              <Button variant="destructive" onClick={handleDeleteAccount} disabled={Boolean(accountAction)}>
+                {accountAction === "delete" ? t("profile.deleting") : t("profile.deleteAccountButton")}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
