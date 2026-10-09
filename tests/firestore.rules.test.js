@@ -89,11 +89,11 @@ describe("Firestore rules", () => {
     await assertFails(setDoc(doc(verifiedOwner(), "transactions", "legacy-new"), { ...legacyTransaction("owner"), createdAt: serverTimestamp() }));
   });
 
-  it("keeps existing legacy transactions editable but blocks downgrading v2 documents", async () => {
+  it("denies editing legacy-shaped documents and blocks downgrading v2 documents", async () => {
     await seed("legacy", legacyTransaction("owner"));
     await seed("modern", { ...transactionV2("owner"), createdAt: new Date("2026-08-04T00:00:00.000Z"), updatedAt: new Date("2026-08-04T00:00:00.000Z") });
     const db = verifiedOwner();
-    await assertSucceeds(setDoc(doc(db, "transactions", "legacy"), { ...legacyTransaction("owner"), description: "Edited" }));
+    await assertFails(setDoc(doc(db, "transactions", "legacy"), { ...legacyTransaction("owner"), description: "Edited" }));
     await assertFails(setDoc(doc(db, "transactions", "modern"), { ...legacyTransaction("owner"), createdAt: new Date("2026-08-04T00:00:00.000Z") }));
   });
 

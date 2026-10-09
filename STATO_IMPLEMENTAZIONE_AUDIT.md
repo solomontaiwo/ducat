@@ -109,3 +109,6 @@ Tutti i finding P1/P2 con soluzione applicabile nel repository sono stati implem
 2. Verificare in produzione, con App Check attivo, la cancellazione account e l'assenza di violazioni CSP nella console del browser.
 3. Prima di rimuovere del tutto il ramo legacy dalle rules, completare la migrazione con `functions/scripts/migrate-transactions-v2.mjs` (dry-run, poi apply).
 4. Se si vuole il monitoraggio errori: impostare `VITE_ERROR_REPORT_URL` nei secret di build e aggiungere l'origine a `connect-src`.
+
+### Migrazione v2 completata (9 ottobre 2026)
+Tutte le transazioni di produzione sono in schema v2 (1078 migrate, 1 documento di prova con importo 0 eliminato). Il ramo legacy è stato rimosso da `firestore.rules`: `update` richiede sempre `isValidV2Transaction`. Da pubblicare con `firebase deploy --only firestore:rules`.

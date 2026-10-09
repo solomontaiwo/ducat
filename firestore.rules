@@ -14,19 +14,6 @@ service cloud.firestore {
       return hasVerifiedEmail() && request.auth.uid == userId;
     }
 
-    function isValidLegacyTransaction(data) {
-      return data.keys().hasOnly([
-          'userId', 'amount', 'description', 'date', 'category', 'type', 'createdAt'
-        ]) &&
-        data.keys().hasAll(['userId', 'amount', 'description', 'date', 'category', 'type', 'createdAt']) &&
-        data.userId is string &&
-        data.amount is number && data.amount > 0 && data.amount <= 1000000 &&
-        data.description is string && data.description.size() >= 1 && data.description.size() <= 200 &&
-        data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
-        data.type in ['income', 'expense'] &&
-        data.date is timestamp && data.createdAt is timestamp;
-    }
-
     function isValidV2Transaction(data) {
       return data.keys().hasOnly([
           'userId', 'amount', 'amountMinor', 'currency', 'description', 'date',
@@ -49,18 +36,13 @@ service cloud.firestore {
         data.schemaVersion == 2;
     }
 
-    function isValidTransaction(data) {
-      return isValidLegacyTransaction(data) || isValidV2Transaction(data);
-    }
-
     function isValidProfileName(value) {
       return value is string && value.size() >= 3 && value.size() <= 50;
     }
 
     match /transactions/{transactionId} {
       allow get, list: if isOwner(resource.data.userId);
-      // New documents must use the v2 schema. The legacy shape is still
-      // accepted on update so pre-migration documents remain editable.
+      // Every document must use the v2 schema (migration completed 2026-10-09).
       allow create: if isOwner(request.resource.data.userId) &&
         isValidV2Transaction(request.resource.data) &&
         request.resource.data.createdAt == request.time &&
@@ -68,9 +50,7 @@ service cloud.firestore {
       allow update: if isOwner(resource.data.userId) &&
         request.resource.data.userId == resource.data.userId &&
         request.resource.data.createdAt == resource.data.createdAt &&
-        (resource.data.get('schemaVersion', 1) == 2
-          ? isValidV2Transaction(request.resource.data)
-          : isValidTransaction(request.resource.data)) &&
+        isValidV2Transaction(request.resource.data) &&
         (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt == request.time);
       allow delete: if isOwner(resource.data.userId);
     }
