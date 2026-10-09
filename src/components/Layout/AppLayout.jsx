@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState, useRef, useCallback, useMemo } from "react";
-import { useLocation, useNavigate } from "../../router/RouterProvider";
+import { lazy, Suspense, useState, useCallback, useMemo } from "react";
+import { useLocation } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import { AddTransactionContext } from "../../context/AddTransactionContext.jsx";
@@ -11,65 +11,16 @@ import { useTranslation } from "react-i18next";
 
 const TransactionModal = lazy(() => import("../Transaction/TransactionModal"));
 
-// Base swipe routes for authenticated users
-const BASE_SWIPE_ROUTES = ["/dashboard", "/transactions", "/analytics", "/profile"];
-const SWIPE_THRESHOLD = 60; // px minimum horizontal swipe distance
-const SWIPE_MAX_VERTICAL = 80; // px maximum vertical movement to count as horizontal swipe
 const PUBLIC_ROUTES = ["/", "/landing", "/login", "/register", "/forgot-password", "/verify-email", "/privacy", "/terms"];
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { isDemo, canAddMoreTransactions } = useUnifiedTransactions();
   const { t } = useTranslation();
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSendingVerification, setIsSendingVerification] = useState(false);
-
-  const swipeRoutes = currentUser
-    ? BASE_SWIPE_ROUTES
-    : BASE_SWIPE_ROUTES.filter((r) => r !== "/profile");
-
-  const touchStartRef = useRef(null);
-  const handleTouchStart = useCallback((e) => {
-    if (!e.touches || e.touches.length !== 1) {
-      touchStartRef.current = null;
-      return;
-    }
-    const target = e.target;
-    if (target instanceof HTMLElement) {
-      const interactiveSelector =
-        'input, textarea, select, button, [contenteditable="true"], [data-swipe-ignore="true"]';
-      if (target.closest(interactiveSelector)) {
-        touchStartRef.current = null;
-        return;
-      }
-    }
-    const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-  }, []);
-
-  const handleTouchEnd = useCallback((e) => {
-    if (!touchStartRef.current) return;
-    if (!e.changedTouches || e.changedTouches.length !== 1) {
-      touchStartRef.current = null;
-      return;
-    }
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - touchStartRef.current.x;
-    const dy = touch.clientY - touchStartRef.current.y;
-    touchStartRef.current = null;
-    if (Math.abs(dy) > SWIPE_MAX_VERTICAL) return;
-    if (Math.abs(dx) < SWIPE_THRESHOLD) return;
-    const currentIndex = swipeRoutes.indexOf(location.pathname);
-    if (currentIndex === -1) return;
-    if (dx < 0 && currentIndex < swipeRoutes.length - 1) {
-      navigate(swipeRoutes[currentIndex + 1]);
-    } else if (dx > 0 && currentIndex > 0) {
-      navigate(swipeRoutes[currentIndex - 1]);
-    }
-  }, [swipeRoutes, location.pathname, navigate]);
 
   const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
   const showNavigation = !isPublicRoute && (currentUser || isDemo);
@@ -98,8 +49,6 @@ const AppLayout = ({ children }) => {
       <div
         className="flex min-h-screen flex-col bg-background text-foreground"
         style={{ "--mobile-nav-height": `${BOTTOM_NAV_HEIGHT_PX}px` }}
-        onTouchStart={isMobile && showNavigation ? handleTouchStart : undefined}
-        onTouchEnd={isMobile && showNavigation ? handleTouchEnd : undefined}
       >
         {showNavigation && !isMobile && <Sidebar onAdd={openAddTransaction} addDisabled={addDisabled} />}
 
