@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../../utils/firebaseAuth";
 import { Link } from "../../router/RouterProvider";
@@ -11,12 +12,17 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const { t } = useTranslation();
 
   const submit = async (event) => {
     event.preventDefault();
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email.trim().toLowerCase());
+    } catch (error) {
+      // Show the same confirmation either way so the form cannot be used to
+      // discover which addresses are registered.
+      console.warn("Password reset request failed", error?.code);
     } finally {
       setSent(true);
       setLoading(false);
@@ -27,22 +33,22 @@ const ForgotPassword = () => {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Recupera password</CardTitle>
+          <CardTitle>{t("auth.forgotPassword.title")}</CardTitle>
           <CardDescription>
             {sent
-              ? "Se l'indirizzo è registrato, riceverai un'email con le istruzioni."
-              : "Inserisci l'email del tuo account."}
+              ? t("auth.forgotPassword.sent")
+              : t("auth.forgotPassword.prompt")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {!sent && (
             <form onSubmit={submit} className="space-y-3">
-              <Label htmlFor="reset-email">Email</Label>
+              <Label htmlFor="reset-email">{t("auth.emailLabel")}</Label>
               <Input id="reset-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
-              <Button className="w-full" type="submit" disabled={loading}>{loading ? "Invio…" : "Invia istruzioni"}</Button>
+              <Button className="w-full" type="submit" disabled={loading}>{loading ? t("auth.forgotPassword.sending") : t("auth.forgotPassword.submit")}</Button>
             </form>
           )}
-          <Link className="block text-center text-sm text-primary" to="/login">Torna al login</Link>
+          <Link className="block text-center text-sm text-primary" to="/login">{t("auth.forgotPassword.backToLogin")}</Link>
         </CardContent>
       </Card>
     </div>

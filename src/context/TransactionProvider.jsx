@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
 } from "react";
   import { useAuth } from "./AuthProvider";
   import PropTypes from "prop-types";
@@ -12,9 +13,6 @@ import {
 export const useTransactions = () => useContext(TransactionContext);
 
 export const TransactionProvider = ({ children }) => {
-  TransactionProvider.propTypes = {
-    children: PropTypes.node.isRequired,
-  };
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,9 +61,18 @@ export const TransactionProvider = ({ children }) => {
     return TransactionService.fetchPage(currentUser.uid, options);
   }, [currentUser]);
 
+  const value = useMemo(
+    () => ({ transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount }),
+    [transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount]
+  );
+
   return (
-    <TransactionContext.Provider value={{ transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount }}>
+    <TransactionContext.Provider value={value}>
       {children}
     </TransactionContext.Provider>
   );
+};
+
+TransactionProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };

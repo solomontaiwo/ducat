@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import PropTypes from "prop-types";
+import React, { useEffect, useMemo } from "react";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useAuth } from "../../context/AuthProvider.jsx";
-import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval } from "date-fns";
+import { format } from "date-fns";
 import formatCurrency from "../../utils/formatCurrency.jsx";
 import { useCategories } from "../../utils/categories.jsx";
 import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
@@ -13,24 +12,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Select } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { FiBarChart, FiTrendingUp, FiTrendingDown, FiActivity, FiArrowUp, FiArrowDown } from "react-icons/fi";
-import { generateExportFileName, getCurrentProfileName } from "../../utils/downloadUtils.jsx";
 import { useDateRange } from "../../hooks/useDateRange.jsx";
+import { useAnalyticsData } from "../../hooks/useAnalyticsData.js";
+import CategoryDistributionCard from "./CategoryDistributionCard.jsx";
+import { SeriesTooltip } from "./ChartTooltips.jsx";
+import {
+  EXPENSE_CHART_COLORS, INCOME_CHART_COLORS, PERIOD_PREFERENCE_KEY, buildExtendedStats, readPeriodPreference, withChartColors,
+} from "../../utils/analyticsModel";
+import { exportAnalyticsCsv, exportAnalyticsPdf } from "../../utils/analyticsExport";
 import { calculateStats } from "../../utils/statsUtils.jsx";
 import { useTheme } from "../../utils/ThemeProvider.jsx";
 import {
-  PieChart, Pie, Sector,
   AreaChart, Area,
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { getTransactionAmountMinor, minorToMajor } from "../../utils/money";
-import { serializeCsv } from "../../utils/csvUtils";
-import { dateToDateKey } from "../../utils/dateUtils";
-import { readLocalValue, removeLocalValue, writeLocalValue } from "../../utils/storage.js";
-
-const EXPENSE_CHART_COLORS = ["#f43f5e", "#fb923c", "#facc15", "#f97316", "#fb7185", "#ef4444"];
-const INCOME_CHART_COLORS = ["#059669", "#0d9488", "#0284c7", "#2563eb", "#7c3aed", "#c026d3"];
-const CategoryPieSector = (props) => <Sector {...props} />;
+import { writeLocalValue } from "../../utils/storage.js";
 
 const TransactionAnalytics = () => {
   const { isDemo, transactions: recentTransactions, maxTransactions, loading: contextLoading, fetchAllTransactions } = useUnifiedTransactions();
@@ -39,19 +36,6 @@ const TransactionAnalytics = () => {
   const { t, i18n } = useTranslation();
   const { isDarkMode } = useTheme();
 
-  const readPeriodPreference = () => {
-    try {
-      const parsed = JSON.parse(readLocalValue("analytics-period", "null"));
-      const allowed = ["month", "lastMonth", "last3Months", "year", "custom"];
-      return {
-        period: allowed.includes(parsed?.period) ? parsed.period : "month",
-        customRange: parsed?.customRange && typeof parsed.customRange === "object" ? parsed.customRange : null,
-      };
-    } catch {
-      removeLocalValue("analytics-period");
-      return { period: "month", customRange: null };
-    }
-  };
   const initialPreference = useMemo(readPeriodPreference, []);
 
   const { period, setPeriod, customRange, setCustomRange, startDate, endDate } = useDateRange(
@@ -59,47 +43,14 @@ const TransactionAnalytics = () => {
     initialPreference.customRange
   );
 
-  const [analyticsData, setAnalyticsData] = useState([]);
-  const [isLoadingAnalyticsData, setIsLoadingAnalyticsData] = useState(true);
-  const [analyticsError, setAnalyticsError] = useState("");
-  const requestIdRef = useRef(0);
-
-  // Fetch full transaction history for analytics when component mounts or dependencies change
-  useEffect(() => {
-    const loadData = async () => {
-      const requestId = ++requestIdRef.current;
-      if (isDemo) {
-        setAnalyticsData(recentTransactions);
-        setIsLoadingAnalyticsData(false);
-      } else if (currentUser) {
-        setIsLoadingAnalyticsData(true);
-        setAnalyticsError("");
-        try {
-          const trendStart = startOfMonth(subMonths(new Date(), 5));
-          const queryStart = startDate < trendStart ? startDate : trendStart;
-          const queryEnd = endDate > new Date() ? endDate : endOfMonth(new Date());
-          const data = await fetchAllTransactions({ startDate: queryStart, endDate: queryEnd });
-          if (requestId === requestIdRef.current) setAnalyticsData(data);
-        } catch (error) {
-          if (requestId === requestIdRef.current) {
-            setAnalyticsError(error.code === "permission-denied" ? t("security.emailVerificationRequired") : t("error"));
-          }
-        } finally {
-          if (requestId === requestIdRef.current) setIsLoadingAnalyticsData(false);
-        }
-      } else {
-        // Not demo and not logged in
-        setAnalyticsData([]);
-        setIsLoadingAnalyticsData(false);
-      }
-    };
-    loadData();
-  }, [isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate, t]);
+  const { analyticsData, isLoadingAnalyticsData, analyticsError } = useAnalyticsData({
+    isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate,
+  });
 
   // Persist preferences
   useEffect(() => {
     writeLocalValue(
-      "analytics-period",
+      PERIOD_PREFERENCE_KEY,
       JSON.stringify({
         period,
         customRange,
@@ -111,236 +62,36 @@ const TransactionAnalytics = () => {
     return calculateStats(analyticsData, startDate, endDate);
   }, [analyticsData, startDate, endDate]);
 
-  // Extended stats logic specific to this view (Categories with percentages, Monthly Trend)
-  const extendedStats = useMemo(() => {
-    if (!analyticsData.length) return {};
-
-    // 1. Categories with percentages
-    const processCategories = (categoryMap, totalAmount, categoryList) => {
-      return Object.entries(categoryMap)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 5)
-        .map(([category, amount]) => {
-          const categoryData = categoryList.find((c) => c.value === category);
-          const rawLabel = categoryData?.label || t(`categories.${category}`, { defaultValue: category });
-          return {
-            category,
-            amount,
-            percentage: totalAmount > 0 ? (amount / totalAmount) * 100 : 0,
-            label: rawLabel.replace(/^[^\p{L}\p{N}]+/u, "").trim(),
-          };
-        });
-    };
-
-    const filteredTransactions = analyticsData.filter((transaction) => {
-      return transaction.date && isWithinInterval(transaction.date, { start: startDate, end: endDate });
-    });
-
-    const expenseByCategory = {};
-    const incomeByCategory = {};
-
-    filteredTransactions.forEach((t) => {
-      if (t.type === "expense") {
-        expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + getTransactionAmountMinor(t);
-      } else {
-        incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + getTransactionAmountMinor(t);
-      }
-    });
-
-    const expenseCategoryMajor = Object.fromEntries(Object.entries(expenseByCategory).map(([key, value]) => [key, minorToMajor(value)]));
-    const incomeCategoryMajor = Object.fromEntries(Object.entries(incomeByCategory).map(([key, value]) => [key, minorToMajor(value)]));
-    const topExpenseCategories = processCategories(expenseCategoryMajor, stats.totalExpense, expenseCategories);
-    const topIncomeCategories = processCategories(incomeCategoryMajor, stats.totalIncome, incomeCategories);
-
-    // Largest individual movements in the selected period, rather than category totals.
-    const getTopTransactions = (type) =>
-      filteredTransactions
-        .filter((transaction) => transaction.type === type)
-        .sort((a, b) => b.amount - a.amount || b.date.getTime() - a.date.getTime())
-        .slice(0, 3);
-
-    const topExpenseTransactions = getTopTransactions("expense");
-    const topIncomeTransactions = getTopTransactions("income");
-
-    // 2. Monthly Trend (Last 6 months)
-    const now = new Date();
-    const monthlyTrend = [];
-    for (let i = 5; i >= 0; i--) {
-      const monthStart = startOfMonth(subMonths(now, i));
-      const monthEnd = endOfMonth(subMonths(now, i));
-      const monthTransactions = analyticsData.filter((t) =>
-        t.date && isWithinInterval(t.date, { start: monthStart, end: monthEnd })
-      );
-
-      const monthIncome = minorToMajor(monthTransactions.filter((t) => t.type === "income").reduce((sum, t) => sum + getTransactionAmountMinor(t), 0));
-      const monthExpense = minorToMajor(monthTransactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + getTransactionAmountMinor(t), 0));
-
-      monthlyTrend.push({
-        month: format(monthStart, "MMM yyyy"),
-        income: monthIncome,
-        expense: monthExpense,
-        balance: monthIncome - monthExpense,
-      });
-    }
-
-    // 3. Averages
-    const avgTransactionAmount =
-      filteredTransactions.length > 0
-        ? minorToMajor(Math.round(filteredTransactions.reduce((sum, t) => sum + getTransactionAmountMinor(t), 0) / filteredTransactions.length))
-        : 0;
-
-    // Savings Rate
-    const savingsRate = stats.totalIncome > 0 ? ((stats.totalIncome - stats.totalExpense) / stats.totalIncome) * 100 : 0;
-
-    return {
-      topExpenseCategories,
-      topIncomeCategories,
-      topExpenseTransactions,
-      topIncomeTransactions,
-      monthlyTrend,
-      avgTransactionAmount,
-      savingsRate,
-      filteredTransactions, // Needed for export
-    };
-  }, [analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t]);
+  const extendedStats = useMemo(() => buildExtendedStats({
+    analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t,
+  }), [analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t]);
 
   const expensePieData = useMemo(
-    () => (extendedStats.topExpenseCategories || []).map((category, index) => ({
-      ...category,
-      fill: EXPENSE_CHART_COLORS[index % EXPENSE_CHART_COLORS.length],
-    })),
+    () => withChartColors(extendedStats.topExpenseCategories, EXPENSE_CHART_COLORS),
     [extendedStats.topExpenseCategories]
   );
-
   const incomePieData = useMemo(
-    () => (extendedStats.topIncomeCategories || []).map((category, index) => ({
-      ...category,
-      fill: INCOME_CHART_COLORS[index % INCOME_CHART_COLORS.length],
-    })),
+    () => withChartColors(extendedStats.topIncomeCategories, INCOME_CHART_COLORS),
     [extendedStats.topIncomeCategories]
   );
 
-  const exportCsv = async () => {
-    if (!extendedStats?.filteredTransactions?.length) return;
-    const headers = ["Data", "Tipo", "Descrizione", "Categoria", "Importo"];
-    const rows = extendedStats.filteredTransactions.map((transaction) => [
-      transaction.dateKey || dateToDateKey(transaction.date),
-      transaction.type,
-      transaction.description || "",
-      transaction.category || "",
-      transaction.amount.toFixed(2),
-    ]);
-    const csv = serializeCsv(headers, rows);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    const profileName = await getCurrentProfileName(currentUser);
-    const filename = generateExportFileName(period, startDate, endDate, profileName, "csv");
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+  const exportCsv = () => exportAnalyticsCsv({
+    transactions: extendedStats.filteredTransactions, currentUser, period, startDate, endDate,
+  });
 
-  const exportPdf = async () => {
-    if (!extendedStats?.filteredTransactions?.length || !startDate || !endDate) return;
-    const profileName = await getCurrentProfileName(currentUser);
-    const { generatePeriodPDFReport } = await import("../../utils/pdfUtils.jsx");
-    await generatePeriodPDFReport(
-      extendedStats.filteredTransactions,
-      startDate,
-      endDate,
-      period === "custom"
-        ? `${t("analytics.custom")} (${customRange.from} - ${customRange.to})`
-        : period,
-      i18n.language,
-      profileName
-    );
-  };
+  const exportPdf = () => exportAnalyticsPdf({
+    transactions: extendedStats.filteredTransactions, currentUser, period, customRange, startDate, endDate,
+    t, language: i18n.language,
+  });
 
   // Shared chart theme values
   const axisColor = isDarkMode ? "#94a3b8" : "#64748b";
   const gridColor = isDarkMode ? "#334155" : "#e2e8f0";
-  const tooltipBg = isDarkMode ? "#1e293b" : "#ffffff";
-  const tooltipBorder = isDarkMode ? "#334155" : "#e2e8f0";
-  const tooltipTextColor = isDarkMode ? "#f1f5f9" : "#0f172a";
-
-  const CustomAreaTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div
-        className="rounded-lg border px-3 py-2 text-sm shadow-lg"
-        style={{ background: tooltipBg, borderColor: tooltipBorder, color: tooltipTextColor }}
-      >
-        <p className="font-semibold mb-1">{label}</p>
-        {payload.map((entry, i) => (
-          <p key={i} style={{ color: entry.color }}>
-            {entry.name}: {formatCurrency(entry.value)}
-          </p>
-        ))}
-      </div>
-    );
-  };
-  CustomAreaTooltip.propTypes = {
-    active: PropTypes.bool,
-    label: PropTypes.string,
-    payload: PropTypes.arrayOf(PropTypes.shape({
-      color: PropTypes.string,
-      name: PropTypes.string,
-      value: PropTypes.number,
-    })),
-  };
-
-  const CustomPieTooltip = ({ active, payload }) => {
-    if (!active || !payload?.length) return null;
-    const { name, value, payload: inner } = payload[0];
-    return (
-      <div
-        className="rounded-lg border px-3 py-2 text-sm shadow-lg"
-        style={{ background: tooltipBg, borderColor: tooltipBorder, color: tooltipTextColor }}
-      >
-        <p className="font-semibold">{name}</p>
-        <p>{formatCurrency(value)}</p>
-        <p className="text-xs opacity-75">{inner.percentage.toFixed(1)}%</p>
-      </div>
-    );
-  };
-  CustomPieTooltip.propTypes = {
-    active: PropTypes.bool,
-    payload: PropTypes.arrayOf(PropTypes.shape({
-      name: PropTypes.string,
-      value: PropTypes.number,
-      payload: PropTypes.shape({ percentage: PropTypes.number }),
-    })),
-  };
-
-  const CustomBarTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div
-        className="rounded-lg border px-3 py-2 text-sm shadow-lg"
-        style={{ background: tooltipBg, borderColor: tooltipBorder, color: tooltipTextColor }}
-      >
-        <p className="font-semibold mb-1">{label}</p>
-        {payload.map((entry, i) => (
-          <p key={i} style={{ color: entry.color }}>
-            {entry.name}: {formatCurrency(entry.value)}
-          </p>
-        ))}
-      </div>
-    );
-  };
-  CustomBarTooltip.propTypes = {
-    active: PropTypes.bool,
-    label: PropTypes.string,
-    payload: PropTypes.arrayOf(PropTypes.shape({
-      color: PropTypes.string,
-      name: PropTypes.string,
-      value: PropTypes.number,
-    })),
-  };
+  const tooltipColors = useMemo(() => ({
+    background: isDarkMode ? "#1e293b" : "#ffffff",
+    border: isDarkMode ? "#334155" : "#e2e8f0",
+    text: isDarkMode ? "#f1f5f9" : "#0f172a",
+  }), [isDarkMode]);
 
   if (contextLoading || isLoadingAnalyticsData) {
     const skeletonBase = isDarkMode ? "#1e293b" : "#e2e8f0";
@@ -452,129 +203,26 @@ const TransactionAnalytics = () => {
 
       {/* Category distribution: donut chart + progress bars */}
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Expense categories */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("analytics.topExpenseCategories")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {extendedStats.topExpenseCategories?.length ? (
-              <>
-                {/* Donut chart */}
-                <ResponsiveContainer width="100%" height={280}>
-                  <PieChart>
-                    <Pie
-                      data={expensePieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={65}
-                      outerRadius={105}
-                      paddingAngle={3}
-                      dataKey="amount"
-                      nameKey="label"
-                      shape={CategoryPieSector}
-                    />
-                    <Tooltip content={<CustomPieTooltip />} isAnimationActive={false} />
-                    <Legend
-                      formatter={(value) => (
-                        <span style={{ color: axisColor, fontSize: 12 }}>{value}</span>
-                      )}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                {/* Progress bars */}
-                <div className="space-y-3">
-                  {extendedStats.topExpenseCategories.map((cat, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="inline-block h-2.5 w-2.5 rounded-full"
-                            style={{ background: EXPENSE_CHART_COLORS[idx % EXPENSE_CHART_COLORS.length] }}
-                          />
-                          <span className="font-semibold">{cat.label}</span>
-                        </div>
-                        <span className="text-rose-600 font-semibold">{formatCurrency(cat.amount)}</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-muted">
-                        <div
-                          className="h-2 rounded-full"
-                          style={{
-                            width: `${cat.percentage.toFixed(1)}%`,
-                            background: EXPENSE_CHART_COLORS[idx % EXPENSE_CHART_COLORS.length],
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("analytics.noExpenseData")}</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Income categories */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("analytics.topIncomeCategories")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {extendedStats.topIncomeCategories?.length ? (
-              <>
-                <ResponsiveContainer width="100%" height={280}>
-                  <PieChart>
-                    <Pie
-                      data={incomePieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={65}
-                      outerRadius={105}
-                      paddingAngle={3}
-                      dataKey="amount"
-                      nameKey="label"
-                      shape={CategoryPieSector}
-                    />
-                    <Tooltip content={<CustomPieTooltip />} isAnimationActive={false} />
-                    <Legend
-                      formatter={(value) => (
-                        <span style={{ color: axisColor, fontSize: 12 }}>{value}</span>
-                      )}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-3">
-                  {extendedStats.topIncomeCategories.map((cat, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="inline-block h-2.5 w-2.5 rounded-full"
-                            style={{ background: INCOME_CHART_COLORS[idx % INCOME_CHART_COLORS.length] }}
-                          />
-                          <span className="font-semibold">{cat.label}</span>
-                        </div>
-                        <span className="text-emerald-600 font-semibold">{formatCurrency(cat.amount)}</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-muted">
-                        <div
-                          className="h-2 rounded-full"
-                          style={{
-                            width: `${cat.percentage.toFixed(1)}%`,
-                            background: INCOME_CHART_COLORS[idx % INCOME_CHART_COLORS.length],
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("analytics.noIncomeData")}</p>
-            )}
-          </CardContent>
-        </Card>
+        <CategoryDistributionCard
+          title={t("analytics.topExpenseCategories")}
+          categories={extendedStats.topExpenseCategories}
+          pieData={expensePieData}
+          palette={EXPENSE_CHART_COLORS}
+          amountClass="text-rose-600"
+          emptyMessage={t("analytics.noExpenseData")}
+          axisColor={axisColor}
+          tooltipColors={tooltipColors}
+        />
+        <CategoryDistributionCard
+          title={t("analytics.topIncomeCategories")}
+          categories={extendedStats.topIncomeCategories}
+          pieData={incomePieData}
+          palette={INCOME_CHART_COLORS}
+          amountClass="text-emerald-600"
+          emptyMessage={t("analytics.noIncomeData")}
+          axisColor={axisColor}
+          tooltipColors={tooltipColors}
+        />
       </div>
 
       {/* Largest individual transactions */}
@@ -665,7 +313,7 @@ const TransactionAnalytics = () => {
                     tickLine={false}
                     width={80}
                   />
-                  <Tooltip content={<CustomAreaTooltip />} />
+                  <Tooltip content={<SeriesTooltip colors={tooltipColors} />} />
                   <Legend
                     formatter={(value) => (
                       <span style={{ color: axisColor, fontSize: 12 }}>{value}</span>
@@ -750,7 +398,7 @@ const TransactionAnalytics = () => {
                   tickLine={false}
                   width={80}
                 />
-                <Tooltip content={<CustomBarTooltip />} />
+                <Tooltip content={<SeriesTooltip colors={tooltipColors} />} />
                 <Legend
                   formatter={(value) => (
                     <span style={{ color: axisColor, fontSize: 12 }}>{value}</span>
@@ -824,5 +472,8 @@ const TransactionAnalytics = () => {
     </div>
   );
 };
+
+
+
 
 export default React.memo(TransactionAnalytics);

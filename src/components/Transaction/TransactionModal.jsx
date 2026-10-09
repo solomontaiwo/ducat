@@ -22,13 +22,6 @@ import { coerceDateKey, dateKeyToDate, todayDateKey } from "../../utils/dateUtil
 import { readLocalValue, writeLocalValue } from "../../utils/storage.js";
 
 const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
-  TransactionModal.propTypes = {
-    show: PropTypes.bool.isRequired,
-    onClose: PropTypes.func.isRequired,
-    onSubmit: PropTypes.func,
-    transaction: PropTypes.object,
-  };
-
   const isEdit = !!transaction;
   const { addTransaction, updateTransaction } = useUnifiedTransactions();
   const { expenseCategories, incomeCategories } = useCategories();
@@ -103,7 +96,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
     try {
       amountMinor = parseMoneyToMinor(formData.amount);
     } catch (error) {
-      notification.error(error.message || t("transaction.invalidAmount"));
+      notification.error(error.i18nKey ? t(error.i18nKey) : t("transaction.invalidAmount"));
       return;
     }
     if (submitting) return;
@@ -296,6 +289,13 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
       </DialogContent>
     </Dialog>
   );
+};
+
+TransactionModal.propTypes = {
+  show: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func,
+  transaction: PropTypes.object,
 };
 
 export default TransactionModal;

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useLayoutEffect, useState, useCallback } from "react";
+import { createContext, useContext, useLayoutEffect, useMemo, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import { readLocalValue, writeLocalValue } from "./storage.js";
 
@@ -20,10 +20,6 @@ const setCSSVariables = (isDark) => {
 
 // Componente principale per il tema
 export const ThemeProvider = ({ children }) => {
-  ThemeProvider.propTypes = {
-    children: PropTypes.node.isRequired,
-  };
-
   const [theme, setTheme] = useState(() => {
     return readLocalValue("theme", "system");
   });
@@ -45,18 +41,22 @@ export const ThemeProvider = ({ children }) => {
     return isDark;
   }, [getSystemPreference]);
 
-  const toggleTheme = (newTheme) => {
+  const toggleTheme = useCallback((newTheme) => {
     setTheme(newTheme);
     writeLocalValue("theme", newTheme);
     applyTheme(newTheme);
-  };
+  }, [applyTheme]);
 
-  const getCurrentEffectiveTheme = () => {
-    if (theme === "system") {
-      return getSystemPreference() ? "dark" : "light";
-    }
-    return theme;
-  };
+  const currentEffectiveTheme = theme === "system"
+    ? (getSystemPreference() ? "dark" : "light")
+    : theme;
+
+  const value = useMemo(() => ({
+    theme,
+    toggleTheme,
+    currentEffectiveTheme,
+    isDarkMode: currentEffectiveTheme === "dark",
+  }), [theme, toggleTheme, currentEffectiveTheme]);
 
   useLayoutEffect(() => {
     // Applica il tema iniziale prima del paint per evitare flash
@@ -75,13 +75,12 @@ export const ThemeProvider = ({ children }) => {
   }, [theme, applyTheme]);
 
   return (
-    <ThemeContext.Provider value={{ 
-      theme, 
-      toggleTheme, 
-      currentEffectiveTheme: getCurrentEffectiveTheme(),
-      isDarkMode: getCurrentEffectiveTheme() === "dark"
-    }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
+};
+
+ThemeProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };

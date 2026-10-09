@@ -59,14 +59,18 @@ service cloud.firestore {
 
     match /transactions/{transactionId} {
       allow get, list: if isOwner(resource.data.userId);
+      // New documents must use the v2 schema. The legacy shape is still
+      // accepted on update so pre-migration documents remain editable.
       allow create: if isOwner(request.resource.data.userId) &&
-        isValidTransaction(request.resource.data) &&
+        isValidV2Transaction(request.resource.data) &&
         request.resource.data.createdAt == request.time &&
         (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt == request.time);
       allow update: if isOwner(resource.data.userId) &&
         request.resource.data.userId == resource.data.userId &&
         request.resource.data.createdAt == resource.data.createdAt &&
-        isValidTransaction(request.resource.data) &&
+        (resource.data.get('schemaVersion', 1) == 2
+          ? isValidV2Transaction(request.resource.data)
+          : isValidTransaction(request.resource.data)) &&
         (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt == request.time);
       allow delete: if isOwner(resource.data.userId);
     }

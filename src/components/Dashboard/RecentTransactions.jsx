@@ -9,20 +9,6 @@ import { FiArrowRight } from "react-icons/fi";
 import { Button } from "../ui/button";
 
 const RecentTransactions = ({ transactions = [], loading = false }) => {
-  RecentTransactions.propTypes = {
-    transactions: PropTypes.arrayOf(
-      PropTypes.shape({
-        id: PropTypes.string.isRequired,
-        description: PropTypes.string.isRequired,
-        amount: PropTypes.number.isRequired,
-        type: PropTypes.oneOf(["income", "expense"]).isRequired,
-        date: PropTypes.object.isRequired,
-        category: PropTypes.string,
-      })
-    ),
-    loading: PropTypes.bool,
-  };
-
   const navigate = useNavigate();
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const { t } = useTranslation();
@@ -115,6 +101,20 @@ const RecentTransactions = ({ transactions = [], loading = false }) => {
       </div>
     </div>
   );
+};
+
+RecentTransactions.propTypes = {
+  transactions: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      description: PropTypes.string.isRequired,
+      amount: PropTypes.number.isRequired,
+      type: PropTypes.oneOf(["income", "expense"]).isRequired,
+      date: PropTypes.object.isRequired,
+      category: PropTypes.string,
+    })
+  ),
+  loading: PropTypes.bool,
 };
 
 export default RecentTransactions;

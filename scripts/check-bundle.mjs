@@ -7,13 +7,26 @@ const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf
 const entryMatch = html.match(/<script[^>]+src="[^"]*\/assets\/(index-[^"]+\.js)"/);
 if (!entryMatch) throw new Error("Unable to resolve the JavaScript entry from dist/index.html");
 
+// Everything the browser fetches before the first route renders: the entry
+// script plus every modulepreload hint emitted by Vite.
+const initialFiles = [...new Set([
+  entryMatch[1],
+  ...[...html.matchAll(/<link[^>]+rel="modulepreload"[^>]+href="[^"]*\/assets\/([^"]+\.js)"/g)].map((match) => match[1]),
+])];
+let initialBytes = 0;
+for (const filename of initialFiles) {
+  initialBytes += gzipSync(await readFile(new URL(filename, assetsDirectory))).byteLength;
+}
+const INITIAL_BUDGET = 160_000;
+console.log(`initial (${initialFiles.length} files): ${initialBytes} / ${INITIAL_BUDGET} gzip bytes`);
+
 const budgets = [
-  { label: "main", filename: entryMatch[1], maxGzipBytes: 145_000 },
+  { label: "main", filename: entryMatch[1], maxGzipBytes: 100_000 },
   { label: "analytics", pattern: /^TransactionAnalytics-[^.]+\.js$/, maxGzipBytes: 150_000 },
   { label: "pdf", pattern: /^pdfUtils-[^.]+\.js$/, maxGzipBytes: 155_000 },
 ];
 
-let failed = false;
+let failed = initialBytes > INITIAL_BUDGET;
 for (const budget of budgets) {
   const filename = budget.filename || files.find((file) => budget.pattern.test(file));
   if (!filename) throw new Error(`Missing bundle for ${budget.label}`);

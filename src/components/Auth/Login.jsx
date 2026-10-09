@@ -113,7 +113,7 @@ const Login = () => {
 
           <div className="text-right">
             <Link to="/forgot-password" className="text-sm font-medium text-primary">
-              Password dimenticata?
+              {t("auth.forgotPassword.link")}
             </Link>
           </div>
 
@@ -134,7 +134,7 @@ const Login = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="text-muted-foreground"
-                aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                 aria-pressed={showPassword}
               >
                 {showPassword ? <FiEyeOff /> : <FiEye />}

@@ -128,8 +128,8 @@ const LandingPage = () => {
             ))}
           </div>
           <footer className="mt-6 flex justify-center gap-5 text-xs text-muted-foreground">
-            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
-            <Link to="/terms" className="hover:text-foreground">Termini d’uso</Link>
+            <Link to="/privacy" className="hover:text-foreground">{t("landing.footer.privacy")}</Link>
+            <Link to="/terms" className="hover:text-foreground">{t("landing.footer.terms")}</Link>
           </footer>
         </div>
       </div>

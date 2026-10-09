@@ -35,7 +35,7 @@ const Register = () => {
 
     const validation = registrationSchema.safeParse({ username, email, password, confirmPassword });
     if (!validation.success) {
-      setError(validation.error.issues[0].message);
+      setError(t(validation.error.issues[0].message));
       setLoading(false);
       return;
     }
@@ -69,7 +69,7 @@ const Register = () => {
     } catch (err) {
       console.error("Errore durante la registrazione:", err);
       if (createdUser) {
-        notification.warning("L'account è stato creato, ma il profilo non è completo. Puoi riprovare dopo la verifica.");
+        notification.warning(t("auth.profileIncomplete"));
         navigate("/verify-email", { replace: true });
         return;
       }
@@ -151,7 +151,7 @@ const Register = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("auth.emailLabel")}</Label>
             <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 focus-within:ring-2 focus-within:ring-ring">
               <FiMail className="text-muted-foreground" />
               <Input
@@ -186,7 +186,7 @@ const Register = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="text-muted-foreground"
-                aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+                aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                 aria-pressed={showPassword}
               >
                 {showPassword ? <FiEyeOff /> : <FiEye />}
@@ -213,7 +213,7 @@ const Register = () => {
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="text-muted-foreground"
-                aria-label={showConfirmPassword ? "Nascondi conferma password" : "Mostra conferma password"}
+                aria-label={showConfirmPassword ? t("auth.hideConfirmPassword") : t("auth.showConfirmPassword")}
                 aria-pressed={showConfirmPassword}
               >
                 {showConfirmPassword ? <FiEyeOff /> : <FiEye />}

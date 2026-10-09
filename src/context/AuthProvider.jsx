@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { getCurrentProfileName } from "../utils/downloadUtils.jsx";
 
@@ -7,10 +7,6 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  AuthProvider.propTypes = {
-    children: PropTypes.node.isRequired,
-  };
-
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileName, setProfileName] = useState(null);
@@ -32,7 +28,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Funzione per il logout
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       try {
         const { TransactionService } = await import("../services/transactionService.jsx");
@@ -49,7 +45,7 @@ export const AuthProvider = ({ children }) => {
       console.error("Errore durante il logout:", error);
       throw error;
     }
-  };
+  }, []);
 
   const refreshCurrentUser = useCallback(async () => {
     const { auth } = await import("../utils/firebaseAuth.js");
@@ -108,9 +104,18 @@ export const AuthProvider = ({ children }) => {
     };
   }, [refreshProfileName]);
 
+  const value = useMemo(
+    () => ({ currentUser, loading, logout, profileName, profileNameLoading, refreshProfileName, refreshCurrentUser }),
+    [currentUser, loading, logout, profileName, profileNameLoading, refreshProfileName, refreshCurrentUser]
+  );
+
   return (
-    <AuthContext.Provider value={{ currentUser, loading, logout, profileName, profileNameLoading, refreshProfileName, refreshCurrentUser }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
+};
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
