@@ -1,105 +1,55 @@
-import { useNavigate } from "../../router/RouterProvider";
-import { useMediaQuery } from "react-responsive";
-import formatCurrency from "../../utils/formatCurrency";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-import { FiArrowRight } from "react-icons/fi";
+import { compareTransactions } from "../../utils/transactionOrder.js";
+import { formatRowDate } from "../../utils/transactionGrouping.js";
+import TransactionRow from "../Transaction/TransactionRow.jsx";
 import { Button } from "../ui/button";
 
-const RecentTransactions = ({ transactions = [], loading = false }) => {
-  const navigate = useNavigate();
-  const isMobile = useMediaQuery({ maxWidth: 768 });
-  const { t } = useTranslation();
-
-  const recentTransactions = [...transactions]
-    .sort((a, b) => {
-      const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
-      const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
-      return dateB.getTime() - dateA.getTime();
-    })
-    .slice(0, 5);
-
-  const formatDate = (date) => {
-    const dateObj = date.toDate ? date.toDate() : new Date(date);
-    return dateObj.toLocaleDateString("it-IT", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  const getCategoryLabel = (category) => {
-    if (!category) return "";
-    return t("categories." + category) || category;
-  };
+const RecentTransactions = ({ transactions = [], loading = false, onSelect, onAddFirst, emptyLabel, limit = 5 }) => {
+  const { t, i18n } = useTranslation();
+  const recent = [...transactions].sort(compareTransactions).slice(0, limit);
 
   if (loading) {
     return (
-      <div className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <Skeleton circle width={40} height={40} />
+      <div className="space-y-3 py-2" aria-busy="true">
+        {[...Array(3)].map((_, index) => (
+          <div key={index} className="flex items-center gap-3">
+            <Skeleton width={40} height={40} borderRadius={12} />
             <div className="flex-1">
-              <Skeleton height={16} width={120} />
-              <Skeleton height={12} width={80} />
+              <Skeleton height={15} width={140} />
+              <Skeleton height={12} width={90} />
             </div>
-            <Skeleton height={18} width={60} />
+            <Skeleton height={18} width={70} />
           </div>
         ))}
       </div>
     );
   }
 
-  if (recentTransactions.length === 0) {
+  if (recent.length === 0) {
     return (
-      <div className="text-center space-y-3">
-        <p className="text-muted-foreground">{t("recentTransactions.emptyDescription")}</p>
-        <Button onClick={() => navigate("/transactions")} size={isMobile ? "sm" : "default"}>
-          {t("recentTransactions.addFirst")}
-        </Button>
+      <div className="space-y-4 py-6 text-center">
+        <p className="text-sm text-muted-foreground">{emptyLabel || t("recentTransactions.emptyDescription")}</p>
+        {onAddFirst && <Button onClick={onAddFirst}>{t("recentTransactions.addFirst")}</Button>}
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {recentTransactions.map((transaction) => (
-        <button
-          type="button"
-          key={transaction.id}
-          className="flex w-full items-center justify-between rounded-xl border border-border bg-card/70 p-3 text-left shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={() => navigate("/transactions")}
-          aria-label={`${transaction.description}: ${formatCurrency(transaction.amount)}`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="space-y-1">
-              <div className="font-semibold text-sm">{transaction.description}</div>
-              <div className="text-xs text-muted-foreground flex items-center gap-1">
-                <span>{formatDate(transaction.date)}</span>
-                {transaction.category && (
-                  <>
-                    <span>•</span>
-                    <span className="capitalize">{getCategoryLabel(transaction.category)}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className={`text-sm font-semibold ${transaction.type === "income" ? "text-emerald-600" : "text-rose-600"}`}>
-            {transaction.type === "income" ? "+" : "-"}
-            {formatCurrency(transaction.amount)}
-          </div>
-        </button>
+    <ul className="divide-y divide-border">
+      {recent.map((transaction) => (
+        <li key={transaction.id}>
+          <TransactionRow
+            transaction={transaction}
+            onSelect={onSelect}
+            className="px-1"
+            meta={`${t(`categories.${transaction.category}`, { defaultValue: transaction.category })} · ${formatRowDate(transaction.date, i18n.language, t)}`}
+          />
+        </li>
       ))}
-      <div className="flex justify-end pt-1">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/transactions")}>
-          {t("recentTransactions.viewAll")}
-          <FiArrowRight className="ml-2" aria-hidden="true" />
-        </Button>
-      </div>
-    </div>
+    </ul>
   );
 };
 
@@ -110,11 +60,15 @@ RecentTransactions.propTypes = {
       description: PropTypes.string.isRequired,
       amount: PropTypes.number.isRequired,
       type: PropTypes.oneOf(["income", "expense"]).isRequired,
-      date: PropTypes.object.isRequired,
+      date: PropTypes.instanceOf(Date).isRequired,
       category: PropTypes.string,
     })
   ),
   loading: PropTypes.bool,
+  onSelect: PropTypes.func,
+  onAddFirst: PropTypes.func,
+  emptyLabel: PropTypes.string,
+  limit: PropTypes.number,
 };
 
 export default RecentTransactions;

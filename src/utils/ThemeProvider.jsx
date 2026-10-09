@@ -15,7 +15,7 @@ const setCSSVariables = (isDark) => {
   document.body.classList.toggle("dark", isDark);
   document.documentElement.classList.toggle("light", !isDark);
   document.body.classList.toggle("light", !isDark);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", isDark ? "#080c16" : "#f9f9fb");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", isDark ? "#0b0d13" : "#f5f6f8");
 };
 
 // Componente principale per il tema

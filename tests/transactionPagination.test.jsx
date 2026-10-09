@@ -50,7 +50,7 @@ it.each(["success", "failure"])("ignores stale pagination %s after changing peri
   await screen.findByText("first");
   intersect();
   await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(2));
-  fireEvent.change(screen.getByRole("combobox"), { target: { value: "weekly" } });
+  fireEvent.click(screen.getByRole("button", { name: "transactions.filters.allTime" }));
   await screen.findByText("new-first");
   intersect();
   await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(4));
@@ -76,7 +76,7 @@ it("ignores an obsolete count and keeps an empty page empty instead of using the
   mocks.fetch.mockResolvedValueOnce(page("first", false)).mockResolvedValueOnce({ items: [], nextCursor: null, hasMore: false });
   render(<TransactionList />);
   await screen.findByText("first");
-  fireEvent.change(screen.getByRole("combobox"), { target: { value: "weekly" } });
+  fireEvent.click(screen.getByRole("button", { name: "transactions.filters.allTime" }));
   await screen.findByText("0 / 2");
   await act(async () => { oldCount.resolve(100); });
   expect(screen.getByText("0 / 2")).toBeInTheDocument();

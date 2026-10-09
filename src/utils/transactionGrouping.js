@@ -26,3 +26,14 @@ export const groupTransactionsByDate = (transactions, formatDate) => {
     .map((group) => ({ ...group, transactions: group.transactions.sort(compareTransactions) }))
     .sort((first, second) => second.date - first.date);
 };
+
+/** Compact date for list rows: "Oggi", "Ieri" or "9 ott". */
+export const formatRowDate = (date, language, t) => {
+  if (isToday(date)) return t("transactions.today");
+  if (isYesterday(date)) return t("transactions.yesterday");
+  return format(date, language === "en" ? "MMM d" : "d MMM", { locale: localeFor(language || "it") });
+};
+
+/** Net movement of a day: income minus expenses, in major units. */
+export const groupNetAmount = (transactions) =>
+  transactions.reduce((sum, item) => sum + (item.type === "income" ? item.amount : -item.amount), 0);

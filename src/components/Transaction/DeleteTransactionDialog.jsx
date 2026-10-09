@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
-import formatCurrency from "../../utils/formatCurrency.jsx";
+import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 
@@ -16,14 +16,13 @@ const DeleteTransactionDialog = ({ open, transaction, formatDate, getCategoryLab
         </DialogHeader>
 
         {transaction && (
-          <div className="py-4 space-y-1">
-            <div className="font-bold text-foreground">{transaction.description}</div>
+          <div className="space-y-1 rounded-2xl bg-muted p-4">
+            <div className="font-semibold text-foreground">{transaction.description}</div>
             <div className="text-muted-foreground text-sm">
               {formatDate(transaction.date)} • {getCategoryLabel(transaction.category)}
             </div>
-            <div className={`font-semibold ${transaction.type === "income" ? "text-emerald-600" : "text-rose-600"}`}>
-              {transaction.type === "income" ? "+" : "-"}
-              {formatCurrency(transaction.amount)}
+            <div className={`amount text-lg ${transaction.type === "income" ? "text-income" : "text-foreground"}`}>
+              {formatSignedAmount(transaction.amount, transaction.type)}
             </div>
           </div>
         )}
