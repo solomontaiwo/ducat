@@ -49,7 +49,7 @@ const LandingPage = () => {
       </header>
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-12 px-5 py-8 lg:py-12">
-        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-14">
+        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-14">
           <div className="animate-page-in space-y-6">
             <h1 className="text-[2.6rem] font-extrabold leading-[1.02] tracking-tight sm:text-6xl lg:text-[4.25rem]">
               {t("landing.headline")}
@@ -93,7 +93,7 @@ const LandingPage = () => {
           </figure>
         </div>
 
-        <ul className="grid gap-3 sm:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {featureCards.map((card) => {
             const Icon = card.icon;
             return (

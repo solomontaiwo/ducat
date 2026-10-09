@@ -117,3 +117,26 @@ for (const colorScheme of ["light", "dark"]) {
     }
   });
 }
+
+test("pages never scroll horizontally on mobile, even with long descriptions", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "Mobile layout regression");
+  await page.goto(".");
+  await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
+  await page.getByRole("button", { name: ADD_BUTTON }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#transaction-amount").fill("1234,56");
+  await dialog.locator("#transaction-description").fill("Canone di competenza ottobre 2026 Via La Salle 14 appartamento secondo piano interno 7");
+  await dialog.getByRole("button", { name: /1\.234,56/ }).click();
+  await expect(dialog).toBeHidden();
+  for (const path of ["dashboard", "transactions", "analytics"]) {
+    await page.evaluate((target) => {
+      window.history.pushState({}, "", `/soldi-sotto/${target}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }, path);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    // <main> clips horizontal overflow, so check the cards themselves.
+    const overflow = await page.evaluate(() => Math.max(0, ...[...document.querySelectorAll("main section, main .surface")]
+      .map((element) => Math.ceil(element.getBoundingClientRect().right - window.innerWidth))));
+    expect(overflow, `${path} overflows by ${overflow}px`).toBeLessThanOrEqual(0);
+  }
+});
