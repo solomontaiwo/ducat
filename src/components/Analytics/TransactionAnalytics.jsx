@@ -172,7 +172,7 @@ const TransactionAnalytics = () => {
         />
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-5">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-5">
         <section className="surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="trend-title">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="trend-title" className="text-lg font-bold">{t("analytics.monthlyTrend")}</h2>
