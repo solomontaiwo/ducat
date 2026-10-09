@@ -19,6 +19,7 @@ export const useCategories = () => {
       { value: "salute", label: t('categories.salute') },
       { value: "intrattenimento", label: t('categories.intrattenimento') },
       { value: "viaggi", label: t('categories.viaggi') },
+      { value: "tasse", label: t('categories.tasse') },
       { value: "altro", label: t('categories.altro') },
     ],
     [t]

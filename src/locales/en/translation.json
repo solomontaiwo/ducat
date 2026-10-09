@@ -416,10 +416,10 @@
     "unspecifiedPeriod": "Unspecified Period"
   },
   "categories": {
-    "alimentazione": "Food",
+    "alimentazione": "Eating out",
     "supermercato": "Groceries",
     "trasporti": "Transportation",
-    "casa": "Home",
+    "casa": "Home and bills",
     "intrattenimento": "Entertainment",
     "abbonamenti": "Subscriptions",
     "salute": "Health",
@@ -432,7 +432,8 @@
     "vendite": "Sales",
     "rimborso": "Refund",
     "freelance": "Freelance",
-    "investimenti": "Investments"
+    "investimenti": "Investments",
+    "tasse": "Taxes and fees"
   },
   "demo": {
     "modalityActive": "Demo Mode Active",
