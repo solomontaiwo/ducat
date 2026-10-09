@@ -23,15 +23,22 @@ vi.mock("../src/components/Profile/Profile.jsx", async () => {
   return { default: () => <Modal show onClose={() => {}} /> };
 });
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  delete navigator.connection;
+});
 
 it("keeps the real form mounted and retains values and request ID after a failed save", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   let rejectSave;
   mocks.add.mockReturnValueOnce(new Promise((resolve, reject) => { rejectSave = reject; })).mockResolvedValueOnce({});
   window.history.replaceState({}, "", "/profile");
+  // Skip the idle-time preloading of every page: those imports would outlive
+  // the test and the environment teardown.
+  Object.defineProperty(navigator, "connection", { value: { saveData: true }, configurable: true });
   render(<RouterProvider><UnifiedTransactionProvider><AppRouter /></UnifiedTransactionProvider></RouterProvider>);
-  const amount = await screen.findByLabelText("transactionModal.amount");
+  const amount = await screen.findByLabelText("transactionModal.amount", {}, { timeout: 5000 });
   const description = screen.getByLabelText("transactionModal.description");
   fireEvent.change(amount, { target: { value: "12.50" } });
   fireEvent.change(description, { target: { value: "Pranzo" } });
