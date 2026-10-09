@@ -385,7 +385,9 @@
       "count_other": "{{count}} transactions",
       "label": "Transactions"
     },
-    "loadedOfTotal": "Loaded"
+    "loadedOfTotal": "Loaded",
+    "loadAll": "Load all",
+    "partialResults": "Filters active: totals based on loaded transactions"
   },
   "pdf": {
     "reportTitle": "Financial Statistics Report",

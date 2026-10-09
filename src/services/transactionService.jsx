@@ -4,9 +4,12 @@ import {
   deleteDoc,
   documentId,
   doc,
+  getAggregateFromServer,
   getCountFromServer,
   getDoc,
   getDocs,
+  sum,
+  count as countAggregate,
   limit,
   onSnapshot,
   orderBy,
@@ -28,6 +31,7 @@ const DEFAULT_TTL_MS = 3 * 60 * 1000;
 const DEFAULT_PAGE_SIZE = 40;
 const dataCache = new Map();
 const countCache = new Map();
+const totalsCache = new Map();
 const inFlight = new Map();
 let cacheRevision = 0;
 
@@ -92,6 +96,7 @@ const invalidateCache = () => {
   cacheRevision += 1;
   dataCache.clear();
   countCache.clear();
+  totalsCache.clear();
   inFlight.clear();
 };
 
@@ -187,6 +192,38 @@ export const TransactionService = {
       nextCursor: snapshot.docs.at(-1) || null,
       hasMore: snapshot.size === pageSize,
     };
+  },
+
+  /**
+   * Count and sums for a period computed by Firestore (aggregation queries),
+   * so the summary is right even when only the first page is loaded.
+   */
+  getTotals: async (userId, options = {}) => {
+    const { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, type = "all", startDate, endDate } = options;
+    const key = queryKey({ userId, type, startDate, endDate });
+    const cached = totalsCache.get(key);
+    if (!forceRefresh && cached && Date.now() - cached.cachedAt < ttlMs) return cached.totals;
+
+    const aggregateFor = async (kind) => {
+      if (type !== "all" && type !== kind) return { count: 0, amountMinor: 0 };
+      const aggregateQuery = query(
+        collection(firestore, COLLECTION_NAME),
+        ...buildConstraints({ userId, type: kind, startDate, endDate, ordered: false })
+      );
+      const snapshot = await getAggregateFromServer(aggregateQuery, { count: countAggregate(), amountMinor: sum("amountMinor") });
+      const data = snapshot.data();
+      return { count: data.count || 0, amountMinor: data.amountMinor || 0 };
+    };
+
+    const load = () => dedupe(`totals:${key}`, async () => {
+      const revision = cacheRevision;
+      const [income, expense] = await Promise.all([aggregateFor("income"), aggregateFor("expense")]);
+      if (revision !== cacheRevision) return load();
+      const totals = { count: income.count + expense.count, incomeMinor: income.amountMinor, expenseMinor: expense.amountMinor };
+      totalsCache.set(key, { totals, cachedAt: Date.now() });
+      return totals;
+    });
+    return load();
   },
 
   getTotalCount: async (userId, options = {}) => {

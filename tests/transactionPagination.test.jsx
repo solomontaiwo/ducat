@@ -5,13 +5,13 @@ import TransactionList from "../src/components/Transaction/TransactionList.jsx";
 const mocks = vi.hoisted(() => ({
   user: { uid: "owner" },
   transactions: [],
-  fetch: vi.fn(), count: vi.fn(), observers: [],
+  fetch: vi.fn(), count: vi.fn(), totals: undefined, observers: [],
   t: (key, options) => options?.returnObjects ? [] : key,
 }));
 vi.mock("../src/context/AuthProvider.jsx", () => ({ useAuth: () => ({ currentUser: mocks.user, loading: false }) }));
 vi.mock("../src/context/UnifiedTransactionProvider.jsx", () => ({ useUnifiedTransactions: () => ({
   transactions: mocks.transactions, loading: false, isDemo: false,
-  fetchTransactionPage: mocks.fetch, getTotalTransactionCount: mocks.count, recentRevision: 0,
+  fetchTransactionPage: mocks.fetch, getTotalTransactionCount: mocks.count, getTransactionTotals: mocks.totals, recentRevision: 0,
 }) }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: mocks.t, i18n: { language: "it" } }) }));
 vi.mock("../src/components/Transaction/TransactionModal.jsx", () => ({ default: () => null }));
@@ -31,6 +31,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.transactions = [];
   mocks.observers = [];
+  mocks.totals = undefined;
   mocks.count.mockResolvedValue(100);
   vi.stubGlobal("IntersectionObserver", class {
     constructor(callback) { this.callback = callback; mocks.observers.push(this); }
@@ -81,4 +82,22 @@ it("ignores an obsolete count and keeps an empty page empty instead of using the
   await act(async () => { oldCount.resolve(100); });
   expect(screen.getByText("0 / 2")).toBeInTheDocument();
   expect(screen.queryByText("recent-only")).not.toBeInTheDocument();
+});
+
+it("shows period totals from the server and loads every remaining page on request", async () => {
+  mocks.totals = vi.fn().mockResolvedValue({ count: 3, incomeMinor: 0, expenseMinor: 1500 });
+  mocks.count.mockResolvedValue(3);
+  mocks.fetch
+    .mockResolvedValueOnce({ items: [item("first")], nextCursor: "first", hasMore: true })
+    .mockResolvedValueOnce({ items: [item("second")], nextCursor: "second", hasMore: true })
+    .mockResolvedValueOnce({ items: [item("third")], nextCursor: null, hasMore: false });
+  render(<TransactionList />);
+  await screen.findByText("first");
+  expect(await screen.findByText("3")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "transactions.loadAll" }));
+  await screen.findByText("third");
+  expect(screen.getByText("second")).toBeInTheDocument();
+  expect(mocks.fetch.mock.calls[1][0]).toMatchObject({ cursor: "first", pageSize: 200 });
+  expect(mocks.fetch.mock.calls[2][0]).toMatchObject({ cursor: "second", pageSize: 200 });
+  expect(screen.queryByRole("button", { name: "transactions.loadAll" })).not.toBeInTheDocument();
 });

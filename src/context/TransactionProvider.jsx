@@ -10,6 +10,7 @@ import {
   import PropTypes from "prop-types";
   
   const TransactionContext = createContext();
+const EMPTY_TOTALS = Object.freeze({ count: 0, incomeMinor: 0, expenseMinor: 0 });
 export const useTransactions = () => useContext(TransactionContext);
 
 export const TransactionProvider = ({ children }) => {
@@ -55,6 +56,12 @@ export const TransactionProvider = ({ children }) => {
     return TransactionService.getTotalCount(currentUser.uid, options);
   }, [currentUser]);
 
+  const getTransactionTotals = useCallback(async (options = {}) => {
+    if (!currentUser) return EMPTY_TOTALS;
+    const { TransactionService } = await import("../services/transactionService.jsx");
+    return TransactionService.getTotals(currentUser.uid, options);
+  }, [currentUser]);
+
   const fetchTransactionPage = useCallback(async (options = {}) => {
     if (!currentUser) return { items: [], nextCursor: null, hasMore: false };
     const { TransactionService } = await import("../services/transactionService.jsx");
@@ -62,8 +69,8 @@ export const TransactionProvider = ({ children }) => {
   }, [currentUser]);
 
   const value = useMemo(
-    () => ({ transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount }),
-    [transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount]
+    () => ({ transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals }),
+    [transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals]
   );
 
   return (

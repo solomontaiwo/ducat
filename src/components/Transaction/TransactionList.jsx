@@ -36,6 +36,7 @@ const TransactionList = () => {
     maxTransactions,
     fetchTransactionPage,
     getTotalTransactionCount,
+    getTransactionTotals,
     recentRevision,
   } = useUnifiedTransactions();
 
@@ -54,6 +55,8 @@ const TransactionList = () => {
   const [pageCursor, setPageCursor] = useState(null);
   const [totalTransactionCount, setTotalTransactionCount] = useState(0);
   const [loadError, setLoadError] = useState("");
+  const [serverTotals, setServerTotals] = useState(null);
+  const [isLoadingAll, setIsLoadingAll] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const pageRevisionRef = useRef(0);
   const loadingMoreRef = useRef(false);
@@ -97,6 +100,17 @@ const TransactionList = () => {
     fetchCount();
     return () => { cancelled = true; };
   }, [currentUser, isDemo, getTotalTransactionCount, transactions, startDate, endDate, selectedType, recentRevision, reloadKey, t]);
+
+  // Exact totals for the whole period, computed by Firestore.
+  useEffect(() => {
+    let cancelled = false;
+    setServerTotals(null);
+    if (!currentUser || isDemo || !getTransactionTotals) return undefined;
+    getTransactionTotals({ startDate, endDate, type: selectedType })
+      .then((totals) => { if (!cancelled) setServerTotals(totals); })
+      .catch(() => { if (!cancelled) setServerTotals(null); });
+    return () => { cancelled = true; };
+  }, [currentUser, isDemo, getTransactionTotals, startDate, endDate, selectedType, recentRevision, reloadKey]);
 
   // Reset to the first deterministic date-ordered page whenever the realtime
   // stream changes. This prevents stale cross-device deletions from surviving
@@ -162,6 +176,38 @@ const TransactionList = () => {
       if (revision === pageRevisionRef.current) {
         loadingMoreRef.current = false;
         setIsLoadingMore(false);
+      }
+    }
+  }, [fetchTransactionPage, hasMore, isLoadingInitial, pageCursor, startDate, endDate, selectedType, t]);
+
+  /** Loads every remaining page of the current period (search and category filters need them). */
+  const handleLoadAll = useCallback(async () => {
+    if (loadingMoreRef.current || isLoadingInitial || !hasMore) return;
+    const revision = pageRevisionRef.current;
+    loadingMoreRef.current = true;
+    setIsLoadingAll(true);
+    setLoadError("");
+    let cursor = pageCursor;
+    try {
+      for (;;) {
+        const page = await fetchTransactionPage({ pageSize: 200, cursor, startDate, endDate, type: selectedType });
+        if (revision !== pageRevisionRef.current) return;
+        setAllLoadedTransactions((previous) => {
+          const merged = new Map(previous.map((item) => [item.id, item]));
+          page.items.forEach((item) => merged.set(item.id, item));
+          return Array.from(merged.values()).sort(compareTransactions);
+        });
+        cursor = page.nextCursor;
+        setPageCursor(page.nextCursor);
+        setHasMore(page.hasMore);
+        if (!page.hasMore) break;
+      }
+    } catch {
+      if (revision === pageRevisionRef.current) setLoadError(t("transactions.loadMoreError"));
+    } finally {
+      if (revision === pageRevisionRef.current) {
+        loadingMoreRef.current = false;
+        setIsLoadingAll(false);
       }
     }
   }, [fetchTransactionPage, hasMore, isLoadingInitial, pageCursor, startDate, endDate, selectedType, t]);
@@ -260,7 +306,7 @@ const TransactionList = () => {
     else setActionTransaction(transaction);
   }, [isDesktop]);
 
-  const totals = useMemo(() => filteredTransactions.reduce(
+  const loadedTotals = useMemo(() => filteredTransactions.reduce(
     (sum, item) => {
       if (item.type === "income") sum.income += item.amount;
       else sum.expense += item.amount;
@@ -268,6 +314,12 @@ const TransactionList = () => {
     },
     { income: 0, expense: 0 }
   ), [filteredTransactions]);
+  // Server totals cover the whole period; local ones are needed when text or
+  // category filters narrow the list (Firestore cannot apply those).
+  const useServerTotals = !isDemo && serverTotals && !searchTerm && selectedCategory === "all";
+  const totals = useServerTotals
+    ? { count: serverTotals.count, income: serverTotals.incomeMinor / 100, expense: serverTotals.expenseMinor / 100 }
+    : { count: filteredTransactions.length, ...loadedTotals };
 
   if (loading) {
     return (
@@ -378,7 +430,7 @@ const TransactionList = () => {
         <div className="surface grid grid-cols-3 divide-x divide-border py-3 text-center">
           <div className="px-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("transactions.summary.label")}</p>
-            <p className="amount text-base sm:text-lg">{filteredTransactions.length}</p>
+            <p className="amount text-base sm:text-lg">{totals.count}</p>
           </div>
           <div className="px-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("dashboard.income")}</p>
@@ -390,12 +442,19 @@ const TransactionList = () => {
           </div>
         </div>
         {(isDemo || (totalTransactionCount > 0 && allLoadedTransactions.length < totalTransactionCount)) && (
-          <p className="px-1 text-xs font-medium text-muted-foreground">
-            {isDemo
-              ? t("navbar.demoBadge", { count: demoCount, max: maxTransactions })
-              : t("transactions.loadedOfTotal")}
-            {!isDemo && <span className="ml-1 tabular-nums">{allLoadedTransactions.length} / {totalTransactionCount}</span>}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs font-medium text-muted-foreground">
+            <p>
+              {isDemo
+                ? t("navbar.demoBadge", { count: demoCount, max: maxTransactions })
+                : (searchTerm || selectedCategory !== "all") ? t("transactions.partialResults") : t("transactions.loadedOfTotal")}
+              {!isDemo && <span className="ml-1 tabular-nums">{allLoadedTransactions.length} / {totalTransactionCount}</span>}
+            </p>
+            {!isDemo && hasMore && (
+              <Button variant="outline" size="sm" onClick={handleLoadAll} disabled={isLoadingAll}>
+                {isLoadingAll ? t("loading") : t("transactions.loadAll")}
+              </Button>
+            )}
+          </div>
         )}
 
         <div className="space-y-5 pb-6">
