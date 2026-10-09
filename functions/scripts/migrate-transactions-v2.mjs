@@ -24,10 +24,17 @@ let scanned = 0;
 let migrated = 0;
 let invalid = 0;
 
+const timeZone = valueAfter("--timezone") || "Europe/Rome";
+const localFormatter = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+
+// Same rule as src/utils/dateUtils.js: legacy values saved at midnight UTC keep their UTC
+// calendar day; any other instant is converted to the user's local calendar day.
 const toDateKey = (value) => {
   const date = value?.toDate ? value.toDate() : new Date(value);
   if (Number.isNaN(date.getTime())) throw new Error("invalid date");
-  return date.toISOString().slice(0, 10);
+  const isUtcMidnight = date.getUTCHours() === 0 && date.getUTCMinutes() === 0
+    && date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0;
+  return isUtcMidnight ? date.toISOString().slice(0, 10) : localFormatter.format(date);
 };
 
 while (true) {
