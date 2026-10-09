@@ -2,20 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import TransactionModal from "./TransactionModal.jsx";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "../ui/dialog";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { useDrag } from "@use-gesture/react";
-import { format, isToday, isYesterday } from "date-fns";
-import { it, enUS } from "date-fns/locale";
-import formatCurrency from "../../utils/formatCurrency.jsx";
-import { FiTrash2, FiFilter, FiSearch, FiMoreVertical, FiCopy, FiEdit2 } from "react-icons/fi";
+import SwipeableTransactionCard from "./SwipeableTransactionCard.jsx";
+import TransactionActionsDialog from "./TransactionActionsDialog.jsx";
+import DeleteTransactionDialog from "./DeleteTransactionDialog.jsx";
+import { compareTransactions } from "../../utils/transactionOrder.js";
+import { formatGroupDate as formatGroupDateLabel, groupTransactionsByDate } from "../../utils/transactionGrouping.js";
+import { FiFilter, FiSearch } from "react-icons/fi";
 import { useCategories } from "../../utils/categories.jsx";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
@@ -26,103 +18,9 @@ import { Select } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { useDateRange } from "../../hooks/useDateRange.jsx";
 import { useTransactionFilter } from "../../hooks/useTransactionFilter.jsx";
-import PropTypes from "prop-types";
-
-const SWIPE_DELETE_THRESHOLD = 80;
-const SWIPE_VELOCITY_THRESHOLD = 0.5;
-const SNAP_ANIMATION = { type: "spring", stiffness: 500, damping: 40 };
-const compareTransactions = (first, second) => {
-  const dateDifference = new Date(second.date).getTime() - new Date(first.date).getTime();
-  return dateDifference || String(second.id || "").localeCompare(String(first.id || ""));
-};
-
-const SwipeableTransactionCard = ({ transaction, onActions, onDelete, language, getCategoryLabel }) => {
-  const x = useMotionValue(0);
-  const deleteOpacity = useTransform(x, [-SWIPE_DELETE_THRESHOLD, -20], [1, 0]);
-
-  const bind = useDrag(
-    ({ down, movement: [mx], velocity: [vx], direction: [dx] }) => {
-      if (down) {
-        x.set(Math.min(0, mx));
-      } else {
-        if (mx < -SWIPE_DELETE_THRESHOLD || (vx > SWIPE_VELOCITY_THRESHOLD && dx < 0)) {
-          onDelete(transaction.id);
-        }
-        animate(x, 0, SNAP_ANIMATION);
-      }
-    },
-    { axis: "x", filterTaps: true }
-  );
-
-  return (
-    <div className="relative overflow-hidden rounded-2xl">
-      <motion.div
-        style={{ opacity: deleteOpacity }}
-        className="absolute inset-y-0 right-0 flex items-center bg-destructive px-5 rounded-r-2xl"
-        aria-hidden="true"
-      >
-        <FiTrash2 className="h-5 w-5 text-white" />
-      </motion.div>
-      <motion.div
-        style={{ x }}
-        {...bind()}
-        className="relative z-10 flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-card/80 p-3 shadow-sm touch-pan-y sm:p-4"
-      >
-        <div className="min-w-0 flex-1 space-y-1">
-            <div className="truncate text-sm font-semibold leading-tight sm:text-base">{transaction.description}</div>
-            <div className="flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground">
-              <span>
-                {format(transaction.date, language === "it" ? "dd MMM yyyy" : "MMM dd, yyyy", {
-                  locale: language === "it" ? it : enUS,
-                })}
-              </span>
-              <span>•</span>
-              <span className="truncate">{getCategoryLabel(transaction.category)}</span>
-            </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <div
-            className={`text-right text-sm font-bold sm:text-base ${
-              transaction.type === "income" ? "text-emerald-600" : "text-rose-600"
-            }`}
-          >
-            {transaction.type === "income" ? "+" : "-"}
-            {formatCurrency(transaction.amount)}
-          </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-9 w-9 shrink-0 p-0"
-            aria-label="Transaction actions"
-            onClick={(e) => {
-              e.stopPropagation();
-              onActions(transaction);
-            }}
-          >
-            <FiMoreVertical className="h-5 w-5" />
-          </Button>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
-
-SwipeableTransactionCard.propTypes = {
-  transaction: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    description: PropTypes.string.isRequired,
-    date: PropTypes.instanceOf(Date).isRequired,
-    category: PropTypes.string.isRequired,
-    type: PropTypes.oneOf(["income", "expense"]).isRequired,
-    amount: PropTypes.number.isRequired,
-  }).isRequired,
-  onActions: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
-  language: PropTypes.string.isRequired,
-  getCategoryLabel: PropTypes.func.isRequired,
-};
 
 const TransactionList = () => {
+  const { t, i18n } = useTranslation();
   const { currentUser, loading: authLoading } = useAuth();
   const {
     transactions, // This is the limited recent stream
@@ -181,12 +79,12 @@ const TransactionList = () => {
           setTotalTransactionCount(transactions.length);
         }
       } catch {
-        if (!cancelled) setLoadError("Impossibile caricare il conteggio delle transazioni.");
+        if (!cancelled) setLoadError(t("transactions.countLoadError"));
       }
     };
     fetchCount();
     return () => { cancelled = true; };
-  }, [currentUser, isDemo, getTotalTransactionCount, transactions, startDate, endDate, selectedType, recentRevision, reloadKey]);
+  }, [currentUser, isDemo, getTotalTransactionCount, transactions, startDate, endDate, selectedType, recentRevision, reloadKey, t]);
 
   // Reset to the first deterministic date-ordered page whenever the realtime
   // stream changes. This prevents stale cross-device deletions from surviving
@@ -220,15 +118,15 @@ const TransactionList = () => {
         setHasMore(page.hasMore);
       } catch (error) {
         if (!cancelled) setLoadError(error.code === "permission-denied"
-          ? "Verifica l'email per accedere alle transazioni."
-          : "Impossibile caricare le transazioni. Riprova.");
+          ? t("security.emailVerificationRequired")
+          : t("transactions.loadError"));
       } finally {
         if (!cancelled) setIsLoadingInitial(false);
       }
     };
     loadFirstPage();
     return () => { cancelled = true; pageRevisionRef.current += 1; };
-  }, [currentUser, fetchTransactionPage, isDemo, recentRevision, reloadKey, transactions, startDate, endDate, selectedType]);
+  }, [currentUser, fetchTransactionPage, isDemo, recentRevision, reloadKey, transactions, startDate, endDate, selectedType, t]);
 
   const handleLoadMore = useCallback(async () => {
     if (loadingMoreRef.current || isLoadingInitial || !hasMore) return;
@@ -247,14 +145,14 @@ const TransactionList = () => {
       setPageCursor(page.nextCursor);
       setHasMore(page.hasMore);
     } catch {
-      if (revision === pageRevisionRef.current) setLoadError("Impossibile caricare altre transazioni. Riprova.");
+      if (revision === pageRevisionRef.current) setLoadError(t("transactions.loadMoreError"));
     } finally {
       if (revision === pageRevisionRef.current) {
         loadingMoreRef.current = false;
         setIsLoadingMore(false);
       }
     }
-  }, [fetchTransactionPage, hasMore, isLoadingInitial, pageCursor, startDate, endDate, selectedType]);
+  }, [fetchTransactionPage, hasMore, isLoadingInitial, pageCursor, startDate, endDate, selectedType, t]);
 
   const sentinelRef = useRef(null);
 
@@ -278,7 +176,6 @@ const TransactionList = () => {
     };
   }, [hasMore, isLoadingMore, isDemo, allLoadedTransactions.length, handleLoadMore]);
 
-  const { t, i18n } = useTranslation();
 
   const loading = authLoading || (isLoadingInitial && allLoadedTransactions.length === 0 && transactions.length === 0);
   const hasActiveFilters = selectedCategory !== "all" || selectedType !== "all";
@@ -291,40 +188,7 @@ const TransactionList = () => {
     }
   }, [motivationalQuotes]);
 
-  const getDateLocale = (lang) => {
-    return lang === "it" ? it : enUS;
-  };
-
-  const formatGroupDate = (date) => {
-    const lang = i18n.language || "it";
-    if (isToday(date)) return t("transactions.today");
-    if (isYesterday(date)) return t("transactions.yesterday");
-    
-    const locale = getDateLocale(lang);
-    // Use a format that works well for both languages, or keep the conditional
-    // 'd MMMM yyyy' is standard for Italian, 'MMM d, yyyy' for English
-    const pattern = lang === "it" ? "d MMMM yyyy" : "MMMM d, yyyy";
-    return format(date, pattern, { locale });
-  };
-
-  const groupTransactionsByDate = (transactions) => {
-    const groups = {};
-    transactions.forEach((transaction) => {
-      const date = transaction.date;
-      const dateKey = format(date, "yyyy-MM-dd");
-      if (!groups[dateKey]) {
-        groups[dateKey] = {
-          date,
-          displayDate: formatGroupDate(date),
-          transactions: [],
-        };
-      }
-      groups[dateKey].transactions.push(transaction);
-    });
-    return Object.values(groups)
-      .map((group) => ({ ...group, transactions: group.transactions.sort(compareTransactions) }))
-      .sort((a, b) => b.date - a.date);
-  };
+  const formatGroupDate = (date) => formatGroupDateLabel(date, i18n.language, t);
 
   const getCategoryLabel = (category) => {
     const allCategories = [...expenseCategories, ...incomeCategories];
@@ -359,6 +223,10 @@ const TransactionList = () => {
       }
     }
   }, [deleteConfirm, deleteTransaction]);
+
+  const transactionToDelete = deleteConfirm
+    ? allLoadedTransactions.find((item) => item.id === deleteConfirm) || transactions.find((item) => item.id === deleteConfirm)
+    : null;
 
   const categories = [...new Set(allLoadedTransactions.length > 0 ? allLoadedTransactions.map(t => t.category) : transactions.map(t => t.category))];
 
@@ -412,14 +280,14 @@ const TransactionList = () => {
     );
   }
 
-  const groupedTransactions = groupTransactionsByDate(filteredTransactions);
+  const groupedTransactions = groupTransactionsByDate(filteredTransactions, formatGroupDate);
 
   return (
     <div className="page-shell -mt-6 pt-0">
       {loadError && (
         <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
           <span>{loadError}</span>
-          <Button variant="outline" size="sm" onClick={() => setReloadKey((value) => value + 1)}>Riprova</Button>
+          <Button variant="outline" size="sm" onClick={() => setReloadKey((value) => value + 1)}>{t("common.retry")}</Button>
         </div>
       )}
       <div className="sticky top-0 z-20 rounded-2xl border border-border bg-card/90 backdrop-blur-md p-3 md:p-4 shadow-md">
@@ -447,7 +315,7 @@ const TransactionList = () => {
             />
             {searchTerm && hasMore && (
               <p id="search-scope-help" className="mt-1 text-xs text-muted-foreground">
-                La ricerca considera le {allLoadedTransactions.length} transazioni già caricate. Scorri per estenderla.
+                {t("transactions.searchScope", { count: allLoadedTransactions.length })}
               </p>
             )}
           </div>
@@ -491,7 +359,7 @@ const TransactionList = () => {
                   <option value="expense">{t("expense")}</option>
                 </Select>
                 <Select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-                  <option value="all">Categorie</option>
+                  <option value="all">{t("transactions.filters.allCategories")}</option>
                   {categories.map((category) => (
                     <option key={category} value={category}>
                       {category.charAt(0).toUpperCase() + category.slice(1)}
@@ -565,88 +433,28 @@ const TransactionList = () => {
         transaction={editTransaction}
       />
 
-      <Dialog open={!!actionTransaction} onOpenChange={(open) => !open && setActionTransaction(null)}>
-        <DialogContent className="max-w-sm p-5">
-          <DialogHeader>
-            <DialogTitle>{actionTransaction?.description}</DialogTitle>
-            <DialogDescription>{t("transactions.actions.description")}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2 pt-2">
-            <Button
-              variant="outline"
-              className="justify-start"
-              onClick={() => {
-                setEditTransaction(actionTransaction);
-                setActionTransaction(null);
-              }}
-            >
-              <FiEdit2 />
-              {t("transactions.actions.edit")}
-            </Button>
-            <Button variant="outline" className="justify-start" onClick={handleDuplicate}>
-              <FiCopy />
-              {t("transactions.actions.duplicate")}
-            </Button>
-            <Button
-              variant="destructive"
-              className="justify-start"
-              onClick={() => {
-                setDeleteConfirm(actionTransaction.id);
-                setActionTransaction(null);
-              }}
-            >
-              <FiTrash2 />
-              {t("transactions.actions.delete")}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TransactionActionsDialog
+        transaction={actionTransaction}
+        onClose={() => setActionTransaction(null)}
+        onEdit={(transaction) => {
+          setEditTransaction(transaction);
+          setActionTransaction(null);
+        }}
+        onDuplicate={handleDuplicate}
+        onDelete={(transactionId) => {
+          setDeleteConfirm(transactionId);
+          setActionTransaction(null);
+        }}
+      />
 
-      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("confirmDelete")}</DialogTitle>
-            <DialogDescription>
-              {t("transactions.deleteConfirm")}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {(() => {
-             const transactionToDelete = allLoadedTransactions.find(t => t.id === deleteConfirm) || transactions.find((t) => t.id === deleteConfirm);
-             if (!transactionToDelete) return null;
-             return (
-               <div className="py-4 space-y-1">
-                  <div className="font-bold text-foreground">
-                    {transactionToDelete.description}
-                  </div>
-                  <div className="text-muted-foreground text-sm">
-                    {formatGroupDate(transactionToDelete.date)} •{" "}
-                    {getCategoryLabel(transactionToDelete.category)}
-                  </div>
-                  <div
-                    className={`font-semibold ${
-                      transactionToDelete.type === "income"
-                        ? "text-emerald-600"
-                        : "text-rose-600"
-                    }`}
-                  >
-                    {transactionToDelete.type === "income" ? "+" : "-"}
-                    {formatCurrency(transactionToDelete.amount)}
-                  </div>
-               </div>
-             );
-          })()}
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
-              {t("cancel")}
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
-              {t("transactions.deleteConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteTransactionDialog
+        open={!!deleteConfirm}
+        transaction={transactionToDelete}
+        formatDate={formatGroupDate}
+        getCategoryLabel={getCategoryLabel}
+        onCancel={() => setDeleteConfirm(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 };

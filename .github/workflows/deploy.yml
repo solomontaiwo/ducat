@@ -39,8 +39,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Unit and component tests
-        run: npm test
+      - name: Unit and component tests (with coverage floor)
+        run: npm run test:coverage
 
       - name: Firestore rules tests
         run: npm run test:rules
@@ -96,8 +96,12 @@ jobs:
       - name: Install Function dependencies
         run: npm ci --prefix functions
 
-      - name: Parse Function sources
-        run: node --check functions/index.js && node --check functions/scripts/migrate-transactions-v2.mjs
+      - name: Check and test Functions
+        run: |
+          node --check functions/index.js
+          node --check functions/lib/deleteAccount.js
+          node --check functions/scripts/migrate-transactions-v2.mjs
+          node --test "functions/test/*.test.js"
 
       - name: Function runtime dependency audit
         run: npm audit --prefix functions --omit=dev --audit-level=high

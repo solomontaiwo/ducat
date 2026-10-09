@@ -206,7 +206,11 @@
       "securityDesc": "Dati protetti con backup e auth Firebase."
     },
     "ctaTitle": "Pronto a Prendere il Controllo delle Tue Finanze?",
-    "ctaSubtitle": "Unisciti a migliaia di utenti che hanno già trasformato la loro gestione finanziaria"
+    "ctaSubtitle": "Unisciti a migliaia di utenti che hanno già trasformato la loro gestione finanziaria",
+    "footer": {
+      "privacy": "Privacy",
+      "terms": "Termini d’uso"
+    }
   },
   "financialOverview": {
     "title": "Panoramica Finanziaria",
@@ -308,7 +312,8 @@
       "description": "Scegli cosa fare con questa transazione.",
       "edit": "Modifica",
       "duplicate": "Duplica",
-      "delete": "Elimina"
+      "delete": "Elimina",
+      "open": "Azioni transazione"
     },
     "filters": {
       "label": "Filtri",
@@ -319,13 +324,18 @@
       "month": "Mese",
       "year": "Anno",
       "all": "Tutto",
-      "allTypes": "Tutti"
+      "allTypes": "Tutti",
+      "allCategories": "Categorie"
     },
     "empty": {
       "title": "Nessuna transazione trovata",
       "tryFilters": "Prova a modificare i filtri di ricerca",
       "addFirst": "Inizia aggiungendo la tua prima transazione"
-    }
+    },
+    "countLoadError": "Impossibile caricare il conteggio delle transazioni.",
+    "loadError": "Impossibile caricare le transazioni. Riprova.",
+    "loadMoreError": "Impossibile caricare altre transazioni. Riprova.",
+    "searchScope": "La ricerca considera le {{count}} transazioni già caricate. Scorri per estenderla."
   },
   "pdf": {
     "reportTitle": "Report Statistiche Finanziarie",
@@ -456,5 +466,63 @@
     "year": "Quest'anno",
     "all": "Tutto",
     "custom": "Periodo personalizzato"
+  },
+  "common": {
+    "close": "Chiudi",
+    "retry": "Riprova",
+    "loadingPage": "Caricamento pagina"
+  },
+  "errorBoundary": {
+    "title": "Impossibile mostrare questa pagina",
+    "description": "Si è verificato un errore inatteso. I dati non sono stati modificati.",
+    "reload": "Ricarica l’app"
+  },
+  "auth": {
+    "emailLabel": "Email",
+    "showPassword": "Mostra password",
+    "hidePassword": "Nascondi password",
+    "showConfirmPassword": "Mostra conferma password",
+    "hideConfirmPassword": "Nascondi conferma password",
+    "profileIncomplete": "L’account è stato creato, ma il profilo non è completo. Puoi riprovare dopo la verifica.",
+    "forgotPassword": {
+      "link": "Password dimenticata?",
+      "title": "Recupera password",
+      "prompt": "Inserisci l’email del tuo account.",
+      "sent": "Se l’indirizzo è registrato, riceverai un’email con le istruzioni.",
+      "submit": "Invia istruzioni",
+      "sending": "Invio…",
+      "backToLogin": "Torna al login"
+    },
+    "verifyEmail": {
+      "title": "Verifica la tua email",
+      "description": "Abbiamo inviato un link a {{email}}. Aprilo, poi torna qui e controlla la verifica.",
+      "check": "Ho verificato l’email",
+      "checking": "Controllo in corso…",
+      "resend": "Invia di nuovo",
+      "resendIn": "Invia di nuovo tra {{seconds}}s",
+      "sending": "Invio in corso…",
+      "exit": "Esci",
+      "verified": "Email verificata. Ora puoi usare tutte le funzionalità.",
+      "notVerified": "L’email non risulta ancora verificata.",
+      "checkFailed": "Impossibile controllare la verifica. Riprova.",
+      "sent": "Email di verifica inviata.",
+      "tooManyRequests": "Troppi tentativi. Attendi prima di riprovare.",
+      "sendFailed": "Invio non riuscito. Riprova più tardi."
+    }
+  },
+  "validation": {
+    "profileNameMin": "Il nome profilo deve contenere almeno 3 caratteri",
+    "profileNameMax": "Il nome profilo non può superare 50 caratteri",
+    "invalidEmail": "Email non valida",
+    "passwordMin": "La password deve contenere almeno 8 caratteri",
+    "passwordMismatch": "Le password non coincidono",
+    "invalidTransaction": "I dati della transazione non sono validi"
+  },
+  "money": {
+    "decimals": "L’importo deve avere al massimo due cifre decimali",
+    "notFinite": "L’importo deve essere un numero finito",
+    "notPositive": "L’importo deve essere maggiore di zero",
+    "tooLarge": "L’importo supera il massimo consentito",
+    "invalid": "Importo non valido"
   }
 }

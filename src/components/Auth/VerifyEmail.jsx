@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { sendEmailVerification } from "firebase/auth";
 import { useAuth } from "../../context/AuthProvider";
 import { useNavigate } from "../../router/RouterProvider";
@@ -12,6 +13,7 @@ const VerifyEmail = () => {
   const { currentUser, refreshCurrentUser, logout } = useAuth();
   const navigate = useNavigate();
   const notification = useNotification();
+  const { t } = useTranslation();
   const [checking, setChecking] = useState(false);
   const [sending, setSending] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
@@ -29,13 +31,13 @@ const VerifyEmail = () => {
     try {
       const refreshed = await refreshCurrentUser();
       if (refreshed?.emailVerified) {
-        notification.success("Email verificata. Ora puoi usare tutte le funzionalità.");
+        notification.success(t("auth.verifyEmail.verified"));
         navigate("/dashboard", { replace: true });
       } else {
-        notification.info("L'email non risulta ancora verificata.");
+        notification.info(t("auth.verifyEmail.notVerified"));
       }
     } catch {
-      notification.error("Impossibile controllare la verifica. Riprova.");
+      notification.error(t("auth.verifyEmail.checkFailed"));
     } finally {
       setChecking(false);
     }
@@ -47,11 +49,11 @@ const VerifyEmail = () => {
     try {
       await sendEmailVerification(currentUser);
       setCooldownSeconds(RESEND_COOLDOWN_MS / 1000);
-      notification.success("Email di verifica inviata.");
+      notification.success(t("auth.verifyEmail.sent"));
     } catch (error) {
       notification.error(error.code === "auth/too-many-requests"
-        ? "Troppi tentativi. Attendi prima di riprovare."
-        : "Invio non riuscito. Riprova più tardi.");
+        ? t("auth.verifyEmail.tooManyRequests")
+        : t("auth.verifyEmail.sendFailed"));
     } finally {
       setSending(false);
     }
@@ -66,19 +68,19 @@ const VerifyEmail = () => {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <CardTitle>Verifica la tua email</CardTitle>
+          <CardTitle>{t("auth.verifyEmail.title")}</CardTitle>
           <CardDescription>
-            Abbiamo inviato un link a {currentUser?.email}. Aprilo, poi torna qui e controlla la verifica.
+            {t("auth.verifyEmail.description", { email: currentUser?.email })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Button className="w-full" onClick={checkVerification} disabled={checking}>
-            {checking ? "Controllo in corso…" : "Ho verificato l'email"}
+            {checking ? t("auth.verifyEmail.checking") : t("auth.verifyEmail.check")}
           </Button>
           <Button className="w-full" variant="outline" onClick={resend} disabled={sending || cooldownSeconds > 0}>
-            {sending ? "Invio in corso…" : cooldownSeconds > 0 ? `Invia di nuovo tra ${cooldownSeconds}s` : "Invia di nuovo"}
+            {sending ? t("auth.verifyEmail.sending") : cooldownSeconds > 0 ? t("auth.verifyEmail.resendIn", { seconds: cooldownSeconds }) : t("auth.verifyEmail.resend")}
           </Button>
-          <Button className="w-full" variant="ghost" onClick={exit}>Esci</Button>
+          <Button className="w-full" variant="ghost" onClick={exit}>{t("auth.verifyEmail.exit")}</Button>
         </CardContent>
       </Card>
     </div>

@@ -5,6 +5,7 @@ import {
   documentId,
   doc,
   getCountFromServer,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -19,6 +20,7 @@ import {
 import { firestore } from "../utils/firebaseFirestore.js";
 import { transactionV2InputSchema, transactionV2PatchSchema } from "../schemas/transaction.jsx";
 import { DEFAULT_CURRENCY, getTransactionAmountMinor, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
+import { compareTransactions } from "../utils/transactionOrder.js";
 import { coerceDateKey, dateKeyToDate, dateKeyToUtcDate, dateToDateKey, nextDateKeyUtcDate } from "../utils/dateUtils.js";
 
 const COLLECTION_NAME = "transactions";
@@ -31,10 +33,7 @@ let cacheRevision = 0;
 
 const safeId = (value) => String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
 
-export const compareTransactions = (first, second) => {
-  const dateDifference = new Date(second.date).getTime() - new Date(first.date).getTime();
-  return dateDifference || String(second.id || "").localeCompare(String(first.id || ""));
-};
+export { compareTransactions };
 
 const normalizeDocument = (snapshot) => {
   const raw = snapshot.data();
@@ -94,6 +93,16 @@ const invalidateCache = () => {
   dataCache.clear();
   countCache.clear();
   inFlight.clear();
+};
+
+const isAlreadyCreated = async (reference, userId, error) => {
+  if (error?.code !== "permission-denied") return false;
+  try {
+    const existing = await getDoc(reference);
+    return existing.exists() && existing.data().userId === userId;
+  } catch {
+    return false;
+  }
 };
 
 const toV2Input = (data) => transactionV2InputSchema.parse({
@@ -204,11 +213,19 @@ export const TransactionService = {
   add: async (userId, data, { requestId = crypto.randomUUID() } = {}) => {
     const input = toV2Input(data);
     const reference = doc(firestore, COLLECTION_NAME, `${safeId(userId)}_${safeId(requestId)}`);
-    await setDoc(reference, {
-      userId,
-      ...toPersistedFields(input),
-      createdAt: serverTimestamp(),
-    });
+    try {
+      await setDoc(reference, {
+        userId,
+        ...toPersistedFields(input),
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      // A retry reuses the same document ID. If the first attempt actually
+      // reached the server, this second write is evaluated as an update and the
+      // rules reject it (createdAt must not change). The data is already saved,
+      // so confirm that instead of reporting a failure.
+      if (!(await isAlreadyCreated(reference, userId, error))) throw error;
+    }
     invalidateCache();
     return reference;
   },

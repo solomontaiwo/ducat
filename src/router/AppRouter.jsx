@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthProvider";
 import { useUnifiedTransactions } from "../context/UnifiedTransactionProvider";
 import AppLayout from "../components/Layout/AppLayout";
@@ -24,11 +25,14 @@ const pages = Object.fromEntries(
   Object.entries(loaders).map(([key, loader]) => [key, lazy(loader)])
 );
 
-const PageLoader = () => (
-  <div className="flex min-h-[40vh] items-center justify-center bg-transparent" role="status" aria-label="Caricamento pagina">
-    <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-  </div>
-);
+const PageLoader = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center bg-transparent" role="status" aria-label={t("common.loadingPage")}>
+      <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  );
+};
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();

@@ -86,3 +86,26 @@ Tutti i finding P1/P2 con soluzione applicabile nel repository sono stati implem
 4. distribuire staging nell’ordine indici → rules → frontend App Check → Function → enforcement;
 5. fare backup, dry-run, apply e riconciliazione della migrazione;
 6. completare soltanto dopo le attività manuali la checklist di rilascio.
+
+## 10. Interventi del 9 ottobre 2026 (audit di follow-up)
+
+| Area | Intervento | Verifica |
+|---|---|---|
+| CSP | `connect-src` ora include `https://*.cloudfunctions.net` (callable `deleteAccount`); `script-src`, `frame-src` e `connect-src` includono `https://www.google.com/recaptcha/` (App Check Enterprise). Aggiornato anche l'header proposto in `CONFIGURAZIONE_MANUALE.md`. | `tests/csp.test.js`. **Da confermare nel browser con la configurazione Firebase reale.** |
+| Creazione idempotente | Un retry con lo stesso ID, già salvato dal primo tentativo, veniva rifiutato dalle rules (update con `createdAt` diverso). `TransactionService.add` ora verifica che il documento esista e appartenga all'utente prima di segnalare errore. | `tests/transactionRetry.test.js`, `tests/firestore.rules.test.js` |
+| Rules | `create` accetta solo lo schema v2; il ramo legacy resta valido solo per `update` di documenti legacy esistenti, e un documento v2 non può tornare legacy. Test su delete, profilo e `usernames`. | 13 test sull'Emulator |
+| Function `deleteAccount` | Logica estratta in `functions/lib/deleteAccount.js`; cancellazione con `BulkWriter` a pagine, errore esplicito se una delete fallisce, retry sicuro (profilo/utente già assenti), `timeoutSeconds: 540`, `maxInstances: 10`, log strutturati senza dati personali. | `functions/test/deleteAccount.test.js` (7 test, `node --test`) |
+| Dipendenze | `@radix-ui/react-dialog`, `class-variance-authority`, `lucide-react` spostati in `dependencies` (finiscono nel bundle e ora sono coperti da `npm audit --omit=dev`); rimossi `tailwind-merge` e `@radix-ui/react-slot` (inutilizzati). Override di `@grpc/grpc-js` per `@firebase/firestore`, `dompurify` aggiornato, `functions/package-lock.json` aggiornato: 0 vulnerabilità high/critical su entrambi i package. | `npm audit --omit=dev` |
+| Build | `build.rolldownOptions` era ignorato da Vite 7; sostituito con `rollupOptions.output.manualChunks` limitato a `react` e `motion` (nessun chunk "vendor" generico, per non fondere recharts/jspdf). Budget aggiornati: main 100 kB, iniziale 160 kB (misurato 142 kB), analytics 150 kB, pdf 155 kB gzip. | `npm run check:bundle` |
+| Refactor | `UnifiedTransactionProvider` con un solo valore "inerte" condiviso e valori di contesto memoizzati (anche Auth, Theme, Notification, Demo, Transaction); `propTypes` fuori dai corpi dei componenti; `TransactionAnalytics` 828 → 479 righe (modello, hook dati, export, tooltip e card categoria estratti); `TransactionList` 654 → 462 righe (card swipe, dialog azioni/eliminazione, raggruppamento e ordinamento estratti). | test unitari/componente |
+| Error reporting | `src/utils/errorReporting.js`: nessun invio se `VITE_ERROR_REPORT_URL` è vuoto; report con testo ripulito (email, query string, numeri lunghi), senza uid, deduplicati e limitati a 5 per sessione; collegato a `ErrorBoundary`, `window.error` e `unhandledrejection`. Per attivarlo aggiungere l'origine dell'endpoint a `connect-src`. | `tests/errorReporting.test.jsx` |
+| i18n | Auth (login, registrazione, verifica email, recupero password), `ErrorBoundary`, loader, `TransactionList`, footer landing, errori monetari (`MoneyError.i18nKey`) e messaggi dello schema profilo ora usano le chiavi IT/EN; allineate due chiavi EN mancanti. Il testo legale di `LegalPage` resta solo in italiano: va rivisto dal titolare prima della traduzione. | `tests/i18nParity.test.js` |
+| Test | Da 60 a 135 test unitari/componente (+ 13 rules, 7 Function). Coverage con soglia in CI (`npm run test:coverage`): misurata 48,9% statements / 41,4% branches / 43,5% functions / 50,0% lines su tutto `src`, contro il 32,5% di partenza. Nuovi: flussi di autenticazione, servizi account/profilo, Analytics, retry, CSP, error reporting. | `npm run test:all` |
+| Bug trovato dai test | `ForgotPassword` lasciava una promise rifiutata non gestita se l'invio falliva; ora mostra sempre la stessa conferma neutra. | `tests/authFlows.test.jsx` |
+
+### Da eseguire manualmente dopo il merge
+
+1. `firebase deploy --only firestore:rules,functions` (nuove rules e nuova versione di `deleteAccount`).
+2. Verificare in produzione, con App Check attivo, la cancellazione account e l'assenza di violazioni CSP nella console del browser.
+3. Prima di rimuovere del tutto il ramo legacy dalle rules, completare la migrazione con `functions/scripts/migrate-transactions-v2.mjs` (dry-run, poi apply).
+4. Se si vuole il monitoraggio errori: impostare `VITE_ERROR_REPORT_URL` nei secret di build e aggiungere l'origine a `connect-src`.

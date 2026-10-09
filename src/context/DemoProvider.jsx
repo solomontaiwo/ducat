@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
       useRef,
     } from "react";
     import { useNotification } from "../utils/notificationUtils.jsx";
@@ -42,11 +43,6 @@ const normalizeDemoTransaction = (transaction) => {
 };
 
 export const DemoProvider = ({ children, seedOnMount = false }) => {
-  DemoProvider.propTypes = {
-    children: PropTypes.node.isRequired,
-    seedOnMount: PropTypes.bool,
-  };
-
   const [demoTransactions, setDemoTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const hasSeededRef = useRef(false);
@@ -233,32 +229,33 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
     }
   }, [seedOnMount, demoTransactions.length, generateSampleTransactions]);
 
+  const value = useMemo(() => ({
+    transactions: demoTransactions,
+    loading,
+    addTransaction: addDemoTransaction,
+    updateTransaction: updateDemoTransaction,
+    deleteTransaction: deleteDemoTransaction,
+    clearTransactions: clearDemoTransactions,
+    generateSampleTransactions,
+    canAddMoreTransactions,
+    maxTransactions: MAX_DEMO_TRANSACTIONS,
+    getDemoStats,
+    isDemo: true,
+  }), [
+    demoTransactions, loading, addDemoTransaction, updateDemoTransaction, deleteDemoTransaction,
+    clearDemoTransactions, generateSampleTransactions, canAddMoreTransactions, getDemoStats,
+  ]);
+
   return (
-    <DemoContext.Provider
-      value={{
-        // Dati
-        transactions: demoTransactions,
-        loading,
-        
-        // Azioni
-        addTransaction: addDemoTransaction,
-        updateTransaction: updateDemoTransaction,
-        deleteTransaction: deleteDemoTransaction,
-        clearTransactions: clearDemoTransactions,
-        generateSampleTransactions,
-        
-        // Utilities
-        canAddMoreTransactions,
-        maxTransactions: MAX_DEMO_TRANSACTIONS,
-        getDemoStats,
-        
-        // Flags
-        isDemo: true,
-      }}
-    >
+    <DemoContext.Provider value={value}>
       {children}
     </DemoContext.Provider>
   );
+};
+
+DemoProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+  seedOnMount: PropTypes.bool,
 };
 
 export default DemoProvider;

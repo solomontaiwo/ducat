@@ -206,7 +206,11 @@
       "securityDesc": "Data protected with backup and Firebase auth."
     },
     "ctaTitle": "Ready to Take Control of Your Finances?",
-    "ctaSubtitle": "Join thousands of users who have already transformed their financial management"
+    "ctaSubtitle": "Join thousands of users who have already transformed their financial management",
+    "footer": {
+      "privacy": "Privacy",
+      "terms": "Terms of use"
+    }
   },
   "financialOverview": {
     "title": "Financial Overview",
@@ -308,7 +312,8 @@
       "description": "Choose what to do with this transaction.",
       "edit": "Edit",
       "duplicate": "Duplicate",
-      "delete": "Delete"
+      "delete": "Delete",
+      "open": "Transaction actions"
     },
     "filters": {
       "label": "Filters",
@@ -319,13 +324,18 @@
       "month": "Month",
       "year": "Year",
       "all": "All",
-      "allTypes": "All"
+      "allTypes": "All",
+      "allCategories": "Categories"
     },
     "empty": {
       "title": "No transactions found",
       "tryFilters": "Try modifying your search filters",
       "addFirst": "Start by adding your first transaction"
-    }
+    },
+    "countLoadError": "Unable to load the transaction count.",
+    "loadError": "Unable to load transactions. Please try again.",
+    "loadMoreError": "Unable to load more transactions. Please try again.",
+    "searchScope": "Search covers the {{count}} transactions already loaded. Scroll to extend it."
   },
   "pdf": {
     "reportTitle": "Financial Statistics Report",
@@ -427,7 +437,9 @@
     "registerButton": "Create Account",
     "haveAccount": "Already have an account?",
     "loginNow": "Login now",
-    "backToHome": "Back to Home"
+    "backToHome": "Back to Home",
+    "newUsername": "New username",
+    "updating": "Updating..."
   },
   "errors": {
     "loginError": "Error during login",
@@ -454,5 +466,63 @@
     "lastMonth": "Last month",
     "last3Months": "Last 3 months",
     "year": "This year"
+  },
+  "common": {
+    "close": "Close",
+    "retry": "Retry",
+    "loadingPage": "Loading page"
+  },
+  "errorBoundary": {
+    "title": "This page could not be displayed",
+    "description": "An unexpected error occurred. Your data has not been changed.",
+    "reload": "Reload the app"
+  },
+  "auth": {
+    "emailLabel": "Email",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "showConfirmPassword": "Show password confirmation",
+    "hideConfirmPassword": "Hide password confirmation",
+    "profileIncomplete": "Your account was created, but the profile is incomplete. You can retry after verifying your email.",
+    "forgotPassword": {
+      "link": "Forgot your password?",
+      "title": "Reset password",
+      "prompt": "Enter the email of your account.",
+      "sent": "If the address is registered, you will receive an email with instructions.",
+      "submit": "Send instructions",
+      "sending": "Sending…",
+      "backToLogin": "Back to login"
+    },
+    "verifyEmail": {
+      "title": "Verify your email",
+      "description": "We sent a link to {{email}}. Open it, then come back here and check the verification.",
+      "check": "I have verified my email",
+      "checking": "Checking…",
+      "resend": "Send again",
+      "resendIn": "Send again in {{seconds}}s",
+      "sending": "Sending…",
+      "exit": "Sign out",
+      "verified": "Email verified. You can now use every feature.",
+      "notVerified": "Your email is not verified yet.",
+      "checkFailed": "Unable to check the verification. Please try again.",
+      "sent": "Verification email sent.",
+      "tooManyRequests": "Too many attempts. Please wait before trying again.",
+      "sendFailed": "Sending failed. Please try again later."
+    }
+  },
+  "validation": {
+    "profileNameMin": "The profile name must contain at least 3 characters",
+    "profileNameMax": "The profile name cannot exceed 50 characters",
+    "invalidEmail": "Invalid email",
+    "passwordMin": "The password must contain at least 8 characters",
+    "passwordMismatch": "The passwords do not match",
+    "invalidTransaction": "The transaction data is not valid"
+  },
+  "money": {
+    "decimals": "The amount can have at most two decimal places",
+    "notFinite": "The amount must be a finite number",
+    "notPositive": "The amount must be greater than zero",
+    "tooLarge": "The amount exceeds the maximum allowed",
+    "invalid": "Invalid amount"
   }
 }

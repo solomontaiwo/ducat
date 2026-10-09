@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
-import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 
 let environment;
 
@@ -69,22 +69,63 @@ describe("Firestore rules", () => {
     await assertFails(updateDoc(reference, { userId: "attacker", updatedAt: serverTimestamp() }));
   });
 
-  it("denies extra fields and accepts a valid legacy transaction during migration", async () => {
-    const db = environment.authenticatedContext("owner", { email: "owner@example.com", email_verified: true }).firestore();
-    await assertFails(setDoc(doc(db, "transactions", "extra"), {
-      ...transactionV2("owner"),
-      injected: true,
+  const legacyTransaction = (userId) => ({
+    userId,
+    amount: 10.5,
+    description: "Legacy",
+    date: new Date("2026-08-04T00:00:00.000Z"),
+    category: "altro",
+    type: "expense",
+    createdAt: new Date("2026-08-04T00:00:00.000Z"),
+  });
+  const verifiedOwner = () => environment.authenticatedContext("owner", { email: "owner@example.com", email_verified: true }).firestore();
+  const seed = (id, data) => environment.withSecurityRulesDisabled((context) => setDoc(doc(context.firestore(), "transactions", id), data));
+
+  it("denies extra fields on create", async () => {
+    await assertFails(setDoc(doc(verifiedOwner(), "transactions", "extra"), { ...transactionV2("owner"), injected: true }));
+  });
+
+  it("denies creating new legacy-shaped transactions", async () => {
+    await assertFails(setDoc(doc(verifiedOwner(), "transactions", "legacy-new"), { ...legacyTransaction("owner"), createdAt: serverTimestamp() }));
+  });
+
+  it("keeps existing legacy transactions editable but blocks downgrading v2 documents", async () => {
+    await seed("legacy", legacyTransaction("owner"));
+    await seed("modern", { ...transactionV2("owner"), createdAt: new Date("2026-08-04T00:00:00.000Z"), updatedAt: new Date("2026-08-04T00:00:00.000Z") });
+    const db = verifiedOwner();
+    await assertSucceeds(setDoc(doc(db, "transactions", "legacy"), { ...legacyTransaction("owner"), description: "Edited" }));
+    await assertFails(setDoc(doc(db, "transactions", "modern"), { ...legacyTransaction("owner"), createdAt: new Date("2026-08-04T00:00:00.000Z") }));
+  });
+
+  it("rejects a repeated write to an existing ID, which the client treats as already saved", async () => {
+    const reference = doc(verifiedOwner(), "transactions", "owner_request-1");
+    await assertSucceeds(setDoc(reference, transactionV2("owner")));
+    await assertFails(setDoc(reference, transactionV2("owner")));
+    await assertSucceeds(getDoc(reference));
+  });
+
+  it("allows only the verified owner to delete a transaction", async () => {
+    await seed("to-delete", { ...transactionV2("owner"), createdAt: new Date(), updatedAt: new Date() });
+    const attacker = environment.authenticatedContext("attacker", { email: "attacker@example.com", email_verified: true }).firestore();
+    const unverified = environment.authenticatedContext("owner", { email: "owner@example.com", email_verified: false }).firestore();
+    await assertFails(deleteDoc(doc(attacker, "transactions", "to-delete")));
+    await assertFails(deleteDoc(doc(unverified, "transactions", "to-delete")));
+    await assertSucceeds(deleteDoc(doc(verifiedOwner(), "transactions", "to-delete")));
+  });
+
+  it("allows only the account owner to delete the profile", async () => {
+    await environment.withSecurityRulesDisabled((context) => setDoc(doc(context.firestore(), "users", "owner"), {
+      ...profile("owner@example.com"), createdAt: new Date(), updatedAt: new Date(),
     }));
-    const legacy = {
-      userId: "owner",
-      amount: 10.5,
-      description: "Legacy",
-      date: new Date("2026-08-04T00:00:00.000Z"),
-      category: "altro",
-      type: "expense",
-      createdAt: serverTimestamp(),
-    };
-    await assertSucceeds(setDoc(doc(db, "transactions", "legacy"), legacy));
+    const attacker = environment.authenticatedContext("attacker", { email: "attacker@example.com" }).firestore();
+    await assertFails(deleteDoc(doc(attacker, "users", "owner")));
+    await assertSucceeds(deleteDoc(doc(environment.authenticatedContext("owner", { email: "owner@example.com" }).firestore(), "users", "owner")));
+  });
+
+  it("keeps the legacy usernames collection inaccessible", async () => {
+    const db = environment.authenticatedContext("owner", { email: "owner@example.com", email_verified: true }).firestore();
+    await assertFails(getDoc(doc(db, "usernames", "anyone")));
+    await assertFails(setDoc(doc(db, "usernames", "anyone"), { uid: "owner" }));
   });
 
   it("requires owner-constrained collection queries", async () => {

@@ -1,5 +1,7 @@
 import { Component } from "react";
 import PropTypes from "prop-types";
+import i18n from "../utils/i18n";
+import { reportError } from "../utils/errorReporting";
 import { Button } from "./ui/button";
 
 class ErrorBoundary extends Component {
@@ -12,8 +14,7 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error("Unhandled application error", error);
-    console.error("Component stack", info.componentStack);
+    reportError(error, { source: "react.error-boundary", componentStack: info?.componentStack });
   }
 
   render() {
@@ -21,11 +22,11 @@ class ErrorBoundary extends Component {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
         <div className="max-w-md space-y-4 rounded-xl border border-border bg-card p-6 text-center shadow-lg" role="alert">
-          <h1 className="text-xl font-bold">Impossibile mostrare questa pagina</h1>
+          <h1 className="text-xl font-bold">{i18n.t("errorBoundary.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Si è verificato un errore inatteso. I dati non sono stati modificati.
+            {i18n.t("errorBoundary.description")}
           </p>
-          <Button onClick={() => window.location.reload()}>Ricarica l’app</Button>
+          <Button onClick={() => window.location.reload()}>{i18n.t("errorBoundary.reload")}</Button>
         </div>
       </main>
     );

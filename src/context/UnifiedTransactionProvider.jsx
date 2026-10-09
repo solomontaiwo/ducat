@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   useCallback,
 } from "react";
@@ -14,34 +15,47 @@ import { useTranslation } from 'react-i18next';
 import { getTransactionAmountMinor, minorToMajor } from "../utils/money.js";
 import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/storage.js";
 
-const UnifiedTransactionContext = createContext({
+const EMPTY_PAGE = Object.freeze({ items: [], nextCursor: null, hasMore: false });
+const EMPTY_STATS = Object.freeze({
+  totalIncome: 0,
+  totalExpense: 0,
+  balance: 0,
+  transactionCount: 0,
+  categoryBreakdown: {},
+});
+
+// Shared base for every state in which no transaction source is available
+// (booting, unverified account, signed out). Each state overrides only what
+// differs, so the contract of the context lives in exactly one place.
+const INERT_VALUE = Object.freeze({
   transactions: [],
-  loading: true,
+  loading: false,
   addTransaction: async () => false,
   updateTransaction: async () => false,
   deleteTransaction: async () => false,
+  generateSampleTransactions: async () => false,
+  clearTransactions: () => {},
   fetchAllTransactions: async () => [],
   getTotalTransactionCount: async () => 0,
-  fetchTransactionPage: async () => ({ items: [], nextCursor: null, hasMore: false }),
+  fetchTransactionPage: async () => EMPTY_PAGE,
   recentRevision: 0,
   canAddMoreTransactions: false,
   maxTransactions: 0,
-  getStats: () => ({}),
+  getStats: () => EMPTY_STATS,
   isDemo: false,
   isAuthenticated: false,
+  seedOnMount: false,
   startDemo: () => false,
   stopDemo: () => {},
 });
+
+const UnifiedTransactionContext = createContext({ ...INERT_VALUE, loading: true });
 
 export const useUnifiedTransactions = () => useContext(UnifiedTransactionContext);
 const DEMO_FLAG_KEY = "soldi-sotto-demo-enabled";
 
 // Wrapper for Firebase provider
 const FirebaseTransactionWrapper = ({ children }) => {
-  FirebaseTransactionWrapper.propTypes = {
-    children: PropTypes.node.isRequired,
-  };
-  
   const { currentUser } = useAuth();
   const { transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount } = useTransactions();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -61,9 +75,9 @@ const FirebaseTransactionWrapper = ({ children }) => {
       return true;
     } catch (error) {
       console.error("Error adding transaction:", error);
-      // Check for Zod validation errors
+      // Zod validation errors carry English technical messages; show a localized one.
       if (error.issues) {
-         notification.error(error.issues[0].message);
+         notification.error(t('validation.invalidTransaction'));
       } else {
          notification.error(t('notifications.addError'));
       }
@@ -111,7 +125,8 @@ const FirebaseTransactionWrapper = ({ children }) => {
     }
   }, [currentUser, notification, t]);
 
-  // Firebase Statistics
+  // Totals over the realtime stream only (the most recent transactions);
+  // range-accurate figures come from fetchAllTransactions.
   const getStats = useCallback(() => {
     const totalIncome = transactions
       .filter(t => t.type === "income")
@@ -130,35 +145,29 @@ const FirebaseTransactionWrapper = ({ children }) => {
     };
   }, [transactions]);
 
+  const value = useMemo(() => ({
+    ...INERT_VALUE,
+    transactions,
+    loading,
+    isProcessing,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    fetchAllTransactions, // Expose specifically for analytics
+    fetchTransactionPage,
+    getTotalTransactionCount,
+    recentRevision,
+    canAddMoreTransactions: true,
+    maxTransactions: Infinity,
+    getStats,
+    isAuthenticated: true,
+  }), [
+    transactions, loading, isProcessing, addTransaction, updateTransaction, deleteTransaction,
+    fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, recentRevision, getStats,
+  ]);
+
   return (
-    <UnifiedTransactionContext.Provider
-      value={{
-        // Data
-        transactions,
-        loading,
-        isProcessing,
-        
-        // Actions
-        addTransaction,
-        updateTransaction,
-        deleteTransaction,
-        fetchAllTransactions, // Expose specifically for analytics
-        fetchTransactionPage,
-        recentRevision,
-        
-        // Utilities
-        canAddMoreTransactions: true,
-        maxTransactions: Infinity,
-        getStats,
-        getTotalTransactionCount,
-        
-        // Flags
-        isDemo: false,
-        isAuthenticated: true,
-        startDemo: () => false,
-        stopDemo: () => {},
-      }}
-    >
+    <UnifiedTransactionContext.Provider value={value}>
       {children}
     </UnifiedTransactionContext.Provider>
   );
@@ -166,13 +175,6 @@ const FirebaseTransactionWrapper = ({ children }) => {
 
 // Wrapper for Demo provider
 const DemoTransactionWrapper = ({ children, startDemo, seedDemo, stopDemo }) => {
-  DemoTransactionWrapper.propTypes = {
-    children: PropTypes.node.isRequired,
-    startDemo: PropTypes.func.isRequired,
-    seedDemo: PropTypes.bool,
-    stopDemo: PropTypes.func.isRequired,
-  };
-  
   const {
     transactions,
     loading,
@@ -205,37 +207,34 @@ const DemoTransactionWrapper = ({ children, startDemo, seedDemo, stopDemo }) => 
     };
   }, [transactions]);
 
+  const value = useMemo(() => ({
+    ...INERT_VALUE,
+    transactions,
+    loading,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    generateSampleTransactions,
+    clearTransactions,
+    fetchAllTransactions,
+    fetchTransactionPage,
+    getTotalTransactionCount,
+    recentRevision: transactions.length,
+    canAddMoreTransactions,
+    maxTransactions: MAX_DEMO_TRANSACTIONS,
+    getStats: getDemoStats,
+    isDemo: true,
+    seedOnMount: seedDemo,
+    startDemo,
+    stopDemo,
+  }), [
+    transactions, loading, addTransaction, updateTransaction, deleteTransaction,
+    generateSampleTransactions, clearTransactions, fetchAllTransactions, fetchTransactionPage,
+    getTotalTransactionCount, canAddMoreTransactions, getDemoStats, seedDemo, startDemo, stopDemo,
+  ]);
+
   return (
-    <UnifiedTransactionContext.Provider
-      value={{
-        // Data
-        transactions,
-        loading,
-        
-        // Actions
-        addTransaction,
-        updateTransaction,
-        deleteTransaction,
-        generateSampleTransactions,
-        clearTransactions,
-        fetchAllTransactions,
-        fetchTransactionPage,
-        recentRevision: transactions.length,
-        
-        // Utilities
-        canAddMoreTransactions,
-        maxTransactions: MAX_DEMO_TRANSACTIONS, // Corrected to use the actual demo max
-        getStats: getDemoStats,
-        getTotalTransactionCount,
-        
-        // Flags
-        isDemo: true,
-        isAuthenticated: false,
-        startDemo,
-        seedOnMount: seedDemo,
-        stopDemo,
-      }}
-    >
+    <UnifiedTransactionContext.Provider value={value}>
       {children}
     </UnifiedTransactionContext.Provider>
   );
@@ -243,10 +242,6 @@ const DemoTransactionWrapper = ({ children, startDemo, seedDemo, stopDemo }) => 
 
 // Main unified provider
 export const UnifiedTransactionProvider = ({ children }) => {
-  UnifiedTransactionProvider.propTypes = {
-    children: PropTypes.node.isRequired,
-  };
-
   const { currentUser, loading: authLoading } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const [demoEnabled, setDemoEnabled] = useState(() => {
@@ -274,36 +269,16 @@ export const UnifiedTransactionProvider = ({ children }) => {
     }
   }, [authLoading]);
 
-  if (!isReady) {
-    return (
-      <UnifiedTransactionContext.Provider
-        value={{
-          transactions: [],
-          loading: true,
-          addTransaction: () => Promise.resolve(false),
-          updateTransaction: () => Promise.resolve(false),
-          deleteTransaction: () => Promise.resolve(false),
-          canAddMoreTransactions: false,
-          maxTransactions: 0,
-          getStats: () => ({}),
-          isDemo: false,
-          isAuthenticated: false,
-          startDemo,
-          stopDemo,
-          fetchAllTransactions: async () => [],
-          getTotalTransactionCount: async () => 0,
-          fetchTransactionPage: async () => ({ items: [], nextCursor: null, hasMore: false }),
-          recentRevision: 0,
-        }}
-      >
-        {children}
-      </UnifiedTransactionContext.Provider>
-    );
-  }
+  const hasUser = Boolean(currentUser);
+  const inertValue = useMemo(() => {
+    if (!isReady) return { ...INERT_VALUE, loading: true, startDemo, stopDemo };
+    // Signed in but unverified: Firestore rules would deny every read, so no
+    // listener is opened and the UI sees an empty, authenticated state.
+    if (hasUser) return { ...INERT_VALUE, isAuthenticated: true, startDemo, stopDemo };
+    return { ...INERT_VALUE, startDemo, stopDemo };
+  }, [isReady, hasUser, startDemo, stopDemo]);
 
-  // Firestore transaction rules require a verified email. Avoid opening a
-  // listener that is guaranteed to be denied while verification is pending.
-  if (currentUser?.emailVerified) {
+  if (isReady && currentUser?.emailVerified) {
     return (
       <TransactionProvider>
         <FirebaseTransactionWrapper>
@@ -313,35 +288,8 @@ export const UnifiedTransactionProvider = ({ children }) => {
     );
   }
 
-  if (currentUser) {
-    return (
-      <UnifiedTransactionContext.Provider
-        value={{
-          transactions: [],
-          loading: false,
-          addTransaction: () => Promise.resolve(false),
-          updateTransaction: () => Promise.resolve(false),
-          deleteTransaction: () => Promise.resolve(false),
-          canAddMoreTransactions: false,
-          maxTransactions: 0,
-          getStats: () => ({ totalIncome: 0, totalExpense: 0, balance: 0, transactionCount: 0 }),
-          isDemo: false,
-          isAuthenticated: true,
-          startDemo,
-          stopDemo,
-          fetchAllTransactions: async () => [],
-          getTotalTransactionCount: async () => 0,
-          fetchTransactionPage: async () => ({ items: [], nextCursor: null, hasMore: false }),
-          recentRevision: 0,
-        }}
-      >
-        {children}
-      </UnifiedTransactionContext.Provider>
-    );
-  }
-
-  // If user is not authenticated but demo is enabled, use Demo
-  if (demoEnabled) {
+  // If the user is not authenticated but demo is enabled, use Demo
+  if (isReady && !currentUser && demoEnabled) {
     return (
       <DemoProvider seedOnMount={seedDemo}>
         <DemoTransactionWrapper startDemo={startDemo} seedDemo={seedDemo} stopDemo={stopDemo}>
@@ -351,40 +299,26 @@ export const UnifiedTransactionProvider = ({ children }) => {
     );
   }
 
-  // No user and demo not enabled: provides neutral context with disabled actions
   return (
-    <UnifiedTransactionContext.Provider
-      value={{
-        transactions: [],
-        loading: false,
-        addTransaction: () => Promise.resolve(false),
-        updateTransaction: () => Promise.resolve(false),
-        deleteTransaction: () => Promise.resolve(false),
-        generateSampleTransactions: () => Promise.resolve(false),
-        clearTransactions: () => {},
-        canAddMoreTransactions: false,
-        maxTransactions: 0,
-        getStats: () => ({
-          totalIncome: 0,
-          totalExpense: 0,
-          balance: 0,
-          transactionCount: 0,
-          categoryBreakdown: {},
-        }),
-        isDemo: false,
-        isAuthenticated: false,
-        startDemo,
-        seedOnMount: false,
-        stopDemo,
-        fetchAllTransactions: async () => [],
-        getTotalTransactionCount: async () => 0,
-        fetchTransactionPage: async () => ({ items: [], nextCursor: null, hasMore: false }),
-        recentRevision: 0,
-      }}
-    >
+    <UnifiedTransactionContext.Provider value={inertValue}>
       {children}
     </UnifiedTransactionContext.Provider>
   );
+};
+
+FirebaseTransactionWrapper.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+DemoTransactionWrapper.propTypes = {
+  children: PropTypes.node.isRequired,
+  startDemo: PropTypes.func.isRequired,
+  seedDemo: PropTypes.bool,
+  stopDemo: PropTypes.func.isRequired,
+};
+
+UnifiedTransactionProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export default UnifiedTransactionProvider;

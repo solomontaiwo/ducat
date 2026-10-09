@@ -1,11 +1,6 @@
 import PropTypes from "prop-types";
 
 const LoadingWrapper = ({ loading, children }) => {
-  LoadingWrapper.propTypes = {
-    loading: PropTypes.bool.isRequired,
-    children: PropTypes.node,
-  };
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -15,6 +10,11 @@ const LoadingWrapper = ({ loading, children }) => {
   }
 
   return <>{children}</>;
+};
+
+LoadingWrapper.propTypes = {
+  loading: PropTypes.bool.isRequired,
+  children: PropTypes.node,
 };
 
 export default LoadingWrapper;

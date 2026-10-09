@@ -19,16 +19,17 @@ export default defineConfig(({ mode }) => {
   ].filter(Boolean),
   base: '/soldi-sotto/',
   build: {
-    rolldownOptions: {
+    rollupOptions: {
       output: {
-        codeSplitting: {
-          minSize: 20_000,
-          groups: [
-            { name: 'firebase', test: /node_modules[\\/]firebase[\\/]/, priority: 30 },
-            { name: 'motion', test: /node_modules[\\/]framer-motion[\\/]/, priority: 25 },
-            { name: 'react', test: /node_modules[\\/](react|react-dom|react-router-dom)[\\/]/, priority: 20 },
-            { name: 'vendor', test: /node_modules[\\/]/, priority: 1 },
-          ],
+        // Only split stable, framework-level vendors (Firebase stays split per
+        // capability by dynamic imports, so app-check/functions load on demand). A catch-all "vendor" group
+        // would merge lazy libraries (recharts, jspdf, html2canvas) into one
+        // chunk and defeat route-level code splitting.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (/node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'react'
+          if (/node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/.test(id)) return 'motion'
+          return undefined
         },
       },
     },

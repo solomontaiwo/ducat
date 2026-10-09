@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 
@@ -7,10 +7,6 @@ const NotificationContext = createContext();
 export const useNotification = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }) => {
-  NotificationProvider.propTypes = {
-    children: PropTypes.node.isRequired,
-  };
-
   const [toasts, setToasts] = useState([]);
   const { t } = useTranslation();
 
@@ -50,6 +46,9 @@ export const NotificationProvider = ({ children }) => {
   const warning = useCallback((message) => addToast(message, "warning"), [addToast]);
   const info = useCallback((message) => addToast(message, "info"), [addToast]);
 
+  // Stable identity: consumers must not re-render (or rebuild callbacks) whenever a toast appears.
+  const api = useMemo(() => ({ success, error, warning, info, addToast }), [success, error, warning, info, addToast]);
+
   const getToastStyles = (type) => {
     switch (type) {
       case "success":
@@ -64,7 +63,7 @@ export const NotificationProvider = ({ children }) => {
   };
 
   return (
-    <NotificationContext.Provider value={{ success, error, warning, info, addToast }}>
+    <NotificationContext.Provider value={api}>
       {children}
       <div
         className="fixed left-1/2 top-6 z-50 flex w-80 max-w-[90vw] -translate-x-1/2 flex-col gap-2"
@@ -101,4 +100,8 @@ export const NotificationProvider = ({ children }) => {
       </div>
     </NotificationContext.Provider>
   );
+};
+
+NotificationProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
