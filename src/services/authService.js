@@ -1,4 +1,5 @@
 import { supabase } from "../utils/supabaseClient.js";
+import { toEmailLanguage } from "../utils/emailLanguage.js";
 
 /** Absolute URL of an app route, used for the links in auth emails. */
 export const appUrl = (path = "") => {
@@ -17,6 +18,8 @@ export const toAppUser = (user) => {
     email: user.email ?? null,
     emailVerified: Boolean(user.email_confirmed_at || user.confirmed_at),
     displayName: user.user_metadata?.display_name ?? null,
+    // Language of the auth emails; the templates read user_metadata.lang.
+    language: user.user_metadata?.lang ?? null,
     // Accounts moved from Firebase keep their original sign-up date.
     metadata: { creationTime: user.user_metadata?.member_since ?? user.created_at ?? null },
   };
@@ -65,12 +68,12 @@ export const signIn = async (email, password) => {
  * Creates the account. With email confirmation on (production) there is no
  * session until the link in the email is opened.
  */
-export const signUp = async ({ email, password, displayName }) => {
+export const signUp = async ({ email, password, displayName, language }) => {
   const data = unwrapAuth(await supabase.auth.signUp({
     email: normalizeEmail(email),
     password,
     options: {
-      data: { display_name: displayName },
+      data: { display_name: displayName, lang: toEmailLanguage(language) },
       emailRedirectTo: appUrl("dashboard"),
     },
   }));
@@ -115,6 +118,12 @@ export const updateEmail = async (email) => {
 
 export const updateDisplayName = async (displayName) => {
   const data = unwrapAuth(await supabase.auth.updateUser({ data: { display_name: displayName } }));
+  return toAppUser(data.user);
+};
+
+/** Keeps the language of the auth emails in step with the app. */
+export const updateLanguage = async (language) => {
+  const data = unwrapAuth(await supabase.auth.updateUser({ data: { lang: toEmailLanguage(language) } }));
   return toAppUser(data.user);
 };
 

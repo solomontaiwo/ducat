@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import PropTypes from "prop-types";
 import { getCurrentProfileName } from "../utils/downloadUtils.jsx";
 import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/storage.js";
+import i18n from "../utils/i18n.jsx";
+import { toEmailLanguage } from "../utils/emailLanguage.js";
 
 const AuthContext = createContext();
 const PENDING_KEY = "soldi-sotto-pending-verification";
@@ -21,7 +23,8 @@ const sameUser = (left, right) => Boolean(left && right)
   && left.uid === right.uid
   && left.email === right.email
   && left.emailVerified === right.emailVerified
-  && left.displayName === right.displayName;
+  && left.displayName === right.displayName
+  && left.language === right.language;
 
 export const AuthProvider = ({ children }) => {
   const [sessionUser, setSessionUser] = useState(null);
@@ -132,6 +135,22 @@ export const AuthProvider = ({ children }) => {
       unsubscribe();
     };
   }, [applySessionUser, refreshProfileName]);
+
+  // The auth emails are written in the language the user picked in the app.
+  const signedInUid = sessionUser?.uid;
+  useEffect(() => {
+    if (!signedInUid) return undefined;
+    const sync = (language) => {
+      const wanted = toEmailLanguage(language);
+      if (!sessionUserRef.current || sessionUserRef.current.language === wanted) return;
+      import("../services/authService.js")
+        .then(({ updateLanguage }) => updateLanguage(wanted))
+        .catch((error) => console.warn("Unable to store the email language", error));
+    };
+    sync(i18n.resolvedLanguage || i18n.language);
+    i18n.on("languageChanged", sync);
+    return () => i18n.off("languageChanged", sync);
+  }, [signedInUid]);
 
   const pending = useMemo(() => pendingUser(pendingEmail), [pendingEmail]);
   const currentUser = sessionUser || pending;
