@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { differenceInCalendarDays, differenceInCalendarMonths, format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
 import {
   FiCalendar, FiDatabase, FiDownload, FiEdit2, FiGlobe, FiGrid, FiKey, FiLock, FiMail, FiMoon, FiPlusCircle,
@@ -160,7 +160,13 @@ const Profile = () => {
 
   const saveName = async (name) => {
     try {
-      await setDoc(doc(firestore, "users", currentUser.uid), { username: name, displayName: name, updatedAt: serverTimestamp() }, { merge: true });
+      // The rules require the profile to carry the account email; older
+      // profiles may not have it (or may not exist), so always send it.
+      const reference = doc(firestore, "users", currentUser.uid);
+      const fields = { username: name, displayName: name, email: currentUser.email, updatedAt: serverTimestamp() };
+      const existing = await getDoc(reference);
+      if (existing.exists()) await updateDoc(reference, fields);
+      else await setDoc(reference, { ...fields, createdAt: serverTimestamp() });
       await updateProfile(currentUser, { displayName: name });
       await refreshProfileName(currentUser);
       notification.success(t("profile.usernameSuccess"));

@@ -155,7 +155,8 @@ service cloud.firestore {
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['username', 'displayName', 'email', 'updatedAt']) &&
         request.resource.data.email == request.auth.token.email &&
         request.resource.data.email is string &&
-        request.resource.data.createdAt == resource.data.createdAt &&
+        // Profiles created before these rules may lack createdAt: compare safely.
+        request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null) &&
         isValidProfileName(request.resource.data.username) &&
         isValidProfileName(request.resource.data.displayName) &&
         request.resource.data.username == request.resource.data.displayName &&

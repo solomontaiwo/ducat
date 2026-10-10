@@ -216,4 +216,17 @@ describe("Firestore rules", () => {
     await assertFails(getDoc(doc(attacker, "preferences", "owner")));
     await assertFails(setDoc(doc(attacker, "preferences", "owner"), { ...valid }));
   });
+
+  it("lets owners rename legacy profiles that lack createdAt or email", async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "users", "legacy"), { username: "vecchio", displayName: "vecchio" });
+    });
+    const owner = environment.authenticatedContext("legacy", { email: "legacy@example.com", email_verified: true }).firestore();
+    const reference = doc(owner, "users", "legacy");
+    await assertFails(updateDoc(reference, { username: "Nuovo nome", displayName: "Nuovo nome", updatedAt: serverTimestamp() }));
+    await assertSucceeds(updateDoc(reference, {
+      username: "Nuovo nome", displayName: "Nuovo nome", email: "legacy@example.com", updatedAt: serverTimestamp(),
+    }));
+    await assertFails(updateDoc(reference, { createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
+  });
 });

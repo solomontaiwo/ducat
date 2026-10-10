@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => {
     notification: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
     navigate: vi.fn(),
     setDoc: vi.fn(async () => {}),
+    updateDoc: vi.fn(async () => {}),
+    profileExists: true,
     updateProfile: vi.fn(async () => {}),
     refreshProfileName: vi.fn(async () => "Ada"),
     toggleTheme: vi.fn(),
@@ -66,7 +68,10 @@ vi.mock("../src/router/RouterProvider", () => ({
   useNavigate: () => mocks.navigate,
 }));
 vi.mock("../src/utils/firebaseFirestore.js", () => ({ firestore: {} }));
-vi.mock("firebase/firestore", () => ({ doc: () => ({}), setDoc: mocks.setDoc, serverTimestamp: () => "ts" }));
+vi.mock("firebase/firestore", () => ({
+  doc: () => ({}), setDoc: mocks.setDoc, updateDoc: mocks.updateDoc, serverTimestamp: () => "ts",
+  getDoc: async () => ({ exists: () => mocks.profileExists }),
+}));
 vi.mock("firebase/auth", () => ({ updateProfile: mocks.updateProfile }));
 vi.mock("../src/services/accountService.js", () => ({
   deleteCurrentAccount: vi.fn(), requestEmailChange: vi.fn(async () => {}), requestPasswordReset: vi.fn(async () => {}),
@@ -149,6 +154,18 @@ describe("Profile", () => {
     fireEvent.change(within(sheet).getByLabelText("profilePage.name.label"), { target: { value: "Ada Lovelace" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "save" }));
     await waitFor(() => expect(mocks.updateProfile).toHaveBeenCalledWith(expect.anything(), { displayName: "Ada Lovelace" }));
-    expect(mocks.setDoc).toHaveBeenCalled();
+    expect(mocks.updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ username: "Ada Lovelace", email: "ada@example.com" }));
+    expect(mocks.setDoc).not.toHaveBeenCalled();
+  });
+
+  it("creates the profile document when it is missing", async () => {
+    mocks.profileExists = false;
+    render(<Profile />);
+    fireEvent.click(screen.getByRole("button", { name: /Ada/ }));
+    const sheet = await screen.findByRole("dialog");
+    fireEvent.change(within(sheet).getByLabelText("profilePage.name.label"), { target: { value: "Ada Lovelace" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "save" }));
+    await waitFor(() => expect(mocks.setDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ createdAt: "ts", email: "ada@example.com" })));
+    mocks.profileExists = true;
   });
 });
