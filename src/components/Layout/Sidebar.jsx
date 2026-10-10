@@ -39,7 +39,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
   const demoCount = transactions.filter((item) => !item.isSample).length;
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-[248px] flex-col gap-6 border-r border-border bg-card px-4 pb-5 pt-6">
+    <aside className="glass fixed bottom-4 left-4 top-4 z-30 flex w-[232px] flex-col gap-6 rounded-[28px] px-3.5 pb-4 pt-5">
       <Link to="/" className="flex items-center gap-2.5 rounded-xl px-2 py-1">
         <img src={logo} alt="" width="34" height="34" className="h-[34px] w-[34px] rounded-[11px]" />
         <span className="font-display text-[19px] font-extrabold tracking-tight">Soldi Sotto</span>
@@ -61,7 +61,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold transition-colors",
-                active ? "bg-accent text-accent-foreground" : "text-foreground/80 hover:bg-muted hover:text-foreground"
+                active ? "glass-active text-accent-foreground" : "text-foreground/80 hover:bg-foreground/5 hover:text-foreground"
               )}
             >
               <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
@@ -74,7 +74,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
       <div className="flex-1" />
 
       {isDemo && !currentUser && (
-        <div className="space-y-3 rounded-2xl bg-muted p-4">
+        <div className="space-y-3 rounded-2xl bg-foreground/5 p-4">
           <p className="text-sm font-semibold">
             {t("navbar.demoBadge", { count: demoCount, max: maxTransactions })}
           </p>
@@ -89,8 +89,8 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
             to="/profile"
             aria-current={location.pathname === "/profile" ? "page" : undefined}
             className={cn(
-              "flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 transition-colors hover:bg-muted",
-              location.pathname === "/profile" && "bg-accent"
+              "flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-foreground/5",
+              location.pathname === "/profile" && "glass-active"
             )}
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent font-display text-sm font-bold text-accent-foreground">
@@ -106,7 +106,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
             onClick={handleLogout}
             aria-label={t("navbar.logout")}
             title={t("navbar.logout")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
           >
             <FiLogOut className="h-[18px] w-[18px]" aria-hidden="true" />
           </button>

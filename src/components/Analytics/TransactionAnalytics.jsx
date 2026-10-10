@@ -165,7 +165,7 @@ const TransactionAnalytics = () => {
       )}
 
       <header className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="mobile-glass-header flex flex-wrap items-center justify-between gap-3">
           <h1 className="pl-1 text-[1.75rem] font-extrabold leading-tight md:pl-0 md:text-3xl">{t("analytics.title")}</h1>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={!canExport} aria-label={t("analytics.exportCsv")}>
