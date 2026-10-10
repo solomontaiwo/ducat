@@ -8,14 +8,16 @@ import { readLocalValue, writeLocalValue } from "../utils/storage.js";
 import { dateKeyToDate, todayDateKey } from "../utils/dateUtils.js";
 import { minorToMajor } from "../utils/money.js";
 import { dueOccurrences, nextOccurrence, occurrenceRequestId } from "../utils/recurrence.js";
-import { budgetLimitsSchema, recurringInputSchema } from "../schemas/planning.js";
+import { DEFAULT_PREFERENCES, budgetLimitsSchema, normalizePreferences, preferencesSchema, recurringInputSchema } from "../schemas/planning.js";
 
 const DEMO_RECURRING_KEY = "soldi-sotto-demo-recurring";
 const DEMO_BUDGETS_KEY = "soldi-sotto-demo-budgets";
+const DEMO_PREFERENCES_KEY = "soldi-sotto-demo-preferences";
 
 const INERT = Object.freeze({
   recurring: [],
   budgets: {},
+  preferences: DEFAULT_PREFERENCES,
   ready: false,
   addRecurring: async () => false,
   updateRecurring: async () => false,
@@ -23,6 +25,7 @@ const INERT = Object.freeze({
   registerOccurrence: async () => false,
   skipOccurrence: async () => false,
   saveBudgets: async () => false,
+  savePreferences: async () => false,
 });
 
 const PlanningContext = createContext(INERT);
@@ -63,7 +66,10 @@ export const PlanningProvider = ({ children }) => {
 
   const [recurring, setRecurring] = useState([]);
   const [budgets, setBudgets] = useState({});
+  const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
   const [ready, setReady] = useState(false);
+  const preferencesRef = useRef(preferences);
+  preferencesRef.current = preferences;
   const recurringRef = useRef(recurring);
   recurringRef.current = recurring;
 
@@ -72,22 +78,25 @@ export const PlanningProvider = ({ children }) => {
     if (isDemo) {
       setRecurring(readDemo(DEMO_RECURRING_KEY, []));
       setBudgets(readDemo(DEMO_BUDGETS_KEY, {}));
+      setPreferences(normalizePreferences(readDemo(DEMO_PREFERENCES_KEY, {})));
       setReady(true);
       return undefined;
     }
     setRecurring([]);
     setBudgets({});
+    setPreferences(DEFAULT_PREFERENCES);
     if (!userId) return undefined;
 
     let cancelled = false;
     let unsubscribers = [];
     let loaded = 0;
-    const markLoaded = () => { loaded += 1; if (loaded === 2 && !cancelled) setReady(true); };
+    const markLoaded = () => { loaded += 1; if (loaded === 3 && !cancelled) setReady(true); };
     import("../services/planningService.js").then(({ PlanningService }) => {
       if (cancelled) return;
       const onError = (error) => { console.error("Planning data unavailable", error); markLoaded(); };
       let recurringSeen = false;
       let budgetsSeen = false;
+      let preferencesSeen = false;
       unsubscribers = [
         PlanningService.subscribeRecurring(userId, (rules) => {
           setRecurring(rules);
@@ -96,6 +105,10 @@ export const PlanningProvider = ({ children }) => {
         PlanningService.subscribeBudgets(userId, (limits) => {
           setBudgets(limits);
           if (!budgetsSeen) { budgetsSeen = true; markLoaded(); }
+        }, onError),
+        PlanningService.subscribePreferences(userId, (stored) => {
+          setPreferences(normalizePreferences(stored || {}));
+          if (!preferencesSeen) { preferencesSeen = true; markLoaded(); }
         }, onError),
       ];
     }).catch((error) => console.error("Unable to load planning service", error));
@@ -195,6 +208,28 @@ export const PlanningProvider = ({ children }) => {
     }
   }, [isDemo, userId, notification, t]);
 
+  /** Merges a partial change into the preferences and saves the result. */
+  const savePreferences = useCallback(async (patch) => {
+    try {
+      const next = preferencesSchema.parse({ ...preferencesRef.current, ...patch });
+      preferencesRef.current = next;
+      setPreferences(next);
+      if (isDemo) {
+        writeLocalValue(DEMO_PREFERENCES_KEY, JSON.stringify(next));
+      } else if (userId) {
+        const { PlanningService } = await import("../services/planningService.js");
+        await PlanningService.savePreferences(userId, next);
+      } else {
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Unable to save preferences", error);
+      notification.error(t("preferences.saveError"));
+      return false;
+    }
+  }, [isDemo, userId, notification, t]);
+
   // Register the occurrences of automatic rules that came due while the app
   // was closed. Deterministic request ids keep this safe across devices.
   const catchingUpRef = useRef(false);
@@ -224,8 +259,9 @@ export const PlanningProvider = ({ children }) => {
   }, [ready, recurring, addTransaction, updateRecurring, notification, t]);
 
   const value = useMemo(() => ({
-    recurring, budgets, ready, addRecurring, updateRecurring, deleteRecurring, registerOccurrence, skipOccurrence, saveBudgets,
-  }), [recurring, budgets, ready, addRecurring, updateRecurring, deleteRecurring, registerOccurrence, skipOccurrence, saveBudgets]);
+    recurring, budgets, preferences, ready,
+    addRecurring, updateRecurring, deleteRecurring, registerOccurrence, skipOccurrence, saveBudgets, savePreferences,
+  }), [recurring, budgets, preferences, ready, addRecurring, updateRecurring, deleteRecurring, registerOccurrence, skipOccurrence, saveBudgets, savePreferences]);
 
   return <PlanningContext.Provider value={value}>{children}</PlanningContext.Provider>;
 };

@@ -14,7 +14,7 @@ const compact = (minor) => formatCurrency(minorToMajor(minor)).replace(/,00(?=\s
 const BAR_TONE = { ok: "bg-primary", near: "bg-warning", over: "bg-warning-strong" };
 
 /** Month budgets on the overview; renders nothing until a budget exists. */
-const BudgetCard = ({ breakdown, isCurrentMonth }) => {
+const BudgetCard = ({ breakdown, isCurrentMonth, endDate }) => {
   const { t } = useTranslation();
   const { budgets } = usePlanning();
   const rows = useMemo(
@@ -22,7 +22,7 @@ const BudgetCard = ({ breakdown, isCurrentMonth }) => {
     [budgets, breakdown, t]
   );
   if (!rows.length) return null;
-  const daysLeft = differenceInCalendarDays(endOfMonth(new Date()), new Date());
+  const daysLeft = differenceInCalendarDays(endDate || endOfMonth(new Date()), new Date());
 
   return (
     <section className="surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="budget-title">
@@ -64,6 +64,7 @@ const BudgetCard = ({ breakdown, isCurrentMonth }) => {
 BudgetCard.propTypes = {
   breakdown: PropTypes.object.isRequired,
   isCurrentMonth: PropTypes.bool,
+  endDate: PropTypes.instanceOf(Date),
 };
 
 export default BudgetCard;

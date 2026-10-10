@@ -199,4 +199,21 @@ describe("Firestore rules", () => {
     const attacker = environment.authenticatedContext("attacker", { email: "attacker@example.com", email_verified: true }).firestore();
     await assertFails(getDoc(doc(attacker, "budgets", "owner")));
   });
+
+  it("validates synced preferences", async () => {
+    const owner = environment.authenticatedContext("owner", { email: "owner@example.com", email_verified: true }).firestore();
+    const reference = doc(owner, "preferences", "owner");
+    const valid = {
+      userId: "owner", monthStartDay: 27, defaultType: "last", defaultCategory: null, quickAmounts: [5, 10, 20],
+      hiddenCategories: ["viaggi"], categoryOrder: { expense: ["supermercato"], income: [] }, lastBackupAt: null,
+      updatedAt: serverTimestamp(),
+    };
+    await assertSucceeds(setDoc(reference, valid));
+    await assertSucceeds(getDoc(reference));
+    await assertFails(setDoc(reference, { ...valid, monthStartDay: 40 }));
+    await assertFails(setDoc(reference, { ...valid, isAdmin: true }));
+    const attacker = environment.authenticatedContext("attacker", { email: "attacker@example.com", email_verified: true }).firestore();
+    await assertFails(getDoc(doc(attacker, "preferences", "owner")));
+    await assertFails(setDoc(doc(attacker, "preferences", "owner"), { ...valid }));
+  });
 });

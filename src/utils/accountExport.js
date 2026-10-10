@@ -1,8 +1,8 @@
 import { getTransactionAmountMinor, minorToMajor } from "./money.js";
 import { coerceDateKey } from "./dateUtils.js";
 
-export const buildAccountExport = ({ user, profileName, transactions, exportedAt = new Date() }) => ({
-  schemaVersion: 1,
+export const buildAccountExport = ({ user, profileName, transactions, recurring = [], budgets = {}, preferences = null, exportedAt = new Date() }) => ({
+  schemaVersion: 2,
   exportedAt: exportedAt.toISOString(),
   account: {
     uid: user.uid,
@@ -11,6 +11,11 @@ export const buildAccountExport = ({ user, profileName, transactions, exportedAt
     emailVerified: Boolean(user.emailVerified),
     createdAt: user.metadata?.creationTime || null,
   },
+  recurring: recurring.map(({ id, type, amountMinor, currency, description, category, frequency, anchorDateKey, nextIndex, mode, paused }) => ({
+    id, type, amountMinor, currency, description, category, frequency, anchorDateKey, nextIndex, mode, paused,
+  })),
+  budgets,
+  preferences,
   transactions: transactions.map((transaction) => {
     const amountMinor = getTransactionAmountMinor(transaction);
     return {

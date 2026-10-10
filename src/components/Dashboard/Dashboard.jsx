@@ -13,7 +13,7 @@ import TransactionModal from "../Transaction/TransactionModal.jsx";
 import MonthSwitcher from "../ui/MonthSwitcher.jsx";
 import formatCurrency, { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { calculateStats } from "../../utils/statsUtils.jsx";
-import { formatMonthLabel } from "../../utils/monthLabel";
+import { formatCycleRange, formatMonthLabel } from "../../utils/monthLabel";
 import { useMonthRange } from "../../hooks/useMonthRange.js";
 import UpcomingCard from "../Planning/UpcomingCard.jsx";
 import BudgetCard from "../Planning/BudgetCard.jsx";
@@ -37,7 +37,7 @@ const Dashboard = () => {
   const { openAddTransaction, canAdd } = useAddTransaction();
   const { recurring, budgets } = usePlanning();
   const { t, i18n } = useTranslation();
-  const { month, startDate, endDate, isCurrentMonth, goToPrevious, goToNext } = useMonthRange();
+  const { month, startDate, endDate, startDay, isCurrentMonth, goToPrevious, goToNext } = useMonthRange();
   const [monthData, setMonthData] = useState([]);
   const [monthLoading, setMonthLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -128,6 +128,11 @@ const Dashboard = () => {
             canGoNext={!isCurrentMonth}
             className="-ml-3 md:-ml-3"
           />
+          {startDay > 1 && (
+            <p className="pl-1 text-xs font-semibold text-muted-foreground md:pl-0" data-testid="cycle-range">
+              {formatCycleRange(startDate, endDate, i18n.language)}
+            </p>
+          )}
         </div>
         <HeaderProfileButton className="mt-1" />
       </header>
@@ -214,7 +219,7 @@ const Dashboard = () => {
       {(showUpcoming || hasBudgets) && !isLoading && (
         <div className={showUpcoming && hasBudgets ? "grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5" : "grid grid-cols-1 gap-4"}>
           {showUpcoming && <UpcomingCard />}
-          {hasBudgets && <BudgetCard breakdown={stats?.categoryBreakdown || {}} isCurrentMonth={isCurrentMonth} />}
+          {hasBudgets && <BudgetCard breakdown={stats?.categoryBreakdown || {}} isCurrentMonth={isCurrentMonth} endDate={endDate} />}
         </div>
       )}
 

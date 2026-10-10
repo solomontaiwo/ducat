@@ -2,6 +2,20 @@
 // We import the `useMemo` hook from React to optimize category calculation.
 import { useMemo } from "react";
 import { useTranslation } from 'react-i18next';
+import { usePlanning } from "../context/PlanningProvider.jsx";
+
+/** Applies the user's order: listed values first, in that order, then the rest; "altro" stays last. */
+export const orderCategories = (categories, order = []) => {
+  const rank = new Map(order.map((value, index) => [value, index]));
+  return [...categories].sort((first, second) => {
+    if (first.value === "altro") return 1;
+    if (second.value === "altro") return -1;
+    const a = rank.has(first.value) ? rank.get(first.value) : Infinity;
+    const b = rank.has(second.value) ? rank.get(second.value) : Infinity;
+    if (a === b) return categories.indexOf(first) - categories.indexOf(second);
+    return a - b;
+  });
+};
 
 // Create a custom hook called `useCategories` that returns expense and income categories.
 export const useCategories = () => {
@@ -40,7 +54,21 @@ export const useCategories = () => {
     [t]
   );
 
-  // The custom hook returns an object containing expense and income categories.
-  // This allows other components to easily access the data.
-  return { expenseCategories, incomeCategories };
+  const { preferences } = usePlanning();
+  const order = preferences?.categoryOrder;
+  const hidden = preferences?.hiddenCategories;
+
+  return useMemo(() => {
+    const hiddenSet = new Set(hidden || []);
+    const expense = orderCategories(expenseCategories, order?.expense);
+    const income = orderCategories(incomeCategories, order?.income);
+    // "altro" can never be hidden: it is the fallback for everything.
+    const visible = (list) => list.filter((item) => item.value === "altro" || !hiddenSet.has(item.value));
+    return {
+      expenseCategories: expense,
+      incomeCategories: income,
+      visibleExpenseCategories: visible(expense),
+      visibleIncomeCategories: visible(income),
+    };
+  }, [expenseCategories, incomeCategories, order, hidden]);
 };

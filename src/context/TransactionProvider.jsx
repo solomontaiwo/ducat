@@ -62,6 +62,12 @@ export const TransactionProvider = ({ children }) => {
     return TransactionService.getTotals(currentUser.uid, options);
   }, [currentUser]);
 
+  const getFirstTransactionDate = useCallback(async () => {
+    if (!currentUser) return null;
+    const { TransactionService } = await import("../services/transactionService.jsx");
+    return TransactionService.getFirstDate(currentUser.uid);
+  }, [currentUser]);
+
   const fetchTransactionPage = useCallback(async (options = {}) => {
     if (!currentUser) return { items: [], nextCursor: null, hasMore: false };
     const { TransactionService } = await import("../services/transactionService.jsx");
@@ -69,8 +75,8 @@ export const TransactionProvider = ({ children }) => {
   }, [currentUser]);
 
   const value = useMemo(
-    () => ({ transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals }),
-    [transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals]
+    () => ({ transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals, getFirstTransactionDate }),
+    [transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals, getFirstTransactionDate]
   );
 
   return (

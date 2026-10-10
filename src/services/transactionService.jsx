@@ -247,6 +247,31 @@ export const TransactionService = {
     return load();
   },
 
+  /** Number of transactions per category (count aggregations, ~1 read each). */
+  countByCategory: async (userId, categories) => {
+    const entries = await Promise.all(categories.map(async (category) => {
+      const snapshot = await getCountFromServer(query(
+        collection(firestore, COLLECTION_NAME),
+        where("userId", "==", userId),
+        where("category", "==", category)
+      ));
+      return [category, snapshot.data().count];
+    }));
+    return Object.fromEntries(entries);
+  },
+
+  /** Date of the oldest transaction, or null when there is none. */
+  getFirstDate: async (userId) => {
+    const snapshot = await getDocs(query(
+      collection(firestore, COLLECTION_NAME),
+      where("userId", "==", userId),
+      orderBy("date", "asc"),
+      limit(1)
+    ));
+    if (snapshot.empty) return null;
+    return normalizeDocument(snapshot.docs[0]).date;
+  },
+
   add: async (userId, data, { requestId = crypto.randomUUID() } = {}) => {
     const input = toV2Input(data);
     const reference = doc(firestore, COLLECTION_NAME, `${safeId(userId)}_${safeId(requestId)}`);

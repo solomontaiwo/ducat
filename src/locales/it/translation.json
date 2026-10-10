@@ -646,5 +646,109 @@
     "limitFor": "Budget mensile per {{category}}",
     "planning": "Pianificazione",
     "planningHint": "Movimenti che si ripetono e limiti di spesa"
+  },
+  "profilePage": {
+    "title": "Profilo",
+    "account": "Il tuo account",
+    "verified": "verificata ✓",
+    "memberSince": "Con Soldi Sotto da {{date}}",
+    "summary": "Il tuo riepilogo",
+    "movements": "movimenti",
+    "months": "mesi tracciati",
+    "averageSaving": "risparmio medio",
+    "recurringSummary_one": "1 attivo · {{amount}} al mese",
+    "recurringSummary_other": "{{count}} attivi · {{amount}} al mese",
+    "recurringEmpty": "Nessuno: attiva «Si ripete» in un movimento",
+    "budgetSummary": "{{onTrack}} su {{count}} sotto controllo",
+    "budgetEmpty": "Nessun limite impostato",
+    "preferences": "Preferenze",
+    "data": "I tuoi dati",
+    "security": "Sicurezza",
+    "terms": "Termini",
+    "name": {
+      "title": "Modifica nome",
+      "hint": "È il nome con cui ti saluta la Panoramica.",
+      "label": "Nome"
+    },
+    "email": {
+      "title": "Cambia email",
+      "hint": "Ti mandiamo un link di conferma al nuovo indirizzo."
+    },
+    "password": {
+      "title": "Cambia password",
+      "summary": "Ti mandiamo un link via email",
+      "hint": "Riceverai un link per scegliere una nuova password su {{email}}.",
+      "send": "Invia il link"
+    },
+    "monthStart": {
+      "title": "Inizio del mese",
+      "hint": "Se lo stipendio arriva a fine mese, Panoramica, budget e confronti possono ragionare da stipendio a stipendio.",
+      "calendar": "Mese di calendario",
+      "calendarHint": "Dal 1° all'ultimo giorno",
+      "payday": "Dal giorno dello stipendio",
+      "paydayHint": "Il mese parte ogni volta lo stesso giorno",
+      "dayLabel": "Il mese parte il",
+      "earlier": "Giorno prima",
+      "later": "Giorno dopo",
+      "suggestion": "il tuo stipendio arriva di solito il {{day}}",
+      "preview": "Periodo in corso",
+      "previewHint": "Il periodo prende il nome del mese in cui finisce. Selettore del mese, budget e confronti seguono questo intervallo.",
+      "summaryCalendar": "Dal 1° del mese",
+      "summaryPayday": "Dal {{day}} · giorno dello stipendio"
+    },
+    "quickAdd": {
+      "title": "Nuovo movimento",
+      "hint": "Come si presenta il form quando aggiungi un movimento.",
+      "startWith": "Parti da",
+      "last": "Ultimo usato",
+      "amounts": "Importi rapidi",
+      "amountLabel": "Importo rapido {{index}}",
+      "amountsHint": "In euro. Lascia vuoto per averne meno.",
+      "summaryLast": "Ultimo usato · {{amounts}}"
+    },
+    "categories": {
+      "title": "Categorie",
+      "hint": "Quelle spente non compaiono nel form. I movimenti già registrati restano dove sono.",
+      "summary": "{{visible}} visibili · {{hidden}} nascoste",
+      "count_one": "1 movimento",
+      "count_other": "{{count}} movimenti",
+      "unused": "mai usata",
+      "show": "Mostra {{category}} nel form",
+      "drag": "Sposta {{category}}",
+      "dragHint": "Trascina per cambiare l'ordine nel form"
+    },
+    "export": {
+      "title": "Esporta movimenti",
+      "summary": "CSV o PDF · un anno o tutto lo storico",
+      "period": "Periodo",
+      "all": "Tutto",
+      "format": "Formato",
+      "csvHint": "Per Excel, Numbers o il commercialista",
+      "pdfHint": "Riepilogo leggibile con grafici",
+      "contents": "Contenuto",
+      "count_one": "1 movimento",
+      "count_other": "{{count}} movimenti",
+      "download": "Scarica {{format}}",
+      "error": "Esportazione non riuscita"
+    },
+    "backup": {
+      "title": "Backup completo",
+      "never": "Mai fatto",
+      "today": "Ultimo oggi",
+      "daysAgo_one": "Ultimo ieri",
+      "daysAgo_other": "Ultimo {{count}} giorni fa",
+      "remind": "fanne uno"
+    },
+    "install": {
+      "title": "Installa l'app",
+      "summary": "Aggiungi Soldi Sotto alla schermata Home",
+      "iosHint": "Su iPhone si installa da Safari in tre passaggi.",
+      "step1": "Tocca il pulsante Condividi in basso",
+      "step2": "Scegli «Aggiungi alla schermata Home»",
+      "step3": "Conferma con «Aggiungi»"
+    }
+  },
+  "preferences": {
+    "saveError": "Impossibile salvare le preferenze"
   }
 }

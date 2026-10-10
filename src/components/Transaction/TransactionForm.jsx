@@ -18,13 +18,12 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
 const QUICK_ADD_PREF_KEY = "soldi-sotto-quick-add-preferences";
-const QUICK_AMOUNTS = [5, 10, 20, 50, 100];
 
 const DEFAULT_REPEAT = Object.freeze({ enabled: false, frequency: "monthly", mode: "auto" });
 
 const yesterdayDateKey = () => format(subDays(new Date(), 1), DATE_KEY_FORMAT);
 
-const initialState = (transaction, expenseCategories) => {
+const initialState = (transaction, expenseCategories, incomeCategories, preferences) => {
   if (transaction) {
     return {
       type: transaction.type,
@@ -33,6 +32,14 @@ const initialState = (transaction, expenseCategories) => {
       date: transaction.dateKey || coerceDateKey(transaction.date),
       category: transaction.category || "",
     };
+  }
+  if (preferences && preferences.defaultType !== "last") {
+    const type = preferences.defaultType;
+    const list = type === "income" ? incomeCategories : expenseCategories;
+    const category = list.some((item) => item.value === preferences.defaultCategory)
+      ? preferences.defaultCategory
+      : list[0]?.value || "";
+    return { type, amount: "", description: "", date: todayDateKey(), category };
   }
   let type = "expense";
   let category = expenseCategories[0]?.value || "";
@@ -56,12 +63,13 @@ const initialState = (transaction, expenseCategories) => {
  */
 const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transaction", autoFocusAmount = false, className }) => {
   const isEdit = !!transaction;
-  const { expenseCategories, incomeCategories } = useCategories();
+  const { visibleExpenseCategories: expenseCategories, visibleIncomeCategories: incomeCategories, expenseCategories: allExpense, incomeCategories: allIncome } = useCategories();
+  const { preferences } = usePlanning();
   const notification = useNotification();
   const { t, i18n } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const requestIdRef = useRef(crypto.randomUUID());
-  const [formData, setFormData] = useState(() => initialState(transaction, expenseCategories));
+  const [formData, setFormData] = useState(() => initialState(transaction, expenseCategories, incomeCategories, preferences));
   const [showDatePicker, setShowDatePicker] = useState(false);
   // Once the user picks a category by hand, suggestions stop overriding it.
   const [categoryTouched, setCategoryTouched] = useState(false);
@@ -72,7 +80,7 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
   // Reset whenever another transaction is opened in the same form instance.
   const transactionKey = transaction?.id || "new";
   useEffect(() => {
-    setFormData(initialState(transaction, expenseCategories));
+    setFormData(initialState(transaction, expenseCategories, incomeCategories, preferences));
     setShowDatePicker(false);
     setCategoryTouched(false);
     setRepeat(DEFAULT_REPEAT);
@@ -80,7 +88,14 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactionKey]);
 
-  const categories = formData.type === "expense" ? expenseCategories : incomeCategories;
+  // Hidden categories stay out of the picker, except the one a movement already uses.
+  const categories = useMemo(() => {
+    const visible = formData.type === "expense" ? expenseCategories : incomeCategories;
+    if (!transaction?.category || visible.some((item) => item.value === transaction.category)) return visible;
+    const all = formData.type === "expense" ? allExpense : allIncome;
+    const current = all.find((item) => item.value === transaction.category);
+    return current ? [current, ...visible] : visible;
+  }, [formData.type, expenseCategories, incomeCategories, allExpense, allIncome, transaction?.category]);
 
   // Keep the category valid for the selected type.
   useEffect(() => {
@@ -229,7 +244,7 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
             <span className="font-display text-3xl font-bold text-muted-foreground" aria-hidden="true">€</span>
           </div>
           <div className="flex max-w-full gap-2 overflow-x-auto scrollbar-none" data-swipe-ignore="true">
-            {QUICK_AMOUNTS.map((value) => (
+            {(preferences?.quickAmounts || [5, 10, 20, 50, 100]).map((value) => (
               <button key={value} type="button" className="chip h-9 px-3.5 text-[13px]" onClick={() => setField("amount", String(value))}>
                 {formatCurrency(value).replace(",00", "")}
               </button>
