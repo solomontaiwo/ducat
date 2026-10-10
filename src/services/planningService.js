@@ -2,10 +2,11 @@ import {
   collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where,
 } from "firebase/firestore";
 import { firestore } from "../utils/firebaseFirestore.js";
-import { budgetLimitsSchema, recurringInputSchema, recurringPatchSchema } from "../schemas/planning.js";
+import { budgetLimitsSchema, preferencesSchema, recurringInputSchema, recurringPatchSchema } from "../schemas/planning.js";
 
 const RECURRING = "recurring";
 const BUDGETS = "budgets";
+const PREFERENCES = "preferences";
 
 /** Recurring rules and monthly budgets, stored next to the transactions. */
 export const PlanningService = {
@@ -34,6 +35,17 @@ export const PlanningService = {
     (snapshot) => onData(snapshot.exists() ? snapshot.data().limits || {} : {}),
     onError
   ),
+
+  subscribePreferences: (userId, onData, onError) => onSnapshot(
+    doc(firestore, PREFERENCES, userId),
+    (snapshot) => onData(snapshot.exists() ? snapshot.data() : null),
+    onError
+  ),
+
+  savePreferences: async (userId, preferences) => {
+    const parsed = preferencesSchema.parse(preferences);
+    await setDoc(doc(firestore, PREFERENCES, userId), { ...parsed, userId, updatedAt: serverTimestamp() });
+  },
 
   saveBudgets: async (userId, limits) => {
     const parsed = budgetLimitsSchema.parse(limits);

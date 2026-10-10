@@ -29,6 +29,7 @@ import TransactionRow from "../Transaction/TransactionRow.jsx";
 import { Link } from "../../router/RouterProvider";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
+import { cycleMonthFor } from "../../utils/monthCycle.js";
 import { FiDownload } from "react-icons/fi";
 
 const PERIODS = ["month", "lastMonth", "last3Months", "year", "custom"];
@@ -61,20 +62,22 @@ const TransactionAnalytics = () => {
   const { t, i18n } = useTranslation();
   const { isDarkMode } = useTheme();
   const [categoryType, setCategoryType] = useState("expense");
-  const { budgets, ready: planningReady } = usePlanning();
+  const { budgets, ready: planningReady, preferences } = usePlanning();
+  const startDay = preferences?.monthStartDay || 1;
   const showBudgetInvite = planningReady && categoryType === "expense" && Object.keys(budgets).length === 0;
 
   const initialPreference = useMemo(readPeriodPreference, []);
   const { period, setPeriod, customRange, setCustomRange, startDate, endDate } = useDateRange(
     initialPreference.period,
-    initialPreference.customRange
+    initialPreference.customRange,
+    startDay
   );
 
   const effectiveEnd = useMemo(() => getEffectiveEnd(endDate), [endDate]);
   const comparison = useMemo(() => getComparisonRange(period, startDate, endDate), [period, startDate, endDate]);
 
   const { analyticsData, isLoadingAnalyticsData, analyticsError } = useAnalyticsData({
-    isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate, compareStart: comparison.startDate,
+    isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate, compareStart: comparison.startDate, startDay,
   });
 
   useEffect(() => {
@@ -89,8 +92,8 @@ const TransactionAnalytics = () => {
   );
 
   const extendedStats = useMemo(() => buildExtendedStats({
-    analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t,
-  }), [analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t]);
+    analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t, startDay,
+  }), [analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t, startDay]);
 
   const categoryList = useMemo(() => withChartColors(
     categoryType === "expense" ? extendedStats.topExpenseCategories : extendedStats.topIncomeCategories,
@@ -103,7 +106,7 @@ const TransactionAnalytics = () => {
 
   const hasPreviousData = previousStats.transactionCount > 0;
   const reference = comparison.kind === "month"
-    ? format(comparison.startDate, "LLLL", { locale })
+    ? format(cycleMonthFor(comparison.endDate, startDay), "LLLL", { locale })
     : comparison.kind === "year"
       ? format(comparison.startDate, "yyyy")
       : t("analytics.compare.previousPeriod");

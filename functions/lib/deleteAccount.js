@@ -51,7 +51,7 @@ export const deleteAccountData = async ({ database, auth, uid, logger }) => {
   // Recurring rules and the budget document belong to the same account.
   await deleteQueryWithBulkWriter(database, database.collection("recurring").where("userId", "==", uid));
 
-  for (const [collection, id] of [["budgets", uid], ["users", uid]]) {
+  for (const [collection, id] of [["budgets", uid], ["preferences", uid], ["users", uid]]) {
     try {
       await database.collection(collection).doc(id).delete();
     } catch (error) {

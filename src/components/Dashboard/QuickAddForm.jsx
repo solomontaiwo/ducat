@@ -14,7 +14,7 @@ import { suggestCategory } from "../../utils/categorySuggest.js";
 const QuickAddForm = () => {
   const { t } = useTranslation();
   const { addTransaction, isDemo, canAddMoreTransactions, transactions: history } = useUnifiedTransactions();
-  const { expenseCategories, incomeCategories } = useCategories();
+  const { visibleExpenseCategories: expenseCategories, visibleIncomeCategories: incomeCategories } = useCategories();
   const notification = useNotification();
   const [type, setType] = useState("expense");
   const [amount, setAmount] = useState("");

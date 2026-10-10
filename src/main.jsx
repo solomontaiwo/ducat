@@ -10,6 +10,7 @@ import { AuthProvider } from "./context/AuthProvider";
 import UnifiedTransactionProvider from "./context/UnifiedTransactionProvider";
 import PlanningProvider from "./context/PlanningProvider";
 import './utils/i18n';
+import './utils/installPrompt';
 import ErrorBoundary from "./components/ErrorBoundary";
 import { installGlobalErrorReporting } from "./utils/errorReporting";
 

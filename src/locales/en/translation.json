@@ -646,5 +646,109 @@
     "limitFor": "Monthly budget for {{category}}",
     "planning": "Planning",
     "planningHint": "Movements that repeat and spending limits"
+  },
+  "profilePage": {
+    "title": "Profile",
+    "account": "Your account",
+    "verified": "verified ✓",
+    "memberSince": "With Soldi Sotto since {{date}}",
+    "summary": "Your summary",
+    "movements": "movements",
+    "months": "months tracked",
+    "averageSaving": "average saving",
+    "recurringSummary_one": "1 active · {{amount}} a month",
+    "recurringSummary_other": "{{count}} active · {{amount}} a month",
+    "recurringEmpty": "None yet: turn on “Repeats” on a movement",
+    "budgetSummary": "{{onTrack}} of {{count}} on track",
+    "budgetEmpty": "No limits set",
+    "preferences": "Preferences",
+    "data": "Your data",
+    "security": "Security",
+    "terms": "Terms",
+    "name": {
+      "title": "Edit name",
+      "hint": "The name the overview greets you with.",
+      "label": "Name"
+    },
+    "email": {
+      "title": "Change email",
+      "hint": "We'll send a confirmation link to the new address."
+    },
+    "password": {
+      "title": "Change password",
+      "summary": "We'll email you a link",
+      "hint": "You'll get a link to choose a new password at {{email}}.",
+      "send": "Send the link"
+    },
+    "monthStart": {
+      "title": "Start of the month",
+      "hint": "If you're paid at the end of the month, the overview, budgets and comparisons can run from payday to payday.",
+      "calendar": "Calendar month",
+      "calendarHint": "From the 1st to the last day",
+      "payday": "From payday",
+      "paydayHint": "The month starts on the same day each time",
+      "dayLabel": "The month starts on",
+      "earlier": "Earlier day",
+      "later": "Later day",
+      "suggestion": "your salary usually arrives on the {{day}}",
+      "preview": "Current period",
+      "previewHint": "A period is named after the month it ends in. The month switcher, budgets and comparisons follow it.",
+      "summaryCalendar": "From the 1st",
+      "summaryPayday": "From the {{day}} · payday"
+    },
+    "quickAdd": {
+      "title": "New movement",
+      "hint": "How the form looks when you add a movement.",
+      "startWith": "Start with",
+      "last": "Last used",
+      "amounts": "Quick amounts",
+      "amountLabel": "Quick amount {{index}}",
+      "amountsHint": "In euro. Leave empty to have fewer.",
+      "summaryLast": "Last used · {{amounts}}"
+    },
+    "categories": {
+      "title": "Categories",
+      "hint": "Hidden ones don't appear in the form. Existing movements keep their category.",
+      "summary": "{{visible}} visible · {{hidden}} hidden",
+      "count_one": "1 movement",
+      "count_other": "{{count}} movements",
+      "unused": "never used",
+      "show": "Show {{category}} in the form",
+      "drag": "Move {{category}}",
+      "dragHint": "Drag to change the order in the form"
+    },
+    "export": {
+      "title": "Export movements",
+      "summary": "CSV or PDF · one year or everything",
+      "period": "Period",
+      "all": "All",
+      "format": "Format",
+      "csvHint": "For Excel, Numbers or your accountant",
+      "pdfHint": "Readable summary with charts",
+      "contents": "Contents",
+      "count_one": "1 movement",
+      "count_other": "{{count}} movements",
+      "download": "Download {{format}}",
+      "error": "Export failed"
+    },
+    "backup": {
+      "title": "Full backup",
+      "never": "Never done",
+      "today": "Last one today",
+      "daysAgo_one": "Last one yesterday",
+      "daysAgo_other": "Last one {{count}} days ago",
+      "remind": "make one"
+    },
+    "install": {
+      "title": "Install the app",
+      "summary": "Add Soldi Sotto to your home screen",
+      "iosHint": "On iPhone you install it from Safari in three steps.",
+      "step1": "Tap the Share button at the bottom",
+      "step2": "Choose “Add to Home Screen”",
+      "step3": "Confirm with “Add”"
+    }
+  },
+  "preferences": {
+    "saveError": "Unable to save preferences"
   }
 }

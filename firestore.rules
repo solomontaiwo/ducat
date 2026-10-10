@@ -67,6 +67,22 @@ service cloud.firestore {
         data.updatedAt == request.time;
     }
 
+    function isValidPreferences(data) {
+      return data.keys().hasOnly([
+          'userId', 'monthStartDay', 'defaultType', 'defaultCategory', 'quickAmounts',
+          'hiddenCategories', 'categoryOrder', 'lastBackupAt', 'updatedAt'
+        ]) &&
+        data.userId is string &&
+        data.monthStartDay is int && data.monthStartDay >= 1 && data.monthStartDay <= 31 &&
+        data.defaultType in ['last', 'expense', 'income'] &&
+        (data.defaultCategory == null || (data.defaultCategory is string && data.defaultCategory.size() <= 60)) &&
+        data.quickAmounts is list && data.quickAmounts.size() >= 1 && data.quickAmounts.size() <= 6 &&
+        data.hiddenCategories is list && data.hiddenCategories.size() <= 40 &&
+        data.categoryOrder is map && data.categoryOrder.keys().hasOnly(['expense', 'income']) &&
+        (data.lastBackupAt == null || data.lastBackupAt is int) &&
+        data.updatedAt == request.time;
+    }
+
     function isValidProfileName(value) {
       return value is string && value.size() >= 3 && value.size() <= 50;
     }
@@ -110,6 +126,16 @@ service cloud.firestore {
       allow create, update: if isOwner(userId) &&
         request.resource.data.userId == userId &&
         isValidBudgets(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+
+    // One document per user: synced app preferences.
+    match /preferences/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create, update: if isOwner(userId) &&
+        request.resource.data.userId == userId &&
+        isValidPreferences(request.resource.data);
       allow delete: if isOwner(userId);
     }
 

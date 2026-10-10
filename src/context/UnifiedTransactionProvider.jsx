@@ -38,6 +38,7 @@ const INERT_VALUE = Object.freeze({
   fetchAllTransactions: async () => [],
   getTotalTransactionCount: async () => 0,
   getTransactionTotals: async () => ({ count: 0, incomeMinor: 0, expenseMinor: 0 }),
+  getFirstTransactionDate: async () => null,
   fetchTransactionPage: async () => EMPTY_PAGE,
   recentRevision: 0,
   canAddMoreTransactions: false,
@@ -58,7 +59,7 @@ const DEMO_FLAG_KEY = "soldi-sotto-demo-enabled";
 // Wrapper for Firebase provider
 const FirebaseTransactionWrapper = ({ children }) => {
   const { currentUser } = useAuth();
-  const { transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals } = useTransactions();
+  const { transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals, getFirstTransactionDate } = useTransactions();
   const [isProcessing, setIsProcessing] = useState(false);
   const notification = useNotification();
   const { t } = useTranslation();
@@ -158,6 +159,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
     fetchTransactionPage,
     getTotalTransactionCount,
     getTransactionTotals,
+    getFirstTransactionDate,
     recentRevision,
     canAddMoreTransactions: true,
     maxTransactions: Infinity,
@@ -165,7 +167,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
     isAuthenticated: true,
   }), [
     transactions, loading, isProcessing, addTransaction, updateTransaction, deleteTransaction,
-    fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals, recentRevision, getStats,
+    fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals, getFirstTransactionDate, recentRevision, getStats,
   ]);
 
   return (

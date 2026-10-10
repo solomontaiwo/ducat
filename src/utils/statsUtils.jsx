@@ -1,4 +1,4 @@
-import { differenceInDays, endOfDay, startOfDay, subMonths, isWithinInterval } from "date-fns";
+import { differenceInDays, endOfDay, startOfDay, isWithinInterval } from "date-fns";
 import {
   startOfMonth,
   endOfMonth,
@@ -9,9 +9,15 @@ import {
 } from "date-fns";
 import { dateKeyToDate } from "./dateUtils";
 import { getTransactionAmountMinor, minorToMajor } from "./money";
+import { cycleMonthFor, cycleRange } from "./monthCycle.js";
+import { addMonths } from "date-fns";
 
-export const getPeriodRange = (period, customRange) => {
+export const getPeriodRange = (period, customRange, startDay = 1) => {
   const today = new Date();
+  const cycle = (offset) => {
+    const { startDate, endDate } = cycleRange(addMonths(cycleMonthFor(today, startDay), offset), startDay);
+    return { start: startDate, end: endDate };
+  };
   switch (period) {
     case "weekly":
       return { start: startOfWeek(today, { weekStartsOn: 1 }), end: endOfWeek(today, { weekStartsOn: 1 }) };
@@ -21,12 +27,10 @@ export const getPeriodRange = (period, customRange) => {
     case "year":
     case "thisYear":
       return { start: startOfYear(today), end: endOfYear(today) };
-    case "lastMonth": {
-      const lastMonth = subMonths(today, 1);
-      return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
-    }
+    case "lastMonth":
+      return cycle(-1);
     case "last3Months":
-      return { start: startOfMonth(subMonths(today, 2)), end: endOfMonth(today) };
+      return { start: cycle(-2).start, end: cycle(0).end };
     case "all":
       return { start: new Date(0), end: endOfDay(new Date()) };
     case "custom":
@@ -38,7 +42,7 @@ export const getPeriodRange = (period, customRange) => {
     case "month":
     case "thisMonth":
     default:
-      return { start: startOfMonth(today), end: endOfMonth(today) };
+      return cycle(0);
   }
 };
 

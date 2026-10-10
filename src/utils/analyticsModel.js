@@ -1,6 +1,7 @@
-import { addMilliseconds, differenceInCalendarDays, endOfDay, endOfMonth, format, isWithinInterval, startOfDay, startOfMonth, subDays, subMonths } from "date-fns";
+import { addMilliseconds, differenceInCalendarDays, endOfDay, endOfMonth, format, isWithinInterval, startOfDay, subDays, subMonths } from "date-fns";
 import { getTransactionAmountMinor, minorToMajor } from "./money";
 import { readLocalValue, removeLocalValue } from "./storage.js";
+import { cycleMonthFor, cycleRange } from "./monthCycle.js";
 
 /** Category palette: theme-aware CSS variables, adjacent entries differ in lightness. */
 export const CATEGORY_CHART_COLORS = [1, 2, 3, 4, 5].map((index) => `hsl(var(--cat-${index}))`);
@@ -27,8 +28,8 @@ export const readPeriodPreference = () => {
  * The range the analytics view has to load: the selected period, widened so it
  * also covers the monthly trend (last six months up to the end of this month).
  */
-export const getAnalyticsQueryRange = (startDate, endDate, now = new Date(), compareStart = null) => {
-  const trendStart = startOfMonth(subMonths(now, TREND_MONTHS - 1));
+export const getAnalyticsQueryRange = (startDate, endDate, now = new Date(), compareStart = null, startDay = 1) => {
+  const trendStart = cycleRange(subMonths(cycleMonthFor(now, startDay), TREND_MONTHS - 1), startDay).startDate;
   let start = startDate < trendStart ? startDate : trendStart;
   if (compareStart && compareStart < start) start = compareStart;
   return {
@@ -122,12 +123,13 @@ const topTransactions = (transactions, type) => transactions
   .sort((first, second) => second.amount - first.amount || second.date.getTime() - first.date.getTime())
   .slice(0, 3);
 
-export const buildMonthlyTrend = (transactions, now = new Date()) => {
+export const buildMonthlyTrend = (transactions, now = new Date(), startDay = 1) => {
   const trend = [];
+  const current = cycleMonthFor(now, startDay);
   for (let offset = TREND_MONTHS - 1; offset >= 0; offset -= 1) {
-    const monthStart = startOfMonth(subMonths(now, offset));
-    const monthEnd = endOfMonth(subMonths(now, offset));
-    const inMonth = transactions.filter((item) => item.date && isWithinInterval(item.date, { start: monthStart, end: monthEnd }));
+    const monthStart = subMonths(current, offset);
+    const { startDate, endDate } = cycleRange(monthStart, startDay);
+    const inMonth = transactions.filter((item) => item.date && isWithinInterval(item.date, { start: startDate, end: endDate }));
     const income = minorToMajor(sumMinor(inMonth.filter((item) => item.type === "income")));
     const expense = minorToMajor(sumMinor(inMonth.filter((item) => item.type === "expense")));
     trend.push({ month: format(monthStart, "MMM yyyy"), monthStart, income, expense, balance: income - expense });
@@ -137,7 +139,7 @@ export const buildMonthlyTrend = (transactions, now = new Date()) => {
 
 /** Everything the analytics view shows beyond the basic period totals. */
 export const buildExtendedStats = ({
-  analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t, now = new Date(),
+  analyticsData, startDate, endDate, stats, expenseCategories, incomeCategories, t, now = new Date(), startDay = 1,
 }) => {
   if (!analyticsData.length) return {};
 
@@ -150,7 +152,7 @@ export const buildExtendedStats = ({
     topIncomeCategories: topCategories(filteredTransactions, "income", stats.totalIncome, incomeCategories, t),
     topExpenseTransactions: topTransactions(filteredTransactions, "expense"),
     topIncomeTransactions: topTransactions(filteredTransactions, "income"),
-    monthlyTrend: buildMonthlyTrend(analyticsData, now),
+    monthlyTrend: buildMonthlyTrend(analyticsData, now, startDay),
     avgTransactionAmount: filteredTransactions.length > 0
       ? minorToMajor(Math.round(sumMinor(filteredTransactions) / filteredTransactions.length))
       : 0,

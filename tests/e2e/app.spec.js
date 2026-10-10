@@ -235,3 +235,11 @@ test("mobile header keeps the profile shortcut clear of other controls", async (
   }
 });
 
+test("a payday month start moves the overview period", async ({ page }) => {
+  await page.goto(".");
+  await page.evaluate(() => localStorage.setItem("soldi-sotto-demo-preferences", JSON.stringify({ monthStartDay: 27 })));
+  await page.getByRole("button", { name: /prova demo/i }).first().click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  await goTo(page, "dashboard");
+  await expect(page.getByTestId("cycle-range")).toHaveText(/27 \w+ – 26 \w+/);
+});
