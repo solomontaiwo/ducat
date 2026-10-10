@@ -5,49 +5,55 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   notification: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
-  auth: { currentUser: null },
   signIn: vi.fn(),
-  createUser: vi.fn(),
-  updateProfile: vi.fn(),
-  sendVerification: vi.fn(),
+  signUp: vi.fn(),
+  resend: vi.fn(),
   sendReset: vi.fn(),
-  setDoc: vi.fn(),
+  updatePassword: vi.fn(),
   refreshCurrentUser: vi.fn(),
   logout: vi.fn(),
+  markPendingVerification: vi.fn(),
   currentUser: { email: "ada@example.com" },
+  authLoading: false,
 }));
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key, values) => (values ? `${key}|${JSON.stringify(values)}` : key) }) }));
 vi.mock("react-responsive", () => ({ useMediaQuery: () => false }));
-vi.mock("../src/router/RouterProvider.jsx", () => ({
+vi.mock("../src/router/RouterProvider", () => ({
   useNavigate: () => mocks.navigate,
   Link: ({ children, to }) => <a href={to}>{children}</a>,
 }));
 vi.mock("../src/utils/notificationUtils", () => ({ useNotification: () => mocks.notification }));
 vi.mock("../src/utils/notificationUtils.jsx", () => ({ useNotification: () => mocks.notification }));
-vi.mock("../src/utils/firebaseAuth", () => ({ auth: mocks.auth }));
-vi.mock("../src/utils/firebaseFirestore", () => ({ firestore: {} }));
-vi.mock("firebase/auth", () => ({
-  signInWithEmailAndPassword: mocks.signIn,
-  createUserWithEmailAndPassword: mocks.createUser,
-  updateProfile: mocks.updateProfile,
-  sendEmailVerification: mocks.sendVerification,
-  sendPasswordResetEmail: mocks.sendReset,
+vi.mock("../src/services/authService.js", () => ({
+  signIn: mocks.signIn,
+  signUp: mocks.signUp,
+  resendVerificationEmail: mocks.resend,
+  sendPasswordReset: mocks.sendReset,
+  updatePassword: mocks.updatePassword,
 }));
-vi.mock("firebase/firestore", () => ({ doc: vi.fn(() => "ref"), setDoc: mocks.setDoc, serverTimestamp: () => "TS" }));
 vi.mock("../src/context/AuthProvider", () => ({
-  useAuth: () => ({ currentUser: mocks.currentUser, refreshCurrentUser: mocks.refreshCurrentUser, logout: mocks.logout }),
+  useAuth: () => ({
+    currentUser: mocks.currentUser,
+    loading: mocks.authLoading,
+    refreshCurrentUser: mocks.refreshCurrentUser,
+    logout: mocks.logout,
+    markPendingVerification: mocks.markPendingVerification,
+  }),
 }));
 
 import Login from "../src/components/Auth/Login.jsx";
 import Register from "../src/components/Auth/Register.jsx";
 import ForgotPassword from "../src/components/Auth/ForgotPassword.jsx";
 import VerifyEmail from "../src/components/Auth/VerifyEmail.jsx";
+import ResetPassword from "../src/components/Auth/ResetPassword.jsx";
 
 const fill = (label, value) => fireEvent.change(document.getElementById(label), { target: { value } });
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.currentUser = { email: "ada@example.com" };
+  mocks.authLoading = false;
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -56,21 +62,23 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 describe("Login", () => {
   const submit = () => fireEvent.submit(document.querySelector("form"));
 
-  it("normalizes the email and sends verified users to the dashboard", async () => {
-    mocks.signIn.mockResolvedValue({ user: { emailVerified: true } });
+  it("signs in and sends verified users to the dashboard", async () => {
+    mocks.signIn.mockResolvedValue({ uid: "u1", emailVerified: true });
     render(<Login />);
     fill("email", "  Ada@Example.COM ");
     fill("password", "secret-pass");
     submit();
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/dashboard", { replace: true }));
-    expect(mocks.signIn).toHaveBeenCalledWith(mocks.auth, "ada@example.com", "secret-pass");
+    expect(mocks.signIn).toHaveBeenCalledWith("Ada@Example.COM", "secret-pass");
   });
 
-  it("sends unverified users to the verification page", async () => {
-    mocks.signIn.mockResolvedValue({ user: { emailVerified: false } });
+  it("sends accounts waiting for the email confirmation to the verification page", async () => {
+    mocks.signIn.mockRejectedValue(Object.assign(new Error("Email not confirmed"), { code: "auth/email-not-verified" }));
     render(<Login />);
+    fill("email", "ada@example.com");
     submit();
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/verify-email", { replace: true }));
+    expect(mocks.markPendingVerification).toHaveBeenCalledWith("ada@example.com");
   });
 
   it.each([
@@ -102,45 +110,33 @@ describe("Register", () => {
     fireEvent.submit(document.querySelector("form"));
   };
 
-  it("blocks mismatching passwords before any Firebase call", async () => {
+  it("blocks mismatching passwords before any request", async () => {
     render(<Register />);
     fillAll({ confirmPassword: "different" });
     expect(await screen.findByText("validation.passwordMismatch")).toBeInTheDocument();
-    expect(mocks.createUser).not.toHaveBeenCalled();
+    expect(mocks.signUp).not.toHaveBeenCalled();
   });
 
-  it("creates the account, profile and verification email, then goes to verification", async () => {
-    const user = { uid: "u1", email: "ada@example.com" };
-    mocks.createUser.mockResolvedValue({ user });
+  it("creates the account with the chosen name, then waits for the email confirmation", async () => {
+    mocks.signUp.mockResolvedValue({ user: { uid: "u1", emailVerified: false }, hasSession: false });
     render(<Register />);
     fillAll();
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/verify-email", { replace: true }));
-    expect(mocks.createUser).toHaveBeenCalledWith(mocks.auth, "ada@example.com", "long-enough-1");
-    expect(mocks.updateProfile).toHaveBeenCalledWith(user, { displayName: "Ada Lovelace" });
-    expect(mocks.setDoc).toHaveBeenCalledWith("ref", expect.objectContaining({ username: "Ada Lovelace", displayName: "Ada Lovelace", email: "ada@example.com" }));
-    expect(mocks.sendVerification).toHaveBeenCalledWith(user);
-  });
-
-  it("does not fail registration when the verification email cannot be sent", async () => {
-    mocks.createUser.mockResolvedValue({ user: { uid: "u1", email: "ada@example.com" } });
-    mocks.sendVerification.mockRejectedValue(new Error("quota"));
-    render(<Register />);
-    fillAll();
-    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/verify-email", { replace: true }));
+    expect(mocks.signUp).toHaveBeenCalledWith({ email: "ada@example.com", password: "long-enough-1", displayName: "Ada Lovelace" });
+    expect(mocks.markPendingVerification).toHaveBeenCalledWith("ada@example.com");
     expect(mocks.notification.success).toHaveBeenCalled();
   });
 
-  it("recovers when the account exists but the profile write fails", async () => {
-    mocks.createUser.mockResolvedValue({ user: { uid: "u1", email: "ada@example.com" } });
-    mocks.setDoc.mockRejectedValue(new Error("rules"));
+  it("goes straight to the dashboard when confirmation is not required", async () => {
+    mocks.signUp.mockResolvedValue({ user: { uid: "u1", emailVerified: true }, hasSession: true });
     render(<Register />);
     fillAll();
-    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/verify-email", { replace: true }));
-    expect(mocks.notification.warning).toHaveBeenCalledWith("auth.profileIncomplete");
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/dashboard", { replace: true }));
+    expect(mocks.markPendingVerification).not.toHaveBeenCalled();
   });
 
   it("shows a translated message for an address already in use", async () => {
-    mocks.createUser.mockRejectedValue(Object.assign(new Error("raw"), { code: "auth/email-already-in-use" }));
+    mocks.signUp.mockRejectedValue(Object.assign(new Error("raw"), { code: "auth/email-already-in-use" }));
     render(<Register />);
     fillAll();
     expect(await screen.findByText("errors.emailAlreadyInUse")).toBeInTheDocument();
@@ -158,7 +154,7 @@ describe("ForgotPassword", () => {
     fill("reset-email", " Ada@Example.com ");
     fireEvent.submit(document.querySelector("form"));
     expect(await screen.findByText("auth.forgotPassword.sent")).toBeInTheDocument();
-    expect(mocks.sendReset).toHaveBeenCalledWith(mocks.auth, "ada@example.com");
+    expect(mocks.sendReset).toHaveBeenCalledWith("Ada@Example.com");
   });
 });
 
@@ -186,17 +182,18 @@ describe("VerifyEmail", () => {
   });
 
   it("resends once, then locks the button during the cooldown", async () => {
-    mocks.sendVerification.mockResolvedValue();
+    mocks.resend.mockResolvedValue();
     render(<VerifyEmail />);
     fireEvent.click(screen.getByRole("button", { name: "auth.verifyEmail.resend" }));
     await waitFor(() => expect(mocks.notification.success).toHaveBeenCalledWith("auth.verifyEmail.sent"));
     const locked = await screen.findByRole("button", { name: /auth\.verifyEmail\.resendIn/ });
     expect(locked).toBeDisabled();
-    expect(mocks.sendVerification).toHaveBeenCalledTimes(1);
+    expect(mocks.resend).toHaveBeenCalledTimes(1);
+    expect(mocks.resend).toHaveBeenCalledWith("ada@example.com");
   });
 
   it("explains rate limiting and supports signing out", async () => {
-    mocks.sendVerification.mockRejectedValue(Object.assign(new Error("rate"), { code: "auth/too-many-requests" }));
+    mocks.resend.mockRejectedValue(Object.assign(new Error("rate"), { code: "auth/too-many-requests" }));
     mocks.logout.mockResolvedValue();
     render(<VerifyEmail />);
     fireEvent.click(screen.getByRole("button", { name: "auth.verifyEmail.resend" }));
@@ -204,5 +201,45 @@ describe("VerifyEmail", () => {
     fireEvent.click(screen.getByRole("button", { name: "auth.verifyEmail.exit" }));
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/", { replace: true }));
     expect(mocks.logout).toHaveBeenCalled();
+  });
+});
+
+describe("ResetPassword", () => {
+  const submit = () => fireEvent.submit(document.querySelector("form"));
+
+  it("explains an invalid or expired link when there is no session", () => {
+    mocks.currentUser = null;
+    render(<ResetPassword />);
+    expect(screen.getByText("auth.resetPassword.invalidLink")).toBeInTheDocument();
+    expect(screen.getByText("auth.resetPassword.requestNew")).toHaveAttribute("href", "/forgot-password");
+    expect(document.querySelector("form")).toBeNull();
+  });
+
+  it("validates, saves the new password and opens the app", async () => {
+    mocks.currentUser = { uid: "u1", email: "ada@example.com", emailVerified: true };
+    mocks.updatePassword.mockResolvedValue();
+    render(<ResetPassword />);
+    fill("new-password", "short");
+    fill("confirm-new-password", "short");
+    submit();
+    expect(await screen.findByText("validation.passwordMin")).toBeInTheDocument();
+    fill("new-password", "long-enough-1");
+    fill("confirm-new-password", "long-enough-2");
+    submit();
+    expect(await screen.findByText("validation.passwordMismatch")).toBeInTheDocument();
+    fill("confirm-new-password", "long-enough-1");
+    submit();
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/dashboard", { replace: true }));
+    expect(mocks.updatePassword).toHaveBeenCalledWith("long-enough-1");
+  });
+
+  it("explains when the new password equals the old one", async () => {
+    mocks.currentUser = { uid: "u1", email: "ada@example.com", emailVerified: true };
+    mocks.updatePassword.mockRejectedValue(Object.assign(new Error("same"), { code: "auth/same-password" }));
+    render(<ResetPassword />);
+    fill("new-password", "long-enough-1");
+    fill("confirm-new-password", "long-enough-1");
+    submit();
+    expect(await screen.findByText("auth.resetPassword.samePassword")).toBeInTheDocument();
   });
 });

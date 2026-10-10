@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { differenceInCalendarDays, differenceInCalendarMonths, format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
-import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
-import { updateProfile } from "firebase/auth";
 import {
   FiCalendar, FiDatabase, FiDownload, FiEdit2, FiGlobe, FiGrid, FiKey, FiLock, FiMail, FiMoon, FiPlusCircle,
   FiRepeat, FiSmartphone, FiTarget, FiTrash2,
@@ -14,7 +12,6 @@ import { usePlanning } from "../../context/PlanningProvider.jsx";
 import { useTheme } from "../../utils/ThemeProvider";
 import { useNotification } from "../../utils/notificationUtils";
 import { Link, useNavigate } from "../../router/RouterProvider";
-import { firestore } from "../../utils/firebaseFirestore.js";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -160,14 +157,8 @@ const Profile = () => {
 
   const saveName = async (name) => {
     try {
-      // The rules require the profile to carry the account email; older
-      // profiles may not have it (or may not exist), so always send it.
-      const reference = doc(firestore, "users", currentUser.uid);
-      const fields = { username: name, displayName: name, email: currentUser.email, updatedAt: serverTimestamp() };
-      const existing = await getDoc(reference);
-      if (existing.exists()) await updateDoc(reference, fields);
-      else await setDoc(reference, { ...fields, createdAt: serverTimestamp() });
-      await updateProfile(currentUser, { displayName: name });
+      const { saveProfileName } = await import("../../services/profileService.js");
+      await saveProfileName(currentUser, name);
       await refreshProfileName(currentUser);
       notification.success(t("profile.usernameSuccess"));
       return true;

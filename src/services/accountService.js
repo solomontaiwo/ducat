@@ -1,38 +1,32 @@
-import {
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-  sendPasswordResetEmail,
-  verifyBeforeUpdateEmail,
-} from "firebase/auth";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { auth } from "../utils/firebaseAuth";
-import { firebaseApp } from "../utils/firebaseApp";
-import { ensureFirebaseAppCheck } from "../utils/firebaseAppCheck";
+import { supabase, unwrap } from "../utils/supabaseClient.js";
+import { sendPasswordReset, signIn, toAuthError, updateEmail } from "./authService.js";
 
-const functionsRegion = import.meta.env.VITE_FIREBASE_FUNCTIONS_REGION || "europe-west1";
+const currentEmail = async () => {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw toAuthError(error);
+  const email = data.session?.user?.email;
+  if (!email) throw Object.assign(new Error("No signed-in user"), { code: "auth/no-current-user" });
+  return email;
+};
 
+/** Confirms the password of the signed-in account before a sensitive change. */
 export const reauthenticateWithPassword = async (password) => {
-  const user = auth.currentUser;
-  if (!user?.email) throw new Error("auth/no-current-user");
-  return reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+  const email = await currentEmail();
+  return signIn(email, password);
 };
 
 export const requestPasswordReset = async () => {
-  if (!auth.currentUser?.email) throw new Error("auth/no-current-user");
-  await sendPasswordResetEmail(auth, auth.currentUser.email);
+  await sendPasswordReset(await currentEmail());
 };
 
 export const requestEmailChange = async (newEmail, password) => {
   await reauthenticateWithPassword(password);
-  await verifyBeforeUpdateEmail(auth.currentUser, newEmail.trim().toLowerCase());
+  await updateEmail(newEmail);
 };
 
+/** Deletes the account; the database removes every row it owns. */
 export const deleteCurrentAccount = async (password) => {
   await reauthenticateWithPassword(password);
-  await auth.currentUser.getIdToken(true);
-  const appCheck = await ensureFirebaseAppCheck();
-  if (!appCheck) throw new Error("app-check/not-configured");
-  const functions = getFunctions(firebaseApp, functionsRegion);
-  const deleteAccount = httpsCallable(functions, "deleteAccount");
-  await deleteAccount();
+  unwrap(await supabase.rpc("delete_my_account"));
+  await supabase.auth.signOut({ scope: "local" });
 };

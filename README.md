@@ -1,6 +1,6 @@
 # SoldiSotto
 
-SoldiSotto is a web application developed in React, designed to manage personal finances. This project was created with the aim of exploring and learning the features of the React framework, also integrating Firebase for backend management.
+SoldiSotto is a web application developed in React, designed to manage personal finances. This project was created with the aim of exploring and learning the features of the React framework, with Supabase (PostgreSQL, Auth and Realtime) as the backend.
 
 ## Features
 
@@ -13,124 +13,46 @@ SoldiSotto is a web application developed in React, designed to manage personal 
 ## Technologies Used
 
 - **React**: JavaScript framework used to build the user interface.
-- **Firebase**: Used as the backend for authentication and transaction data management.
+- **Supabase**: authentication, PostgreSQL database protected by row level security, Realtime sync between devices.
 
 ## Getting Started
 
-### Prerequisites
+Requirements: Node.js 24 and a Supabase project (see [SUPABASE.md](SUPABASE.md) for the full setup and the move from Firebase).
 
-- Node.js installed on your machine.
-- A configured Firebase account.
+```bash
+git clone https://github.com/solomontaiwo/soldi-sotto.git
+cd soldi-sotto
+npm install
+cp .env.example .env   # fill in VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+npm run dev
+```
 
-### Installation
+The app is served at `http://localhost:5173/soldi-sotto/`. Demo mode works without any backend.
 
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/solomontaiwo/soldi-sotto.git
-   ```
-
-2. Navigate to the project directory:
-
-   ```bash
-   cd soldi-sotto
-   ```
-
-3. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-4. Configure Firebase:
-
-   - Create a project on Firebase.
-   - Copy `.env.example` to `.env` at the root of the project and fill in your Firebase credentials. **Do not commit `.env`** — it is already listed in `.gitignore`.
-
-   ```bash
-   cp .env.example .env
-   # then edit .env with your values
-   ```
-
-   Your `.env` should look like this (use `VITE_FIREBASE_*` prefixes — required by Vite):
-
-   ```plaintext
-   VITE_FIREBASE_API_KEY=your-api-key
-   VITE_FIREBASE_AUTH_DOMAIN=your-auth-domain
-   VITE_FIREBASE_PROJECT_ID=your-project-id
-   VITE_FIREBASE_STORAGE_BUCKET=your-storage-bucket
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
-   VITE_FIREBASE_APP_ID=your-app-id
-   VITE_FIREBASE_MEASUREMENT_ID=your-measurement-id
-   ```
-
-   > **Note:** The Firebase web `apiKey` is not a backend secret (it is visible in the browser), but you should still manage it through environment variables rather than hardcoding it, to avoid accidental changes and keep configuration out of source control.
-
-5. Start the application:
-
-   ```bash
-   npm run dev
-   ```
-
-   The app will be available at `http://localhost:5173`.
+The database schema, row level security policies and helper functions live in `supabase/migrations/`. The publishable key is meant to be public: access to data is enforced by the policies, not by the key.
 
 ## Deployment on GitHub Pages
 
-This project deploys automatically to GitHub Pages via GitHub Actions on every push to `main`.
+Every push to `main` builds and publishes the app through `.github/workflows/deploy.yml`. Add these repository secrets under **Settings → Secrets and variables → Actions**:
 
-### How CI injects environment variables
-
-The workflow (`.github/workflows/deploy.yml`) passes the `VITE_FIREBASE_*` values as environment variables to the `npm run build` step. Vite embeds them in the bundle at build time.
-
-**You must add the following secrets** in your GitHub repository settings under **Settings → Secrets and variables → Actions → New repository secret**:
-
-| Secret name | Where to find the value |
+| Secret | Value |
 |---|---|
-| `VITE_FIREBASE_API_KEY` | Firebase console → Project settings → Your apps |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase console → Project settings → Your apps |
-| `VITE_FIREBASE_PROJECT_ID` | Firebase console → Project settings → Your apps |
-| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase console → Project settings → Your apps |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase console → Project settings → Your apps |
-| `VITE_FIREBASE_APP_ID` | Firebase console → Project settings → Your apps |
-| `VITE_FIREBASE_MEASUREMENT_ID` | Firebase console → Project settings → Your apps |
+| `VITE_SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API Keys → publishable key |
 
-Once the secrets are set, any push to `main` will trigger the workflow, build the app with the correct config, and publish the `dist/` folder to GitHub Pages.
+Optional repository variable: `VITE_ENABLE_ACCOUNT_DELETION=true` shows account deletion in the profile.
 
-> **Do not commit your `.env` file.** It is already excluded in `.gitignore` via `*.env`.
-
-## Quality and security setup
-
-The repository includes `firestore.rules` and `firestore.indexes.json`. Deploy them before using the app in production:
+## Quality checks
 
 ```bash
-npx firebase-tools login
-npx firebase-tools use YOUR_FIREBASE_PROJECT_ID
-npx firebase-tools deploy --only firestore:rules,firestore:indexes
-```
-
-The rules limit financial data to verified users and to the owner of each transaction. The app signs in with email only, so the legacy `usernames` collection is deliberately inaccessible. The repository also includes Firestore emulator tests, unit/component tests, Playwright E2E accessibility checks, bundle budgets and a trusted callable Function for complete account deletion.
-
-Run the full local quality pipeline with Node 24 and Java 21:
-
-```bash
-npm ci
-nvm exec 22 npm --prefix functions ci
 npm run lint
-npm test
-npm run test:rules
-npm run build
-npm run check:bundle
+npm run test:coverage   # unit and component tests
+npm run test:db         # schema and row level security, on an in-process PostgreSQL (PGlite)
+npm run build && npm run check:bundle
 npm run test:e2e
 ```
 
-In Firebase Console, complete these manual safeguards:
-
-1. Enable a strong password policy and email enumeration protection in **Authentication → Settings**.
-2. Register and enforce **App Check** for Firestore and Cloud Functions after distributing the configured client.
-3. In Google Cloud Console, allow only the production site and local development origins in the Firebase API key's HTTP referrer restrictions.
-4. Confirm that the email action sender/domain is configured so verification emails can be delivered.
-
-For the required deployment order, backups, schema-v2 migration, Cloud Function, App Check, security headers, GitHub Secrets and release checklist, follow [CONFIGURAZIONE_MANUALE.md](CONFIGURAZIONE_MANUALE.md). The original findings and acceptance criteria remain in [AUDIT_COMPLETO.md](AUDIT_COMPLETO.md).
+`npm run test:all` runs everything in the same order as CI.
 
 ## Contributions
 

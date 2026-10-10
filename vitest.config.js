@@ -7,7 +7,11 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./tests/setup.js"],
     include: ["tests/**/*.{test,spec}.{js,jsx,mjs}"],
-    exclude: ["tests/firestore.rules.test.js", "tests/e2e/**", "node_modules/**", "dist/**"],
+    exclude: ["tests/db/**", "tests/e2e/**", "node_modules/**", "dist/**"],
+    env: {
+      VITE_SUPABASE_URL: "https://test-project.supabase.co",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+    },
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "html"],

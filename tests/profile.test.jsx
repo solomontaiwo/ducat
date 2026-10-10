@@ -20,10 +20,7 @@ const mocks = vi.hoisted(() => {
     savePreferences: vi.fn(async () => true),
     notification: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
     navigate: vi.fn(),
-    setDoc: vi.fn(async () => {}),
-    updateDoc: vi.fn(async () => {}),
-    profileExists: true,
-    updateProfile: vi.fn(async () => {}),
+    saveProfileName: vi.fn(async (_user, name) => name),
     refreshProfileName: vi.fn(async () => "Ada"),
     toggleTheme: vi.fn(),
     changeLanguage: vi.fn(),
@@ -67,12 +64,7 @@ vi.mock("../src/router/RouterProvider", () => ({
   Link: ({ to, children, ...props }) => <a href={to} {...props}>{children}</a>,
   useNavigate: () => mocks.navigate,
 }));
-vi.mock("../src/utils/firebaseFirestore.js", () => ({ firestore: {} }));
-vi.mock("firebase/firestore", () => ({
-  doc: () => ({}), setDoc: mocks.setDoc, updateDoc: mocks.updateDoc, serverTimestamp: () => "ts",
-  getDoc: async () => ({ exists: () => mocks.profileExists }),
-}));
-vi.mock("firebase/auth", () => ({ updateProfile: mocks.updateProfile }));
+vi.mock("../src/services/profileService.js", () => ({ saveProfileName: mocks.saveProfileName }));
 vi.mock("../src/services/accountService.js", () => ({
   deleteCurrentAccount: vi.fn(), requestEmailChange: vi.fn(async () => {}), requestPasswordReset: vi.fn(async () => {}),
 }));
@@ -153,19 +145,21 @@ describe("Profile", () => {
     const sheet = await screen.findByRole("dialog");
     fireEvent.change(within(sheet).getByLabelText("profilePage.name.label"), { target: { value: "Ada Lovelace" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "save" }));
-    await waitFor(() => expect(mocks.updateProfile).toHaveBeenCalledWith(expect.anything(), { displayName: "Ada Lovelace" }));
-    expect(mocks.updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ username: "Ada Lovelace", email: "ada@example.com" }));
-    expect(mocks.setDoc).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.saveProfileName).toHaveBeenCalledWith(
+      expect.objectContaining({ uid: "u1", email: "ada@example.com" }),
+      "Ada Lovelace"
+    ));
+    await waitFor(() => expect(mocks.refreshProfileName).toHaveBeenCalled());
+    expect(mocks.notification.success).toHaveBeenCalledWith("profile.usernameSuccess");
   });
 
-  it("creates the profile document when it is missing", async () => {
-    mocks.profileExists = false;
+  it("reports a failed rename", async () => {
+    mocks.saveProfileName.mockRejectedValueOnce(Object.assign(new Error("denied"), { code: "permission-denied" }));
     render(<Profile />);
     fireEvent.click(screen.getByRole("button", { name: /Ada/ }));
     const sheet = await screen.findByRole("dialog");
     fireEvent.change(within(sheet).getByLabelText("profilePage.name.label"), { target: { value: "Ada Lovelace" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "save" }));
-    await waitFor(() => expect(mocks.setDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ createdAt: "ts", email: "ada@example.com" })));
-    mocks.profileExists = true;
+    await waitFor(() => expect(mocks.notification.error).toHaveBeenCalledWith("profile.usernamePermissionError"));
   });
 });

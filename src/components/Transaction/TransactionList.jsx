@@ -133,7 +133,7 @@ const TransactionList = () => {
     return () => { cancelled = true; };
   }, [currentUser, isDemo, getTotalTransactionCount, transactions, startDate, endDate, selectedType, recentRevision, reloadKey, t]);
 
-  // Exact totals for the whole period, computed by Firestore.
+  // Exact totals for the whole period, computed by the database.
   useEffect(() => {
     let cancelled = false;
     setServerTotals(null);
@@ -343,7 +343,7 @@ const TransactionList = () => {
     { income: 0, expense: 0 }
   ), [filteredTransactions]);
   // Server totals cover the whole period; local ones are needed when text or
-  // category filters narrow the list (Firestore cannot apply those).
+  // category filters narrow the list (applied on the loaded rows).
   const useServerTotals = !isDemo && serverTotals && !searchTerm && selectedCategory === "all";
   const totals = useServerTotals
     ? { count: serverTotals.count, income: serverTotals.incomeMinor / 100, expense: serverTotals.expenseMinor / 100 }

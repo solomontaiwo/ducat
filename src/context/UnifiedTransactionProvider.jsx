@@ -56,15 +56,15 @@ const UnifiedTransactionContext = createContext({ ...INERT_VALUE, loading: true 
 export const useUnifiedTransactions = () => useContext(UnifiedTransactionContext);
 const DEMO_FLAG_KEY = "soldi-sotto-demo-enabled";
 
-// Wrapper for Firebase provider
-const FirebaseTransactionWrapper = ({ children }) => {
+// Wrapper for the signed-in (Supabase) provider
+const AccountTransactionWrapper = ({ children }) => {
   const { currentUser } = useAuth();
   const { transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals, getFirstTransactionDate } = useTransactions();
   const [isProcessing, setIsProcessing] = useState(false);
   const notification = useNotification();
   const { t } = useTranslation();
 
-  // Adds Firebase transaction
+  // Adds a transaction
   const addTransaction = useCallback(async (transactionData, { silent = false } = {}) => {
     if (!currentUser) return false;
     
@@ -89,7 +89,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
     }
   }, [currentUser, notification, t]);
 
-  // Updates Firebase transaction
+  // Updates a transaction
   const updateTransaction = useCallback(async (transactionId, updatedData) => {
     if (!currentUser) return false;
     
@@ -108,7 +108,7 @@ const FirebaseTransactionWrapper = ({ children }) => {
     }
   }, [currentUser, notification, t]);
 
-  // Deletes Firebase transaction
+  // Deletes a transaction
   const deleteTransaction = useCallback(async (transactionId) => {
     if (!currentUser) return false;
     
@@ -276,7 +276,7 @@ export const UnifiedTransactionProvider = ({ children }) => {
   const hasUser = Boolean(currentUser);
   const inertValue = useMemo(() => {
     if (!isReady) return { ...INERT_VALUE, loading: true, startDemo, stopDemo };
-    // Signed in but unverified: Firestore rules would deny every read, so no
+    // Signed in but unverified: row level security would deny every read, so no
     // listener is opened and the UI sees an empty, authenticated state.
     if (hasUser) return { ...INERT_VALUE, isAuthenticated: true, startDemo, stopDemo };
     return { ...INERT_VALUE, startDemo, stopDemo };
@@ -285,9 +285,9 @@ export const UnifiedTransactionProvider = ({ children }) => {
   if (isReady && currentUser?.emailVerified) {
     return (
       <TransactionProvider>
-        <FirebaseTransactionWrapper>
+        <AccountTransactionWrapper>
           {children}
-        </FirebaseTransactionWrapper>
+        </AccountTransactionWrapper>
       </TransactionProvider>
     );
   }
@@ -310,7 +310,7 @@ export const UnifiedTransactionProvider = ({ children }) => {
   );
 };
 
-FirebaseTransactionWrapper.propTypes = {
+AccountTransactionWrapper.propTypes = {
   children: PropTypes.node.isRequired,
 };
 

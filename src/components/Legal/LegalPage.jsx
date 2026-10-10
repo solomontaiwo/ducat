@@ -7,7 +7,7 @@ const Privacy = () => (
     <h2 className="text-lg font-semibold">Dati trattati</h2>
     <p>L’app memorizza email, nome visualizzato e transazioni inserite dall’utente. Tema, lingua e dati della modalità demo restano nel browser.</p>
     <h2 className="text-lg font-semibold">Finalità e fornitori</h2>
-    <p>I dati servono esclusivamente a fornire autenticazione, gestione delle transazioni, statistiche ed export. Firebase Authentication, Firestore e Cloud Functions sono i servizi tecnici utilizzati.</p>
+    <p>I dati servono esclusivamente a fornire autenticazione, gestione delle transazioni, statistiche ed export. Supabase (autenticazione e database PostgreSQL, ospitato nell’Unione europea) è il servizio tecnico utilizzato.</p>
     <h2 className="text-lg font-semibold">Controllo dei dati</h2>
     <p>Dalla pagina Profilo è possibile esportare i dati, richiedere il reset della password, cambiare email ed eliminare definitivamente account e transazioni.</p>
     <h2 className="text-lg font-semibold">Contatti e titolare</h2>

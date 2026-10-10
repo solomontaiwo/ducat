@@ -53,9 +53,9 @@ const occurrencePayload = (rule, dateKey) => ({
 });
 
 /**
- * Recurring movements and monthly budgets. Firestore for verified accounts,
+ * Recurring movements and monthly budgets. Supabase for verified accounts,
  * local storage in demo mode. Automatic rules are registered here, on the
- * device, when the app opens: Spark has no scheduled functions.
+ * device, when the app opens, so no scheduled job is needed.
  */
 export const PlanningProvider = ({ children }) => {
   const { currentUser } = useAuth();

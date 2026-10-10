@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "../../router/RouterProvider";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../utils/firebaseAuth";
+import { useAuth } from "../../context/AuthProvider";
 import { useNotification } from "../../utils/notificationUtils";
 import { motion } from "framer-motion";
 import { FiArrowLeft, FiEye, FiEyeOff, FiLock, FiLogIn, FiUser } from "react-icons/fi";
@@ -18,6 +17,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { markPendingVerification } = useAuth();
   const notification = useNotification();
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const { t } = useTranslation();
@@ -28,10 +28,16 @@ const Login = () => {
     setError("");
 
     try {
-      const credential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      const { signIn } = await import("../../services/authService.js");
+      const user = await signIn(email, password);
       notification.success(t("login.title"));
-      navigate(credential.user.emailVerified ? "/dashboard" : "/verify-email", { replace: true });
+      navigate(user?.emailVerified ? "/dashboard" : "/verify-email", { replace: true });
     } catch (err) {
+      if (err.code === "auth/email-not-verified") {
+        markPendingVerification(email);
+        navigate("/verify-email", { replace: true });
+        return;
+      }
       console.error(t("errors.loginError"), err);
       let errorMessage;
       switch (err.code) {

@@ -36,7 +36,7 @@
     "dateNotAvailable": "Date not available",
     "emailAddress": "Email Address",
     "account": "Account",
-    "accountInfo": "Preferences are stored in your browser; account data is protected by Firebase access rules.",
+    "accountInfo": "Preferences are stored in your browser; account data is protected by the database access rules (Supabase).",
     "backToDashboard": "Back to Dashboard",
     "editUsername": "Edit Username",
     "newUsername": "New Username",
@@ -551,7 +551,7 @@
     },
     "verifyEmail": {
       "title": "Verify your email",
-      "description": "We sent a link to {{email}}. Open it, then come back here and check the verification.",
+      "description": "We sent a link to {{email}}. Open it to activate your account: it takes you straight into the app.",
       "check": "I have verified my email",
       "checking": "Checking…",
       "resend": "Send again",
@@ -564,6 +564,19 @@
       "sent": "Verification email sent.",
       "tooManyRequests": "Too many attempts. Please wait before trying again.",
       "sendFailed": "Sending failed. Please try again later."
+    },
+    "resetPassword": {
+      "title": "New password",
+      "prompt": "Choose a new password for your account.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "submit": "Save password",
+      "saving": "Saving…",
+      "success": "Password updated.",
+      "error": "Unable to update the password. Please try again.",
+      "samePassword": "The new password must be different from the current one.",
+      "invalidLink": "The link is invalid or has expired. Request a new one.",
+      "requestNew": "Request a new link"
     }
   },
   "validation": {

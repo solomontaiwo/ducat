@@ -41,6 +41,25 @@ test("unsafe deep links fall back to home", async ({ page }) => {
   await expect(page).toHaveURL(/\/soldi-sotto\/$/);
 });
 
+test("auth pages load the account client without errors", async ({ page }) => {
+  const problems = [];
+  page.on("pageerror", (error) => problems.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" && !message.text().startsWith("Failed to load resource:")) problems.push(message.text());
+  });
+  await page.goto("login");
+  await expect(page.locator("#email")).toBeVisible();
+  await page.goto("reset-password");
+  await expect(page.getByText(/link (non è valido|is invalid)/i)).toBeVisible();
+  await expect(page.getByRole("link", { name: /nuovo link|new link/i })).toBeVisible();
+  // Waiting for the email confirmation: the app shows the verification page.
+  await page.evaluate(() => localStorage.setItem("soldi-sotto-pending-verification", "ada@example.com"));
+  await page.goto("dashboard");
+  await expect(page).toHaveURL(/\/verify-email$/);
+  await expect(page.getByText("ada@example.com")).toBeVisible();
+  expect(problems).toEqual([]);
+});
+
 const ADD_BUTTON = /^(nuovo movimento|new transaction)$/i;
 
 test("transaction fields remain readable on mobile before and after focus", async ({ page, isMobile }) => {

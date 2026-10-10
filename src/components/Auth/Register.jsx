@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "../../router/RouterProvider";
-import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { auth } from "../../utils/firebaseAuth";
-import { firestore } from "../../utils/firebaseFirestore";
+import { useAuth } from "../../context/AuthProvider";
 import { useNotification } from "../../utils/notificationUtils";
 import { motion } from "framer-motion";
 import { FiArrowLeft, FiEye, FiEyeOff, FiLock, FiMail, FiUser, FiUserPlus } from "react-icons/fi";
@@ -24,6 +21,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { markPendingVerification } = useAuth();
   const notification = useNotification();
   const isMobile = useMediaQuery({ maxWidth: 768 });
   const { t } = useTranslation();
@@ -40,39 +38,22 @@ const Register = () => {
       return;
     }
 
-    let createdUser = null;
     try {
       const { username: usernameTrimmed, email: normalizedEmail } = validation.data;
 
-      const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
-      const user = userCredential.user;
-      createdUser = user;
-
-      await updateProfile(user, { displayName: usernameTrimmed });
-
-      await setDoc(doc(firestore, "users", user.uid), {
-        username: usernameTrimmed,
-        email: user.email,
-        displayName: usernameTrimmed,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      try {
-        await sendEmailVerification(user);
-      } catch (verificationError) {
-        console.warn("Unable to send verification email during registration", verificationError);
-      }
+      // The profile row is created by the database from the display name.
+      const { signUp } = await import("../../services/authService.js");
+      const { user, hasSession } = await signUp({ email: normalizedEmail, password, displayName: usernameTrimmed });
 
       notification.success(t("errors.accountCreatedSuccess"));
+      if (hasSession && user?.emailVerified) {
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+      if (!hasSession) markPendingVerification(normalizedEmail);
       navigate("/verify-email", { replace: true });
     } catch (err) {
       console.error("Errore durante la registrazione:", err);
-      if (createdUser) {
-        notification.warning(t("auth.profileIncomplete"));
-        navigate("/verify-email", { replace: true });
-        return;
-      }
       let errorMessage;
       switch (err.code) {
         case "auth/email-already-in-use":

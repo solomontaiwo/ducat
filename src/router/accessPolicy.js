@@ -4,7 +4,11 @@ export const resolveRouteAccess = ({ access, currentUser, isDemo, pathname }) =>
     if (!currentUser) return null;
     return currentUser.emailVerified ? "/dashboard" : "/verify-email";
   }
-  if (access === "authenticated") return currentUser ? null : "/login";
+  if (access === "authenticated") {
+    if (!currentUser) return "/login";
+    // Waiting for the email confirmation: there is no session yet.
+    return currentUser.pending ? "/verify-email" : null;
+  }
   if (access === "authenticated-unverified") {
     if (!currentUser) return "/login";
     return currentUser.emailVerified ? "/dashboard" : null;
