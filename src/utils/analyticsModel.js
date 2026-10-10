@@ -1,4 +1,4 @@
-import { addMilliseconds, differenceInCalendarDays, endOfDay, endOfMonth, format, isWithinInterval, startOfDay, subDays, subMonths } from "date-fns";
+import { addMilliseconds, differenceInCalendarDays, endOfDay, endOfMonth, format, isSameDay, isWithinInterval, startOfDay, subDays, subMonths } from "date-fns";
 import { getTransactionAmountMinor, minorToMajor } from "./money";
 import { readLocalValue, removeLocalValue } from "./storage.js";
 import { cycleMonthFor, cycleRange } from "./monthCycle.js";
@@ -63,6 +63,67 @@ export const getComparisonRange = (period, startDate, endDate, now = new Date())
     startDate: startOfDay(subDays(startDate, days)),
     endDate: addMilliseconds(startOfDay(startDate), -1),
   };
+};
+
+const monthShort = (date, locale) => format(date, "LLL", { locale }).replace(".", "");
+
+/**
+ * Names the comparison range so it can't be misread: whole months by name
+ * ("agosto", "apr–giu", "2025"), anything else by its dates ("1–10 set").
+ * The year appears only when it differs from the current one; `long` always
+ * has it, for the explanation shown on tap.
+ */
+export const describeComparisonRange = ({ startDate, endDate }, { startDay = 1, locale, now = new Date() } = {}) => {
+  const firstCycle = cycleRange(cycleMonthFor(startDate, startDay), startDay);
+  const lastCycle = cycleRange(cycleMonthFor(endDate, startDay), startDay);
+  const wholeCycles = isSameDay(startDate, firstCycle.startDate) && isSameDay(endDate, lastCycle.endDate);
+  const sameYear = startDate.getFullYear() === endDate.getFullYear();
+  const showYear = endDate.getFullYear() !== now.getFullYear() || !sameYear;
+  const year = (date) => format(date, "yyyy", { locale });
+
+  if (wholeCycles) {
+    const first = cycleMonthFor(startDate, startDay);
+    const last = cycleMonthFor(endDate, startDay);
+    const months = (last.getFullYear() - first.getFullYear()) * 12 + last.getMonth() - first.getMonth() + 1;
+    if (months === 12 && first.getMonth() === 0) {
+      return { short: year(first), long: year(first), wholePeriod: true };
+    }
+    if (months === 1) {
+      return {
+        short: format(first, "LLLL", { locale }) + (showYear ? ` ${year(first)}` : ""),
+        long: format(first, "LLLL yyyy", { locale }),
+        wholePeriod: true,
+      };
+    }
+    const sameYearMonths = first.getFullYear() === last.getFullYear();
+    return {
+      short: sameYearMonths
+        ? `${monthShort(first, locale)}–${monthShort(last, locale)}${showYear ? ` ${year(last)}` : ""}`
+        : `${monthShort(first, locale)} ${year(first)}–${monthShort(last, locale)} ${year(last)}`,
+      long: sameYearMonths
+        ? `${format(first, "LLLL", { locale })} – ${format(last, "LLLL yyyy", { locale })}`
+        : `${format(first, "LLLL yyyy", { locale })} – ${format(last, "LLLL yyyy", { locale })}`,
+      wholePeriod: true,
+    };
+  }
+
+  const sameMonth = sameYear && startDate.getMonth() === endDate.getMonth();
+  let short;
+  let long;
+  if (isSameDay(startDate, endDate)) {
+    short = `${format(startDate, "d", { locale })} ${monthShort(startDate, locale)}${showYear ? ` ${year(startDate)}` : ""}`;
+    long = format(startDate, "d LLLL yyyy", { locale });
+  } else if (sameMonth) {
+    short = `${format(startDate, "d", { locale })}–${format(endDate, "d", { locale })} ${monthShort(endDate, locale)}${showYear ? ` ${year(endDate)}` : ""}`;
+    long = `${format(startDate, "d", { locale })}–${format(endDate, "d LLLL yyyy", { locale })}`;
+  } else if (sameYear) {
+    short = `${format(startDate, "d", { locale })} ${monthShort(startDate, locale)}–${format(endDate, "d", { locale })} ${monthShort(endDate, locale)}${showYear ? ` ${year(endDate)}` : ""}`;
+    long = `${format(startDate, "d LLLL", { locale })} – ${format(endDate, "d LLLL yyyy", { locale })}`;
+  } else {
+    short = `${format(startDate, "d", { locale })} ${monthShort(startDate, locale)} ${year(startDate)}–${format(endDate, "d", { locale })} ${monthShort(endDate, locale)} ${year(endDate)}`;
+    long = `${format(startDate, "d LLLL yyyy", { locale })} – ${format(endDate, "d LLLL yyyy", { locale })}`;
+  }
+  return { short, long, wholePeriod: false };
 };
 
 /**

@@ -300,11 +300,12 @@
     "overspentAmount": "{{amount}} spesi in più",
     "byCategory": "Per categoria",
     "compare": {
-      "previousPeriod": "periodo prima",
       "up": "▲ {{pct}}% vs {{ref}}",
       "down": "▼ {{pct}}% vs {{ref}}",
       "flat": "= stabile vs {{ref}}",
-      "categoryLabel": "Differenza rispetto a {{ref}}"
+      "categoryLabel": "Differenza rispetto a {{ref}}",
+      "detail": "Confronto con {{range}}.",
+      "sameDays": "Stessi giorni trascorsi del periodo attuale."
     }
   },
   "transactionModal": {

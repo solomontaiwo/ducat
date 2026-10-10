@@ -5,12 +5,14 @@ import {
   buildMonthlyTrend,
   categoryDeltas,
   compareValues,
+  describeComparisonRange,
   getAnalyticsQueryRange,
   getComparisonRange,
   readPeriodPreference,
   withChartColors,
 } from "../src/utils/analyticsModel.js";
 import { calculateStats } from "../src/utils/statsUtils.jsx";
+import { enUS, it as itLocale } from "date-fns/locale";
 
 const tx = (id, type, category, amountMinor, date) => ({
   id, type, category, amountMinor, amount: amountMinor / 100, description: id, date: new Date(date),
@@ -156,5 +158,41 @@ describe("comparison with the previous period", () => {
   it("widens the query to cover the comparison range", () => {
     const compareStart = new Date(2025, 0, 1);
     expect(getAnalyticsQueryRange(new Date(2026, 0, 1), new Date(2026, 11, 31), OCT_9, compareStart).startDate).toEqual(compareStart);
+  });
+});
+
+describe("describeComparisonRange", () => {
+  const NOW = new Date(2026, 9, 10, 12);
+  const range = (start, end) => ({ startDate: start, endDate: new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999) });
+  const describe_ = (start, end, options = {}) => describeComparisonRange(range(start, end), { locale: itLocale, now: NOW, ...options });
+
+  it("names the elapsed days when this month is compared with the same days of the previous one", () => {
+    expect(describe_(new Date(2026, 8, 1), new Date(2026, 8, 10))).toEqual({
+      short: "1–10 set", long: "1–10 settembre 2026", wholePeriod: false,
+    });
+  });
+
+  it("names whole months, and groups of months, by name", () => {
+    expect(describe_(new Date(2026, 7, 1), new Date(2026, 7, 31))).toEqual({ short: "agosto", long: "agosto 2026", wholePeriod: true });
+    expect(describe_(new Date(2026, 3, 1), new Date(2026, 5, 30)).short).toBe("apr–giu");
+    expect(describe_(new Date(2026, 6, 1), new Date(2026, 8, 10)).short).toBe("1 lug–10 set");
+  });
+
+  it("adds the year only when it is not the current one", () => {
+    expect(describe_(new Date(2025, 0, 1), new Date(2025, 9, 10))).toEqual({
+      short: "1 gen–10 ott 2025", long: "1 gennaio – 10 ottobre 2025", wholePeriod: false,
+    });
+    expect(describe_(new Date(2025, 0, 1), new Date(2025, 11, 31)).short).toBe("2025");
+    expect(describe_(new Date(2025, 8, 1), new Date(2025, 8, 30)).short).toBe("settembre 2025");
+    expect(describe_(new Date(2025, 11, 20), new Date(2026, 0, 5)).short).toBe("20 dic 2025–5 gen 2026");
+  });
+
+  it("follows a payday month start", () => {
+    expect(describe_(new Date(2026, 6, 27), new Date(2026, 7, 26), { startDay: 27 }).short).toBe("agosto");
+    expect(describe_(new Date(2026, 7, 27), new Date(2026, 8, 10), { startDay: 27 }).short).toBe("27 ago–10 set");
+  });
+
+  it("speaks English too", () => {
+    expect(describeComparisonRange(range(new Date(2026, 8, 1), new Date(2026, 8, 10)), { locale: enUS, now: NOW }).short).toBe("1–10 Sep");
   });
 });
