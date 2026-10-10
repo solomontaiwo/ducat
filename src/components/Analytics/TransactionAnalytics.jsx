@@ -16,7 +16,7 @@ import { useAnalyticsData } from "../../hooks/useAnalyticsData.js";
 import { SeriesTooltip } from "./ChartTooltips.jsx";
 import {
   CATEGORY_CHART_COLORS, PERIOD_PREFERENCE_KEY, buildExtendedStats, categoryDeltas, compareValues,
-  getComparisonRange, getEffectiveEnd, readPeriodPreference, withChartColors,
+  describeComparisonRange, getComparisonRange, getEffectiveEnd, readPeriodPreference, withChartColors,
 } from "../../utils/analyticsModel";
 import { exportAnalyticsCsv, exportAnalyticsPdf } from "../../utils/analyticsExport";
 import { calculateStats } from "../../utils/statsUtils.jsx";
@@ -29,7 +29,6 @@ import TransactionRow from "../Transaction/TransactionRow.jsx";
 import { Link } from "../../router/RouterProvider";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
-import { cycleMonthFor } from "../../utils/monthCycle.js";
 import { FiDownload } from "react-icons/fi";
 
 const PERIODS = ["month", "lastMonth", "last3Months", "year", "custom"];
@@ -46,14 +45,29 @@ const DELTA_TONE = {
   neutral: "text-muted-foreground",
 };
 
-const KpiTile = ({ label, value, note, tone, delta }) => (
-  <div className="surface flex flex-col gap-1 p-4 sm:p-5">
-    <span className="text-[13px] font-semibold text-muted-foreground">{label}</span>
-    <span className={cn("amount text-2xl sm:text-[1.75rem]", tone === "income" && "text-income")}>{value}</span>
-    {note && <span className="text-xs font-medium text-muted-foreground">{note}</span>}
-    {delta && <span className={cn("text-xs font-bold", DELTA_TONE[delta.tone])} data-testid="kpi-delta">{delta.text}</span>}
-  </div>
-);
+const KpiTile = ({ label, value, note, tone, delta }) => {
+  const [showDetail, setShowDetail] = useState(false);
+  return (
+    <div className="surface flex flex-col gap-1 p-4 sm:p-5">
+      <span className="text-[13px] font-semibold text-muted-foreground">{label}</span>
+      <span className={cn("amount text-2xl sm:text-[1.75rem]", tone === "income" && "text-income")}>{value}</span>
+      {note && <span className="text-xs font-medium text-muted-foreground">{note}</span>}
+      {delta && (
+        <button
+          type="button"
+          onClick={() => setShowDetail((open) => !open)}
+          aria-expanded={showDetail}
+          title={delta.detail}
+          className={cn("self-start rounded text-left text-xs font-bold underline decoration-dotted decoration-1 underline-offset-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", DELTA_TONE[delta.tone])}
+          data-testid="kpi-delta"
+        >
+          {delta.text}
+        </button>
+      )}
+      {delta && showDetail && <span className="text-xs text-muted-foreground" data-testid="kpi-delta-detail">{delta.detail}</span>}
+    </div>
+  );
+};
 
 const TransactionAnalytics = () => {
   const { isDemo, transactions: recentTransactions, maxTransactions, loading: contextLoading, fetchAllTransactions } = useUnifiedTransactions();
@@ -105,20 +119,25 @@ const TransactionAnalytics = () => {
   const locale = i18n.language === "en" ? enUS : it;
 
   const hasPreviousData = previousStats.transactionCount > 0;
-  const reference = comparison.kind === "month"
-    ? format(cycleMonthFor(comparison.endDate, startDay), "LLLL", { locale })
-    : comparison.kind === "year"
-      ? format(comparison.startDate, "yyyy")
-      : t("analytics.compare.previousPeriod");
+  const comparisonLabel = useMemo(
+    () => describeComparisonRange(comparison, { startDay, locale }),
+    [comparison, startDay, locale]
+  );
+  const reference = comparisonLabel.short;
+  const comparisonDetail = [
+    t("analytics.compare.detail", { range: comparisonLabel.long }),
+    comparisonLabel.wholePeriod ? null : t("analytics.compare.sameDays"),
+  ].filter(Boolean).join(" ");
   const describeDelta = (current, previous, higherIsBetter) => {
     if (!hasPreviousData) return null;
     const change = compareValues(current, previous);
     if (!change) return null;
-    if (change.direction === "flat") return { text: t("analytics.compare.flat", { ref: reference }), tone: "neutral" };
+    if (change.direction === "flat") return { text: t("analytics.compare.flat", { ref: reference }), tone: "neutral", detail: comparisonDetail };
     const better = (change.direction === "up") === higherIsBetter;
     return {
       text: t(change.direction === "up" ? "analytics.compare.up" : "analytics.compare.down", { pct: change.pct, ref: reference }),
       tone: better ? "good" : "bad",
+      detail: comparisonDetail,
     };
   };
   const deltasByCategory = useMemo(
@@ -376,7 +395,7 @@ KpiTile.propTypes = {
   value: PropTypes.string.isRequired,
   note: PropTypes.string,
   tone: PropTypes.string,
-  delta: PropTypes.shape({ text: PropTypes.string, tone: PropTypes.string }),
+  delta: PropTypes.shape({ text: PropTypes.string, tone: PropTypes.string, detail: PropTypes.string }),
 };
 
 export default React.memo(TransactionAnalytics);
