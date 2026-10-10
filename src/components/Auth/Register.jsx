@@ -24,7 +24,7 @@ const Register = () => {
   const { markPendingVerification } = useAuth();
   const notification = useNotification();
   const isMobile = useMediaQuery({ maxWidth: 768 });
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,7 +43,9 @@ const Register = () => {
 
       // The profile row is created by the database from the display name.
       const { signUp } = await import("../../services/authService.js");
-      const { user, hasSession } = await signUp({ email: normalizedEmail, password, displayName: usernameTrimmed });
+      const { user, hasSession } = await signUp({
+        email: normalizedEmail, password, displayName: usernameTrimmed, language: i18n?.resolvedLanguage || i18n?.language,
+      });
 
       notification.success(t("errors.accountCreatedSuccess"));
       if (hasSession && user?.emailVerified) {

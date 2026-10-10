@@ -7,7 +7,7 @@ vi.mock("../src/utils/supabaseClient.js", async (importOriginal) => {
 
 import { supabase } from "../src/utils/supabaseClient.js";
 import {
-  appUrl, onAuthChange, reloadUser, resendVerificationEmail, signIn, signUp, toAppUser, toAuthError,
+  appUrl, onAuthChange, reloadUser, resendVerificationEmail, signIn, signUp, toAppUser, toAuthError, updateLanguage,
 } from "../src/services/authService.js";
 
 const supabaseUser = (overrides = {}) => ({
@@ -25,7 +25,7 @@ describe("authService", () => {
 
   it("exposes the account in the shape the app uses", () => {
     expect(toAppUser(supabaseUser())).toEqual({
-      uid: "u1", email: "ada@example.com", emailVerified: true, displayName: "Ada", metadata: { creationTime: "2026-01-01T00:00:00Z" },
+      uid: "u1", email: "ada@example.com", emailVerified: true, displayName: "Ada", language: null, metadata: { creationTime: "2026-01-01T00:00:00Z" },
     });
     expect(toAppUser(supabaseUser({ email_confirmed_at: null })).emailVerified).toBe(false);
     expect(toAppUser(supabaseUser({ user_metadata: { member_since: "2024-05-01T00:00:00Z" } })).metadata.creationTime).toBe("2024-05-01T00:00:00Z");
@@ -56,12 +56,12 @@ describe("authService", () => {
 
   it("signs up with the display name and the confirmation link", async () => {
     supabase.auth.signUp.mockResolvedValue({ data: { user: supabaseUser({ email_confirmed_at: null }), session: null }, error: null });
-    const result = await signUp({ email: "ada@example.com", password: "long-enough", displayName: "Ada" });
+    const result = await signUp({ email: "ada@example.com", password: "long-enough", displayName: "Ada", language: "en-GB" });
     expect(result.hasSession).toBe(false);
     expect(supabase.auth.signUp).toHaveBeenCalledWith({
       email: "ada@example.com",
       password: "long-enough",
-      options: { data: { display_name: "Ada" }, emailRedirectTo: expect.stringMatching(/\/dashboard$/) },
+      options: { data: { display_name: "Ada", lang: "en" }, emailRedirectTo: expect.stringMatching(/\/dashboard$/) },
     });
   });
 
@@ -83,6 +83,14 @@ describe("authService", () => {
     supabase.auth.getSession.mockResolvedValue({ data: { session: { user: supabaseUser({ email_confirmed_at: null }) } }, error: null });
     supabase.auth.getUser.mockResolvedValue({ data: { user: supabaseUser() }, error: null });
     expect((await reloadUser()).emailVerified).toBe(true);
+  });
+
+  it("stores the email language, Italian unless English", async () => {
+    supabase.auth.updateUser.mockResolvedValue({ data: { user: supabaseUser({ user_metadata: { lang: "en" } }) }, error: null });
+    expect((await updateLanguage("en-US")).language).toBe("en");
+    expect(supabase.auth.updateUser).toHaveBeenCalledWith({ data: { lang: "en" } });
+    await updateLanguage("fr");
+    expect(supabase.auth.updateUser).toHaveBeenLastCalledWith({ data: { lang: "it" } });
   });
 
   it("forwards auth changes as app users and can unsubscribe", () => {

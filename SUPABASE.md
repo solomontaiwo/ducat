@@ -46,13 +46,15 @@ Controllo: in **Table Editor** devono esserci `profiles`, `transactions`, `recur
 
 Il servizio email incluso consegna solo agli indirizzi del team del progetto e con un limite molto basso: per gli utenti veri serve un SMTP tuo. Vanno bene i piani gratuiti di Resend o Brevo, idealmente con un dominio tuo come mittente (es. `noreply@tuodominio.it`). Dopo averlo configurato, alza il limite in **Authentication → Rate Limits** (es. 30 email/ora).
 
-**Authentication → Emails → Templates** (testi in italiano)
+**Authentication → Emails → Templates**
 
-| Template | Oggetto | Corpo |
+I modelli sono in `supabase/templates/`, in italiano e inglese: l'app salva la lingua dell'utente in `user_metadata.lang` e il modello sceglie il testo (italiano se manca, come per gli account copiati da Firebase). Copia il contenuto di ogni file nel campo "Message body" (Source):
+
+| Template | File | Oggetto |
 |---|---|---|
-| Confirm signup | Conferma il tuo account Soldi Sotto | `<p>Ciao!</p><p>Conferma il tuo indirizzo per iniziare a usare Soldi Sotto:</p><p><a href="{{ .ConfirmationURL }}">Conferma email</a></p>` |
-| Reset password | Reimposta la password di Soldi Sotto | `<p>Hai chiesto di cambiare password.</p><p><a href="{{ .ConfirmationURL }}">Scegli una nuova password</a></p><p>Se non sei stato tu, ignora questa email.</p>` |
-| Change email address | Conferma il nuovo indirizzo | `<p>Conferma il cambio da {{ .Email }} a {{ .NewEmail }}:</p><p><a href="{{ .ConfirmationURL }}">Conferma</a></p>` |
+| Confirm signup | `confirm-signup.html` | `Conferma il tuo account · Confirm your account` |
+| Reset password | `reset-password.html` | `Reimposta la password · Reset your password` |
+| Change email address | `change-email.html` | `Conferma il nuovo indirizzo · Confirm your new email` |
 
 ## 4. Chiavi
 
