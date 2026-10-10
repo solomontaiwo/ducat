@@ -9,7 +9,7 @@ export const transactionSchema = z.object({
   category: z.string().trim().min(1, "Category is required").max(60, "Category is too long"),
   type: z.enum(['income', 'expense']),
   userId: z.string().optional(), // Optional because it's added by the service
-  createdAt: z.any().optional(), // Firebase server timestamp
+  createdAt: z.any().optional(), // set by the database
 });
 
 export const transactionInputSchema = transactionSchema.omit({ 

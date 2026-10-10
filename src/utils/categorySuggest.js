@@ -2,7 +2,7 @@
  * Suggests a category from a free-text description. The user's own history
  * wins (how they classified similar movements before); a small keyword list
  * of common Italian merchants covers the first uses. Everything runs locally
- * on data already loaded, so it costs no extra Firestore reads.
+ * on data already loaded, so it costs no extra database reads.
  */
 
 const STOPWORDS = new Set([

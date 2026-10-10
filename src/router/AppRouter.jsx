@@ -19,6 +19,7 @@ const loaders = {
   register: () => import("../components/Auth/Register"),
   verifyEmail: () => import("../components/Auth/VerifyEmail"),
   forgotPassword: () => import("../components/Auth/ForgotPassword"),
+  resetPassword: () => import("../components/Auth/ResetPassword"),
   legal: () => import("../components/Legal/LegalPage"),
 };
 
@@ -49,6 +50,7 @@ const routeDefinitions = [
   { path: "/login", page: "login", access: "public-only" },
   { path: "/register", page: "register", access: "public-only" },
   { path: "/forgot-password", page: "forgotPassword", access: "public-only" },
+  { path: "/reset-password", page: "resetPassword", access: "public" },
   { path: "/verify-email", page: "verifyEmail", access: "authenticated-unverified" },
   { path: "/privacy", page: "legal", access: "public" },
   { path: "/terms", page: "legal", access: "public" },

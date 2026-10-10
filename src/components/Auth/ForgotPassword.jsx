@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { sendPasswordResetEmail } from "firebase/auth";
-import { auth } from "../../utils/firebaseAuth";
 import { Link } from "../../router/RouterProvider";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -18,7 +16,8 @@ const ForgotPassword = () => {
     event.preventDefault();
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email.trim().toLowerCase());
+      const { sendPasswordReset } = await import("../../services/authService.js");
+      await sendPasswordReset(email);
     } catch (error) {
       // Show the same confirmation either way so the form cannot be used to
       // discover which addresses are registered.

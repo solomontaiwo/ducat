@@ -1,3 +1,5 @@
+> **Superato.** Questa guida descrive la vecchia configurazione Firebase. Per la versione attuale vedi [SUPABASE.md](SUPABASE.md).
+
 # Configurazione manuale e runbook di rilascio
 
 > Progetto: Soldi Sotto

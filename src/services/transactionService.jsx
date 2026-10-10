@@ -1,34 +1,16 @@
-import {
-  Timestamp,
-  collection,
-  deleteDoc,
-  documentId,
-  doc,
-  getAggregateFromServer,
-  getCountFromServer,
-  getDoc,
-  getDocs,
-  sum,
-  count as countAggregate,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  startAfter,
-  updateDoc,
-  where,
-} from "firebase/firestore";
-import { firestore } from "../utils/firebaseFirestore.js";
+import { supabase, toDataError, unwrap } from "../utils/supabaseClient.js";
+import { emitLocalChange, watchTable } from "./changeEvents.js";
 import { transactionV2InputSchema, transactionV2PatchSchema } from "../schemas/transaction.jsx";
-import { DEFAULT_CURRENCY, getTransactionAmountMinor, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
+import { DEFAULT_CURRENCY, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
 import { compareTransactions } from "../utils/transactionOrder.js";
-import { coerceDateKey, dateKeyToDate, dateKeyToUtcDate, dateToDateKey, nextDateKeyUtcDate } from "../utils/dateUtils.js";
+import { coerceDateKey, dateKeyToDate } from "../utils/dateUtils.js";
 
-const COLLECTION_NAME = "transactions";
+const TABLE = "transactions";
+const COLUMNS = "id, user_id, type, amount_minor, currency, description, category, date_key, schema_version, created_at, updated_at";
 const DEFAULT_TTL_MS = 3 * 60 * 1000;
 const DEFAULT_PAGE_SIZE = 40;
+// PostgREST returns at most 1000 rows per request on Supabase by default.
+const BATCH_SIZE = 1000;
 const dataCache = new Map();
 const countCache = new Map();
 const totalsCache = new Map();
@@ -39,42 +21,46 @@ const safeId = (value) => String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").sli
 
 export { compareTransactions };
 
-const normalizeDocument = (snapshot) => {
-  const raw = snapshot.data();
-  const amountMinor = getTransactionAmountMinor(raw);
-  const dateKey = raw.dateKey || dateToDateKey(raw.date);
+/** A database row in the shape the app uses everywhere. */
+const normalizeRow = (row) => {
+  const amountMinor = Number(row.amount_minor);
+  if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) throw new Error("Invalid amount");
+  const dateKey = String(row.date_key).slice(0, 10);
   return {
-    ...raw,
-    id: snapshot.id,
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
     amountMinor,
     amount: minorToMajor(amountMinor),
-    currency: raw.currency || DEFAULT_CURRENCY,
+    currency: row.currency || DEFAULT_CURRENCY,
+    description: row.description,
+    category: row.category,
     dateKey,
     date: dateKeyToDate(dateKey),
-    schemaVersion: raw.schemaVersion || 1,
+    schemaVersion: row.schema_version || 2,
+    createdAt: row.created_at ? new Date(row.created_at) : null,
+    updatedAt: row.updated_at ? new Date(row.updated_at) : null,
   };
 };
 
-const normalizeSnapshot = (snapshot, onInvalid) => snapshot.docs.flatMap((item) => {
+const normalizeRows = (rows, onInvalid) => rows.flatMap((row) => {
   try {
-    return [normalizeDocument(item)];
+    return [normalizeRow(row)];
   } catch (error) {
-    onInvalid?.({ id: item.id, code: "invalid-transaction", error });
+    onInvalid?.({ id: row.id, code: "invalid-transaction", error });
     return [];
   }
 }).sort(compareTransactions);
 
-const buildConstraints = ({ userId, type = "all", startDate, endDate, ordered = true }) => {
-  const constraints = [where("userId", "==", userId)];
-  if (type !== "all") constraints.push(where("type", "==", type));
-  if (startDate) constraints.push(where("date", ">=", Timestamp.fromDate(dateKeyToUtcDate(coerceDateKey(startDate)))));
-  if (endDate) constraints.push(where("date", "<", Timestamp.fromDate(nextDateKeyUtcDate(endDate))));
-  if (ordered) {
-    constraints.push(orderBy("date", "desc"));
-    constraints.push(orderBy(documentId(), "desc"));
-  }
-  return constraints;
+const applyFilters = (builder, { userId, type = "all", startDate, endDate }) => {
+  let query = builder.eq("user_id", userId);
+  if (type !== "all") query = query.eq("type", type);
+  if (startDate) query = query.gte("date_key", coerceDateKey(startDate));
+  if (endDate) query = query.lte("date_key", coerceDateKey(endDate));
+  return query;
 };
+
+const orderNewestFirst = (query) => query.order("date_key", { ascending: false }).order("id", { ascending: false });
 
 const queryKey = ({ userId, type = "all", startDate, endDate }) => [
   userId,
@@ -100,11 +86,26 @@ const invalidateCache = () => {
   inFlight.clear();
 };
 
-const isAlreadyCreated = async (reference, userId, error) => {
-  if (error?.code !== "permission-denied") return false;
+const afterWrite = () => {
+  invalidateCache();
+  emitLocalChange(TABLE);
+};
+
+/** Every row of a query, fetched in batches. */
+const selectAll = async (filters) => {
+  const rows = [];
+  for (let from = 0; ; from += BATCH_SIZE) {
+    const batch = unwrap(await orderNewestFirst(applyFilters(supabase.from(TABLE).select(COLUMNS), filters))
+      .range(from, from + BATCH_SIZE - 1));
+    rows.push(...batch);
+    if (batch.length < BATCH_SIZE) return rows;
+  }
+};
+
+const isAlreadyCreated = async (id) => {
   try {
-    const existing = await getDoc(reference);
-    return existing.exists() && existing.data().userId === userId;
+    const existing = unwrap(await supabase.from(TABLE).select("id").eq("id", id).maybeSingle());
+    return Boolean(existing);
   } catch {
     return false;
   }
@@ -119,30 +120,38 @@ const toV2Input = (data) => transactionV2InputSchema.parse({
   type: data.type,
 });
 
-const toPersistedFields = (input) => ({
-  ...input,
-  amount: minorToMajor(input.amountMinor),
-  date: Timestamp.fromDate(dateKeyToUtcDate(input.dateKey)),
-  schemaVersion: 2,
-  updatedAt: serverTimestamp(),
-});
+const toRow = (input) => {
+  const row = {};
+  if (input.amountMinor !== undefined) row.amount_minor = input.amountMinor;
+  if (input.currency !== undefined) row.currency = input.currency;
+  if (input.description !== undefined) row.description = input.description;
+  if (input.dateKey !== undefined) row.date_key = input.dateKey;
+  if (input.category !== undefined) row.category = input.category;
+  if (input.type !== undefined) row.type = input.type;
+  return row;
+};
+
+const notFound = () => Object.assign(new Error("Transaction not found"), { code: "permission-denied" });
 
 export const TransactionService = {
+  /** The most recently created transactions, kept current while subscribed. */
   subscribeToRecent: (userId, limitCount, onUpdate, onError, onInvalid) => {
-    const recentQuery = query(
-      collection(firestore, COLLECTION_NAME),
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc"),
-      limit(limitCount)
-    );
-
-    return onSnapshot(recentQuery, (snapshot) => {
-      invalidateCache();
-      onUpdate(normalizeSnapshot(snapshot, onInvalid), snapshot.docChanges().map((change) => ({
-        type: change.type,
-        id: change.doc.id,
-      })));
-    }, onError);
+    let active = true;
+    const reload = async () => {
+      try {
+        const rows = unwrap(await supabase.from(TABLE).select(COLUMNS)
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(limitCount));
+        if (!active) return;
+        invalidateCache();
+        onUpdate(normalizeRows(rows, onInvalid), []);
+      } catch (error) {
+        if (active) onError?.(error);
+      }
+    };
+    const stop = watchTable({ supabase, table: TABLE, userId, reload });
+    return () => { active = false; stop(); };
   },
 
   fetchRange: async (userId, options = {}) => {
@@ -162,13 +171,9 @@ export const TransactionService = {
 
     const load = () => dedupe(`range:${key}`, async () => {
       const revision = cacheRevision;
-      const rangeQuery = query(
-        collection(firestore, COLLECTION_NAME),
-        ...buildConstraints({ userId, type, startDate, endDate })
-      );
-      const snapshot = await getDocs(rangeQuery);
+      const rows = await selectAll({ userId, type, startDate, endDate });
       if (revision !== cacheRevision) return load();
-      const data = normalizeSnapshot(snapshot, onInvalid);
+      const data = normalizeRows(rows, onInvalid);
       dataCache.set(key, { data, cachedAt: Date.now() });
       return data;
     });
@@ -182,21 +187,26 @@ export const TransactionService = {
 
   fetchAll: (userId, options = {}) => TransactionService.fetchRange(userId, options),
 
+  /** Keyset pagination, newest first. The cursor is the last row returned. */
   fetchPage: async (userId, { pageSize = DEFAULT_PAGE_SIZE, cursor = null, onInvalid, type = "all", startDate, endDate } = {}) => {
-    const constraints = buildConstraints({ userId, type, startDate, endDate });
-    if (cursor) constraints.push(startAfter(cursor));
-    constraints.push(limit(pageSize));
-    const snapshot = await getDocs(query(collection(firestore, COLLECTION_NAME), ...constraints));
+    let query = orderNewestFirst(applyFilters(supabase.from(TABLE).select(COLUMNS), { userId, type, startDate, endDate }));
+    if (cursor?.dateKey && cursor?.id) {
+      const dateKey = coerceDateKey(cursor.dateKey);
+      const id = safeId(cursor.id);
+      query = query.or(`date_key.lt.${dateKey},and(date_key.eq.${dateKey},id.lt.${id})`);
+    }
+    const rows = unwrap(await query.limit(pageSize));
+    const last = rows.at(-1);
     return {
-      items: normalizeSnapshot(snapshot, onInvalid),
-      nextCursor: snapshot.docs.at(-1) || null,
-      hasMore: snapshot.size === pageSize,
+      items: normalizeRows(rows, onInvalid),
+      nextCursor: last ? { dateKey: String(last.date_key).slice(0, 10), id: last.id } : null,
+      hasMore: rows.length === pageSize,
     };
   },
 
   /**
-   * Count and sums for a period computed by Firestore (aggregation queries),
-   * so the summary is right even when only the first page is loaded.
+   * Count and sums for a period computed by the database, so the summary is
+   * right even when only the first page is loaded.
    */
   getTotals: async (userId, options = {}) => {
     const { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, type = "all", startDate, endDate } = options;
@@ -204,22 +214,20 @@ export const TransactionService = {
     const cached = totalsCache.get(key);
     if (!forceRefresh && cached && Date.now() - cached.cachedAt < ttlMs) return cached.totals;
 
-    const aggregateFor = async (kind) => {
-      if (type !== "all" && type !== kind) return { count: 0, amountMinor: 0 };
-      const aggregateQuery = query(
-        collection(firestore, COLLECTION_NAME),
-        ...buildConstraints({ userId, type: kind, startDate, endDate, ordered: false })
-      );
-      const snapshot = await getAggregateFromServer(aggregateQuery, { count: countAggregate(), amountMinor: sum("amountMinor") });
-      const data = snapshot.data();
-      return { count: data.count || 0, amountMinor: data.amountMinor || 0 };
-    };
-
     const load = () => dedupe(`totals:${key}`, async () => {
       const revision = cacheRevision;
-      const [income, expense] = await Promise.all([aggregateFor("income"), aggregateFor("expense")]);
+      const rows = unwrap(await supabase.rpc("transaction_totals", {
+        p_type: type,
+        p_start: startDate ? coerceDateKey(startDate) : null,
+        p_end: endDate ? coerceDateKey(endDate) : null,
+      }));
       if (revision !== cacheRevision) return load();
-      const totals = { count: income.count + expense.count, incomeMinor: income.amountMinor, expenseMinor: expense.amountMinor };
+      const row = (Array.isArray(rows) ? rows[0] : rows) || {};
+      const totals = {
+        count: Number(row.count || 0),
+        incomeMinor: Number(row.income_minor || 0),
+        expenseMinor: Number(row.expense_minor || 0),
+      };
       totalsCache.set(key, { totals, cachedAt: Date.now() });
       return totals;
     });
@@ -234,62 +242,44 @@ export const TransactionService = {
 
     const load = () => dedupe(`count:${key}`, async () => {
       const revision = cacheRevision;
-      const countQuery = query(
-        collection(firestore, COLLECTION_NAME),
-        ...buildConstraints({ userId, type, startDate, endDate, ordered: false })
+      const response = await applyFilters(
+        supabase.from(TABLE).select("id", { count: "exact", head: true }),
+        { userId, type, startDate, endDate }
       );
-      const snapshot = await getCountFromServer(countQuery);
+      if (response.error) throw toDataError(response.error);
       if (revision !== cacheRevision) return load();
-      const count = snapshot.data().count;
+      const count = response.count || 0;
       countCache.set(key, { count, cachedAt: Date.now() });
       return count;
     });
     return load();
   },
 
-  /** Number of transactions per category (count aggregations, ~1 read each). */
-  countByCategory: async (userId, categories) => {
-    const entries = await Promise.all(categories.map(async (category) => {
-      const snapshot = await getCountFromServer(query(
-        collection(firestore, COLLECTION_NAME),
-        where("userId", "==", userId),
-        where("category", "==", category)
-      ));
-      return [category, snapshot.data().count];
-    }));
-    return Object.fromEntries(entries);
+  /** Number of transactions per category, computed by the database. */
+  countByCategory: async (_userId, categories) => {
+    const rows = unwrap(await supabase.rpc("transaction_category_counts"));
+    const counts = new Map((rows || []).map((row) => [row.category, Number(row.count)]));
+    return Object.fromEntries(categories.map((category) => [category, counts.get(category) || 0]));
   },
 
   /** Date of the oldest transaction, or null when there is none. */
   getFirstDate: async (userId) => {
-    const snapshot = await getDocs(query(
-      collection(firestore, COLLECTION_NAME),
-      where("userId", "==", userId),
-      orderBy("date", "asc"),
-      limit(1)
-    ));
-    if (snapshot.empty) return null;
-    return normalizeDocument(snapshot.docs[0]).date;
+    const rows = unwrap(await supabase.from(TABLE).select("date_key")
+      .eq("user_id", userId)
+      .order("date_key", { ascending: true })
+      .limit(1));
+    return rows.length ? dateKeyToDate(String(rows[0].date_key).slice(0, 10)) : null;
   },
 
   add: async (userId, data, { requestId = crypto.randomUUID() } = {}) => {
     const input = toV2Input(data);
-    const reference = doc(firestore, COLLECTION_NAME, `${safeId(userId)}_${safeId(requestId)}`);
-    try {
-      await setDoc(reference, {
-        userId,
-        ...toPersistedFields(input),
-        createdAt: serverTimestamp(),
-      });
-    } catch (error) {
-      // A retry reuses the same document ID. If the first attempt actually
-      // reached the server, this second write is evaluated as an update and the
-      // rules reject it (createdAt must not change). The data is already saved,
-      // so confirm that instead of reporting a failure.
-      if (!(await isAlreadyCreated(reference, userId, error))) throw error;
-    }
-    invalidateCache();
-    return reference;
+    const id = `${safeId(userId)}_${safeId(requestId)}`;
+    const { error } = await supabase.from(TABLE).insert({ id, user_id: userId, ...toRow(input), schema_version: 2 });
+    // A retry reuses the same id. If the first attempt actually reached the
+    // server the row is already there: confirm that instead of failing.
+    if (error && !(error.code === "23505" && await isAlreadyCreated(id))) throw toDataError(error);
+    afterWrite();
+    return { id };
   },
 
   update: async (id, data) => {
@@ -303,31 +293,20 @@ export const TransactionService = {
     if (data.category !== undefined) rawPatch.category = data.category;
     if (data.type !== undefined) rawPatch.type = data.type;
     const patch = transactionV2PatchSchema.parse(rawPatch);
-    const persistedPatch = { schemaVersion: 2, updatedAt: serverTimestamp() };
-    if (patch.amountMinor !== undefined) {
-      persistedPatch.amountMinor = patch.amountMinor;
-      persistedPatch.amount = minorToMajor(patch.amountMinor);
-    }
-    if (patch.currency !== undefined) persistedPatch.currency = patch.currency;
-    if (patch.description !== undefined) persistedPatch.description = patch.description;
-    if (patch.dateKey !== undefined) {
-      persistedPatch.dateKey = patch.dateKey;
-      persistedPatch.date = Timestamp.fromDate(dateKeyToUtcDate(patch.dateKey));
-    }
-    if (patch.category !== undefined) persistedPatch.category = patch.category;
-    if (patch.type !== undefined) persistedPatch.type = patch.type;
 
-    await updateDoc(doc(firestore, COLLECTION_NAME, id), persistedPatch);
-    invalidateCache();
+    const rows = unwrap(await supabase.from(TABLE).update({ ...toRow(patch), schema_version: 2 }).eq("id", id).select("id"));
+    if (!rows.length) throw notFound();
+    afterWrite();
   },
 
   delete: async (id) => {
-    await deleteDoc(doc(firestore, COLLECTION_NAME, id));
-    invalidateCache();
+    const rows = unwrap(await supabase.from(TABLE).delete().eq("id", id).select("id"));
+    if (!rows.length) throw notFound();
+    afterWrite();
   },
 
   invalidateCache,
-  normalizeDocument,
+  normalizeRow,
   toV2Input,
   DEFAULT_TTL_MS,
   DEFAULT_PAGE_SIZE,

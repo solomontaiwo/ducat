@@ -27,12 +27,6 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Setup Java for Firebase Emulator
-        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
-        with:
-          distribution: temurin
-          java-version: 21
-
       - name: Install dependencies
         run: npm ci
 
@@ -42,8 +36,8 @@ jobs:
       - name: Unit and component tests (with coverage floor)
         run: npm run test:coverage
 
-      - name: Firestore rules tests
-        run: npm run test:rules
+      - name: Database schema and row level security tests
+        run: npm run test:db
 
       - name: Runtime dependency audit
         run: npm audit --omit=dev --audit-level=high
@@ -51,15 +45,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'demo-api-key' }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || 'demo-soldi-sotto.firebaseapp.com' }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || 'demo-soldi-sotto' }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET || 'demo-soldi-sotto.appspot.com' }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || '123456789' }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID || '1:123456789:web:test' }}
-          VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
-          VITE_FIREBASE_APPCHECK_PROVIDER: enterprise
-          VITE_FIREBASE_FUNCTIONS_REGION: europe-west1
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://demo-soldi-sotto.supabase.co' }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_demo' }}
 
       - name: Bundle budget
         run: npm run check:bundle
@@ -70,45 +57,12 @@ jobs:
       - name: End-to-end tests
         run: npm run test:e2e
         env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'demo-api-key' }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || 'demo-soldi-sotto.firebaseapp.com' }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || 'demo-soldi-sotto' }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET || 'demo-soldi-sotto.appspot.com' }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || '123456789' }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID || '1:123456789:web:test' }}
-          VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
-          VITE_FIREBASE_APPCHECK_PROVIDER: enterprise
-          VITE_FIREBASE_FUNCTIONS_REGION: europe-west1
-
-  functions-quality:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: functions/package-lock.json
-
-      - name: Install Function dependencies
-        run: npm ci --prefix functions
-
-      - name: Check and test Functions
-        run: |
-          node --check functions/index.js
-          node --check functions/lib/deleteAccount.js
-          node --check functions/scripts/migrate-transactions-v2.mjs
-          node --test "functions/test/*.test.js"
-
-      - name: Function runtime dependency audit
-        run: npm audit --prefix functions --omit=dev --audit-level=high
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://demo-soldi-sotto.supabase.co' }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_demo' }}
 
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [quality, functions-quality]
+    needs: [quality]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -136,15 +90,8 @@ jobs:
       - name: Build production artifact
         run: npm run build
         env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
-          VITE_FIREBASE_APPCHECK_PROVIDER: enterprise
-          VITE_FIREBASE_FUNCTIONS_REGION: europe-west1
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION }}
 
       - name: Upload artifact

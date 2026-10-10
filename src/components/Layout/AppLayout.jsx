@@ -32,11 +32,11 @@ const AppLayout = ({ children }) => {
   const addContext = useMemo(() => ({ openAddTransaction, canAdd: !addDisabled }), [openAddTransaction, addDisabled]);
 
   const sendVerificationEmail = async () => {
-    if (!currentUser) return;
+    if (!currentUser?.email) return;
     setIsSendingVerification(true);
     try {
-      const { sendEmailVerification } = await import("firebase/auth");
-      await sendEmailVerification(currentUser);
+      const { resendVerificationEmail } = await import("../../services/authService.js");
+      await resendVerificationEmail(currentUser.email);
     } catch (error) {
       console.error("Unable to send verification email", error);
     } finally {

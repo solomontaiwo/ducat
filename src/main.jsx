@@ -21,7 +21,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <ThemeProvider>
       <NotificationProvider>
         {/* The router sits above the data providers: switching between demo and
-            Firestore mode remounts them, and must not reset the current route. */}
+            account mode remounts them, and must not reset the current route. */}
         <RouterProvider basename="/soldi-sotto">
           <AuthProvider>
             <UnifiedTransactionProvider>

@@ -8,14 +8,13 @@ const policy = html.match(/http-equiv="Content-Security-Policy"\s+content="([^"]
 const directive = (name) => policy.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name} `)) ?? "";
 
 describe("Content Security Policy", () => {
-  it("allows the callable Cloud Functions endpoint used by account deletion", () => {
-    expect(directive("connect-src")).toContain("https://*.cloudfunctions.net");
+  it("allows the Supabase API and Realtime endpoints", () => {
+    expect(directive("connect-src")).toContain("https://*.supabase.co");
+    expect(directive("connect-src")).toContain("wss://*.supabase.co");
   });
 
-  it("allows the reCAPTCHA origins required by App Check", () => {
-    expect(directive("script-src")).toContain("https://www.google.com/recaptcha/");
-    expect(directive("frame-src")).toContain("https://www.google.com/recaptcha/");
-    expect(directive("connect-src")).toContain("https://www.google.com/recaptcha/");
+  it("no longer allows the Firebase and reCAPTCHA origins", () => {
+    expect(policy).not.toMatch(/googleapis|firebase|recaptcha|gstatic|cloudfunctions/);
   });
 
   it("stays restrictive for everything else", () => {
@@ -23,5 +22,6 @@ describe("Content Security Policy", () => {
     expect(directive("object-src")).toBe("object-src 'none'");
     expect(directive("script-src")).not.toContain("'unsafe-inline'");
     expect(directive("script-src")).not.toContain("'unsafe-eval'");
+    expect(directive("frame-src")).toBe("frame-src 'none'");
   });
 });

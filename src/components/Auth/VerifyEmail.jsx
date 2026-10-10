@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { sendEmailVerification } from "firebase/auth";
 import { useAuth } from "../../context/AuthProvider";
 import { useNavigate } from "../../router/RouterProvider";
 import { useNotification } from "../../utils/notificationUtils";
@@ -44,10 +43,11 @@ const VerifyEmail = () => {
   };
 
   const resend = async () => {
-    if (!currentUser || cooldownSeconds > 0) return;
+    if (!currentUser?.email || cooldownSeconds > 0) return;
     setSending(true);
     try {
-      await sendEmailVerification(currentUser);
+      const { resendVerificationEmail } = await import("../../services/authService.js");
+      await resendVerificationEmail(currentUser.email);
       setCooldownSeconds(RESEND_COOLDOWN_MS / 1000);
       notification.success(t("auth.verifyEmail.sent"));
     } catch (error) {

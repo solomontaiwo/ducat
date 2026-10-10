@@ -37,7 +37,7 @@
     "emailAddress": "Indirizzo Email",
     "newUsernamePlaceholder": "Inserisci nuovo nome utente",
     "account": "Account",
-    "accountInfo": "Le preferenze vengono salvate nel browser; i dati dell’account sono protetti dalle regole di accesso Firebase.",
+    "accountInfo": "Le preferenze vengono salvate nel browser; i dati dell’account sono protetti dalle regole di accesso del database (Supabase).",
     "backToDashboard": "Torna alla Dashboard",
     "editUsername": "Modifica Nome Utente",
     "newUsername": "Nuovo Nome Utente",
@@ -551,7 +551,7 @@
     },
     "verifyEmail": {
       "title": "Verifica la tua email",
-      "description": "Abbiamo inviato un link a {{email}}. Aprilo, poi torna qui e controlla la verifica.",
+      "description": "Abbiamo inviato un link a {{email}}. Aprilo per attivare l’account: ti porterà direttamente nell’app.",
       "check": "Ho verificato l’email",
       "checking": "Controllo in corso…",
       "resend": "Invia di nuovo",
@@ -564,6 +564,19 @@
       "sent": "Email di verifica inviata.",
       "tooManyRequests": "Troppi tentativi. Attendi prima di riprovare.",
       "sendFailed": "Invio non riuscito. Riprova più tardi."
+    },
+    "resetPassword": {
+      "title": "Nuova password",
+      "prompt": "Scegli una nuova password per il tuo account.",
+      "newPassword": "Nuova password",
+      "confirmPassword": "Conferma password",
+      "submit": "Salva password",
+      "saving": "Salvataggio…",
+      "success": "Password aggiornata.",
+      "error": "Impossibile aggiornare la password. Riprova.",
+      "samePassword": "La nuova password deve essere diversa da quella attuale.",
+      "invalidLink": "Il link non è valido o è scaduto. Chiedine uno nuovo.",
+      "requestNew": "Richiedi un nuovo link"
     }
   },
   "validation": {

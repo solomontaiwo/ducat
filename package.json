@@ -13,21 +13,20 @@
     "lint": "eslint .",
     "test": "vitest run --config vitest.config.js",
     "test:watch": "vitest --config vitest.config.js",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-soldi-sotto \"vitest run --config vitest.rules.config.js\"",
     "test:e2e": "playwright test",
-    "test:functions": "node --check functions/index.js && node --check functions/lib/deleteAccount.js && node --check functions/scripts/migrate-transactions-v2.mjs && node --test \"functions/test/*.test.js\"",
-    "test:all": "npm run lint && npm run test:coverage && npm run test:rules && npm run test:functions && npm audit --omit=dev --audit-level=high && npm run build && npm run check:bundle && npm run test:e2e",
+    "test:all": "npm run lint && npm run test:coverage && npm run test:db && npm audit --omit=dev --audit-level=high && npm run build && npm run check:bundle && npm run test:e2e",
     "preview": "vite preview",
-    "test:coverage": "vitest run --config vitest.config.js --coverage"
+    "test:coverage": "vitest run --config vitest.config.js --coverage",
+    "test:db": "vitest run --config vitest.db.config.js"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource-variable/figtree": "^5.3.0",
     "@radix-ui/react-dialog": "^1.1.23",
+    "@supabase/supabase-js": "^2.117.3",
     "@use-gesture/react": "^10.3.1",
     "class-variance-authority": "^0.7.1",
     "date-fns": "^4.1.0",
-    "firebase": "^12.18.0",
     "framer-motion": "^13.2.0",
     "i18next": "^26.4.2",
     "i18next-browser-languagedetector": "^8.2.0",
@@ -46,8 +45,8 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
+    "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "^9.20.0",
-    "@firebase/rules-unit-testing": "^5.0.1",
     "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
@@ -60,7 +59,6 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.19",
-    "firebase-tools": "^15.25.1",
     "globals": "^15.15.0",
     "jsdom": "^30.0.1",
     "postcss": "^8.5.25",
@@ -75,10 +73,5 @@
   },
   "engines": {
     "node": ">=22 <25"
-  },
-  "overrides": {
-    "@firebase/firestore": {
-      "@grpc/grpc-js": "^1.14.4"
-    }
   }
 }
