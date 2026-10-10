@@ -185,53 +185,67 @@
     "profileAndSettings": "Profilo e impostazioni"
   },
   "landing": {
-    "heroTitle": "Soldi Sotto",
-    "heroSubtitle": "La tua finanza personale sotto controllo. Gestisci entrate e uscite, visualizza statistiche dettagliate e prendi decisioni informate per il tuo futuro finanziario.",
-    "tryDemo": "Prova demo gratuita",
-    "register": "Registrati gratis",
+    "badge": "Nessuna pubblicità · i tuoi dati restano tuoi",
+    "headlineStart": "I tuoi soldi,",
+    "headlineEnd": "sotto controllo.",
+    "lead": "Registri una spesa in 3 secondi. Soldi Sotto ti dice quanto ti resta, dove vanno i soldi e cosa sta per arrivare.",
+    "register": "Crea il tuo account",
+    "tryDemo": "Prova la demo",
     "login": "Accedi",
-    "mainFeatures": "Funzionalità Principali",
-    "mainFeaturesDescription": "Tutto quello che ti serve per gestire le tue finanze in modo professionale",
-    "startToday": "Inizia Oggi Stesso",
-    "chooseHowToStart": "Scegli come iniziare il tuo viaggio verso la libertà finanziaria",
-    "demo": "Demo Gratuita",
-    "premium": "Account Completo",
-    "free": "Gratis",
-    "demoFeatures": [
-      "✓ Fino a 10 movimenti demo",
-      "✓ Tutte le funzionalità base",
-      "✓ Visualizzazione statistiche",
-      "✓ Nessuna registrazione richiesta"
-    ],
-    "premiumFeatures": [
-      "✓ Movimenti illimitati",
-      "✓ Export PDF avanzato",
-      "✓ Statistiche dettagliate",
-      "✓ Backup cloud sicuro",
-      "✓ Supporto prioritario"
-    ],
-    "heroBody": "Gestione completa di entrate e uscite, grafici nitidi e PDF professionali, pronta per web e mobile.",
-    "highlights": {
-      "mobile": "Ottimizzato per mobile",
-      "security": "Auth + cloud ready"
+    "demoNote": "La demo non chiede email: i dati restano sul tuo dispositivo.",
+    "sections": "Sezioni",
+    "previewLabel": "Anteprima della panoramica di Soldi Sotto",
+    "preview": {
+      "greeting": "Buongiorno, Giulia",
+      "month": "Ottobre 2026",
+      "split": "Casa 45% · Spesa 25% · Trasporti 18%",
+      "rent": "Affitto",
+      "suggestion": "«Netflix» → Abbonamenti",
+      "budgetTitle": "Budget Spesa",
+      "budgetValue": "320 € di 400 €"
     },
-    "features": {
-      "analyticsDesc": "Entrate, uscite e categorie a colpo d'occhio, mese per mese.",
-      "pdfDesc": "Esporta il periodo che ti serve in PDF o CSV.",
-      "securityTitle": "Dati al sicuro",
-      "securityDesc": "Accesso protetto e dati salvati nel cloud.",
-      "analyticsTitle": "Analisi chiare",
-      "pdfTitle": "Report PDF"
+    "how": {
+      "title": "Come funziona",
+      "addTitle": "Aggiungi in 3 secondi",
+      "addDesc": "Importo e descrizione: la categoria si sceglie da sola, imparando da come classifichi.",
+      "understandTitle": "Capisci dove vanno",
+      "understandDesc": "Quanto ti resta, le categorie che pesano di più e il confronto con il mese prima.",
+      "planTitle": "Pianifica senza pensarci",
+      "planDesc": "Affitto e abbonamenti si registrano da soli, i budget ti avvisano prima di sforare."
     },
-    "ctaTitle": "Pronto a Prendere il Controllo delle Tue Finanze?",
-    "ctaSubtitle": "Unisciti a migliaia di utenti che hanno già trasformato la loro gestione finanziaria",
+    "extras": {
+      "title": "Pensata per la vita vera",
+      "paydayTitle": "Mese da stipendio",
+      "paydayDesc": "Dal 27 al 26, se ti pagano a fine mese",
+      "searchTitle": "Cerca tutto",
+      "searchDesc": "Ogni movimento, da sempre",
+      "exportTitle": "PDF e CSV",
+      "exportDesc": "Per te o il commercialista",
+      "everywhereTitle": "Ovunque",
+      "everywhereDesc": "Telefono e computer, in chiaro e scuro"
+    },
+    "compare": {
+      "title": "Demo o account?",
+      "feature": "Funzione",
+      "demo": "Demo",
+      "account": "Account",
+      "features": "Tutte le funzioni",
+      "movements": "Movimenti",
+      "devices": "Su tutti i tuoi dispositivi",
+      "backup": "Backup nel cloud",
+      "unlimited": "illimitati",
+      "yes": "sì",
+      "no": "no",
+      "note": "Puoi passare dalla demo all'account quando vuoi."
+    },
+    "final": {
+      "title": "Il primo movimento ti prende 3 secondi.",
+      "demo": "oppure prova la demo →"
+    },
     "footer": {
       "privacy": "Privacy",
       "terms": "Termini d’uso"
-    },
-    "headline": "I tuoi soldi, sotto controllo.",
-    "lead": "Registra entrate e uscite in pochi secondi, scopri dove vanno i soldi e scarica report PDF. Sul telefono e sul computer.",
-    "previewLabel": "Anteprima della panoramica di Soldi Sotto"
+    }
   },
   "financialOverview": {
     "title": "Panoramica Finanziaria",

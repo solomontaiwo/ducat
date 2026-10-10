@@ -19,7 +19,7 @@ test("landing supports demo navigation without serious accessibility violations"
   });
   await page.goto(".");
   await expect(page).toHaveTitle(/Soldi Sotto/i);
-  const demo = page.getByRole("button", { name: /try demo|prova demo/i }).first();
+  const demo = page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first();
   await expect(demo).toBeVisible();
   await page.locator(".animate-page-in").evaluateAll((elements) =>
     Promise.all(elements.flatMap((element) => element.getAnimations().map((animation) => animation.finished)))
@@ -46,7 +46,7 @@ const ADD_BUTTON = /^(nuovo movimento|new transaction)$/i;
 test("transaction fields remain readable on mobile before and after focus", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Mobile form regression");
   await page.goto(".");
-  await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
+  await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
   await page.getByRole("button", { name: ADD_BUTTON }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -67,7 +67,7 @@ test("transaction fields remain readable on mobile before and after focus", asyn
 
 test("adds, edits and deletes a transaction in demo mode", async ({ page, isMobile }) => {
   await page.goto(".");
-  await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
+  await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
   await expect(page).toHaveURL(/\/transactions$/);
   await page.getByRole("button", { name: ADD_BUTTON }).first().click();
   const dialog = page.getByRole("dialog");
@@ -103,7 +103,7 @@ for (const colorScheme of ["light", "dark"]) {
   test(`app pages have no serious accessibility violations (${colorScheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme });
     await page.goto(".");
-    await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
+    await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
     await expect(page).toHaveURL(/\/transactions$/);
     for (const path of ["dashboard", "transactions", "analytics", "recurring", "budgets"]) {
       await page.evaluate((target) => {
@@ -121,7 +121,7 @@ for (const colorScheme of ["light", "dark"]) {
 test("pages never scroll horizontally on mobile, even with long descriptions", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Mobile layout regression");
   await page.goto(".");
-  await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
+  await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
   await page.getByRole("button", { name: ADD_BUTTON }).click();
   const dialog = page.getByRole("dialog");
   await dialog.locator("#transaction-amount").fill("1234,56");
@@ -144,7 +144,7 @@ test("pages never scroll horizontally on mobile, even with long descriptions", a
 test("a horizontal swipe does not change page on mobile", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Touch gesture regression");
   await page.goto(".");
-  await page.getByRole("button", { name: /try demo|prova demo/i }).first().click();
+  await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
   await expect(page).toHaveURL(/\/transactions$/);
   await page.locator("main h1").evaluate((element) => {
     const touch = (x) => new Touch({ identifier: 1, target: element, clientX: x, clientY: 200 });
@@ -163,7 +163,7 @@ const goTo = (page, path) => page.evaluate((target) => {
 
 test("suggests the category and turns a movement into a recurring one", async ({ page }) => {
   await page.goto(".");
-  await page.getByRole("button", { name: /prova demo/i }).first().click();
+  await page.getByRole("button", { name: /prova (la )?demo/i }).first().click();
   await page.getByRole("button", { name: ADD_BUTTON }).first().click();
   const dialog = page.getByRole("dialog");
   await dialog.locator("#transaction-amount").fill("13,99");
@@ -198,7 +198,7 @@ test("suggests the category and turns a movement into a recurring one", async ({
 
 test("budgets appear on the overview only once set", async ({ page }) => {
   await page.goto(".");
-  await page.getByRole("button", { name: /prova demo/i }).first().click();
+  await page.getByRole("button", { name: /prova (la )?demo/i }).first().click();
   await expect(page).toHaveURL(/\/transactions$/);
   await goTo(page, "dashboard");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -214,7 +214,7 @@ test("budgets appear on the overview only once set", async ({ page }) => {
 test("mobile header keeps the profile shortcut clear of other controls", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Mobile header");
   await page.goto(".");
-  await page.getByRole("button", { name: /prova demo/i }).first().click();
+  await page.getByRole("button", { name: /prova (la )?demo/i }).first().click();
   await expect(page).toHaveURL(/\/transactions$/);
   const nav = page.getByRole("navigation", { name: /navigazione principale/i });
   await expect(nav.getByRole("button")).toHaveCount(4);
@@ -238,7 +238,7 @@ test("mobile header keeps the profile shortcut clear of other controls", async (
 test("a payday month start moves the overview period", async ({ page }) => {
   await page.goto(".");
   await page.evaluate(() => localStorage.setItem("soldi-sotto-demo-preferences", JSON.stringify({ monthStartDay: 27 })));
-  await page.getByRole("button", { name: /prova demo/i }).first().click();
+  await page.getByRole("button", { name: /prova (la )?demo/i }).first().click();
   await expect(page).toHaveURL(/\/transactions$/);
   await goTo(page, "dashboard");
   await expect(page.getByTestId("cycle-range")).toHaveText(/27 \w+ – 26 \w+/);

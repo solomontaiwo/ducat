@@ -185,53 +185,67 @@
     "profileAndSettings": "Profile and settings"
   },
   "landing": {
-    "heroTitle": "Soldi Sotto",
-    "heroSubtitle": "Your personal finance under control. Manage income and expenses, view detailed statistics and make informed decisions for your financial future.",
-    "tryDemo": "Try demo for free",
-    "register": "Sign up for free",
-    "login": "Login",
-    "mainFeatures": "Main Features",
-    "mainFeaturesDescription": "Everything you need to manage your finances professionally",
-    "startToday": "Start Today",
-    "chooseHowToStart": "Choose how to start your journey to financial freedom",
-    "demo": "Free Demo",
-    "premium": "Full Account",
-    "free": "Free",
-    "demoFeatures": [
-      "✓ Up to 10 demo transactions",
-      "✓ All basic features",
-      "✓ View statistics",
-      "✓ No registration required"
-    ],
-    "premiumFeatures": [
-      "✓ Unlimited transactions",
-      "✓ Advanced PDF export",
-      "✓ Detailed analytics",
-      "✓ Secure cloud backup",
-      "✓ Priority support"
-    ],
-    "heroBody": "Complete income/expense tracking, clear charts and professional PDFs, ready for web and mobile.",
-    "highlights": {
-      "mobile": "Optimized for mobile",
-      "security": "Auth + cloud ready"
+    "badge": "No ads · your data stays yours",
+    "headlineStart": "Your money,",
+    "headlineEnd": "under control.",
+    "lead": "Log an expense in 3 seconds. Soldi Sotto tells you what's left, where your money goes and what's coming up.",
+    "register": "Create your account",
+    "tryDemo": "Try the demo",
+    "login": "Log in",
+    "demoNote": "The demo asks for no email: your data stays on your device.",
+    "sections": "Sections",
+    "previewLabel": "Preview of the Soldi Sotto overview",
+    "preview": {
+      "greeting": "Good morning, Giulia",
+      "month": "October 2026",
+      "split": "Home 45% · Groceries 25% · Transport 18%",
+      "rent": "Rent",
+      "suggestion": "“Netflix” → Subscriptions",
+      "budgetTitle": "Groceries budget",
+      "budgetValue": "€320 of €400"
     },
-    "features": {
-      "analyticsDesc": "Income, expenses and categories at a glance, month by month.",
-      "pdfDesc": "Export the period you need as PDF or CSV.",
-      "securityTitle": "Your data, safe",
-      "securityDesc": "Protected sign-in and data stored in the cloud.",
-      "analyticsTitle": "Clear insights",
-      "pdfTitle": "PDF reports"
+    "how": {
+      "title": "How it works",
+      "addTitle": "Add in 3 seconds",
+      "addDesc": "Amount and description: the category picks itself, learning from how you classify.",
+      "understandTitle": "See where it goes",
+      "understandDesc": "What's left, the categories that weigh most and the comparison with last month.",
+      "planTitle": "Plan without thinking",
+      "planDesc": "Rent and subscriptions record themselves, budgets warn you before you overspend."
     },
-    "ctaTitle": "Ready to Take Control of Your Finances?",
-    "ctaSubtitle": "Join thousands of users who have already transformed their financial management",
+    "extras": {
+      "title": "Made for real life",
+      "paydayTitle": "Payday months",
+      "paydayDesc": "From the 27th to the 26th, if you're paid at month end",
+      "searchTitle": "Search everything",
+      "searchDesc": "Every movement, ever",
+      "exportTitle": "PDF and CSV",
+      "exportDesc": "For you or your accountant",
+      "everywhereTitle": "Everywhere",
+      "everywhereDesc": "Phone and computer, light and dark"
+    },
+    "compare": {
+      "title": "Demo or account?",
+      "feature": "Feature",
+      "demo": "Demo",
+      "account": "Account",
+      "features": "Every feature",
+      "movements": "Movements",
+      "devices": "On all your devices",
+      "backup": "Cloud backup",
+      "unlimited": "unlimited",
+      "yes": "yes",
+      "no": "no",
+      "note": "You can move from the demo to an account whenever you like."
+    },
+    "final": {
+      "title": "Your first movement takes 3 seconds.",
+      "demo": "or try the demo →"
+    },
     "footer": {
       "privacy": "Privacy",
       "terms": "Terms of use"
-    },
-    "headline": "Your money, under control.",
-    "lead": "Record income and expenses in seconds, see where your money goes and download PDF reports. On your phone and your computer.",
-    "previewLabel": "Preview of the Soldi Sotto overview"
+    }
   },
   "financialOverview": {
     "title": "Financial Overview",
