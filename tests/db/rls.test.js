@@ -5,6 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 
 const root = join(import.meta.dirname, "..", "..");
 const migrationsDir = join(root, "supabase", "migrations");
+const initialSchema = readFileSync(join(migrationsDir, "20261010000000_initial_schema.sql"), "utf8");
 
 const ALICE = "00000000-0000-4000-8000-00000000000a";
 const BOB = "00000000-0000-4000-8000-00000000000b";
@@ -63,6 +64,44 @@ beforeEach(async () => {
       ($3, 'carol@example.com', null, '{}')`,
     [ALICE, BOB, CAROL]
   );
+});
+
+describe("initial schema migration", () => {
+  it("can be replayed without changing existing data or duplicating database objects", async () => {
+    await asUser(ALICE);
+    await insertTransaction(transaction());
+    await db.query(`insert into public.recurring (type, amount_minor, description, category, frequency, anchor_date_key)
+      values ('expense', 89000, 'Affitto', 'housing', 'monthly', '2026-01-05')`);
+    await db.query(`insert into public.budgets (limits) values ('{"food": 30000}')`);
+    await db.query(`insert into public.preferences (data) values ('{"monthStartDay": 27}')`);
+    await asAdmin();
+
+    const tables = ["profiles", "transactions", "recurring", "budgets", "preferences"];
+    const snapshot = async () => {
+      const result = {};
+      for (const table of tables) {
+        result[table] = (await db.query(`select * from public.${table} order by 1`)).rows;
+      }
+      result.policies = (await db.query("select * from pg_policies where schemaname = 'public' order by tablename, policyname")).rows;
+      result.triggers = (await db.query("select oid, tgname, tgrelid, tgfoid from pg_trigger where not tgisinternal order by oid")).rows;
+      result.indexes = (await db.query("select * from pg_indexes where schemaname = 'public' order by tablename, indexname")).rows;
+      result.realtime = (await db.query("select * from pg_publication_tables where pubname = 'supabase_realtime' order by tablename")).rows;
+      return result;
+    };
+    const before = await snapshot();
+    await db.exec(initialSchema);
+    await db.exec(initialSchema);
+    expect(await snapshot()).toEqual(before);
+
+    await asUser(BOB);
+    for (const table of tables) {
+      const ownerColumn = table === "profiles" ? "id" : "user_id";
+      expect((await db.query(`select * from public.${table} where ${ownerColumn} = $1`, [ALICE])).rows).toEqual([]);
+    }
+    await asAdmin();
+    await db.query("insert into auth.users (id, email) values ('00000000-0000-4000-8000-00000000000d', 'dave@example.com')");
+    expect((await db.query("select username from public.profiles where email = 'dave@example.com'")).rows).toEqual([{ username: "dave" }]);
+  });
 });
 
 describe("profiles", () => {

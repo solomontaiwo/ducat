@@ -14,9 +14,7 @@ Nel piano Free il progetto va in pausa dopo 7 giorni senza alcuna richiesta. Con
 
 ## 2. Crea lo schema
 
-**SQL Editor → New query**, incolla tutto il file `supabase/migrations/20261010000000_initial_schema.sql` e premi **Run**.
-
-In alternativa da terminale:
+Da terminale, così Supabase registra anche la migrazione applicata:
 
 ```bash
 npx supabase login
@@ -24,7 +22,29 @@ npx supabase link --project-ref <REF_DEL_PROGETTO>
 npx supabase db push
 ```
 
+In alternativa: **SQL Editor → New query**, incolla tutto il file `supabase/migrations/20261010000000_initial_schema.sql` e premi **Run**. Questa modalità crea lo schema ma non registra la migrazione nella cronologia usata dalla CLI e da Supabase Preview.
+
+La migrazione iniziale può essere rieseguita su uno schema equivalente: conserva tabelle e dati esistenti, aggiorna funzioni e trigger e aggiunge solo indici, policy e associazioni Realtime mancanti. Non converte tabelle con colonne o vincoli diversi: le modifiche successive allo schema vanno in nuove migrazioni.
+
 Controllo: in **Table Editor** devono esserci `profiles`, `transactions`, `recurring`, `budgets`, `preferences`, tutte con l'etichetta RLS attiva.
+
+### Supabase Preview: `relation "profiles" already exists`
+
+Questo errore indica che Preview sta applicando la migrazione iniziale a un database in cui `profiles` esiste già. Può succedere quando lo schema è stato creato dal SQL Editor e la cronologia delle migrazioni non è allineata.
+
+Dopo aver portato la migrazione corretta sul branch remoto, rilancia il controllo **Supabase Preview**. La riesecuzione su uno schema equivalente è coperta da `npm run test:db`, insieme alla conservazione dei dati e delle regole RLS.
+
+Se il progetto base è stato inizializzato manualmente, verifica che tutto lo schema corrisponda al file SQL (non solo le cinque tabelle: anche colonne, vincoli, indici, funzioni, trigger, policy RLS e Realtime), poi allinea la cronologia:
+
+```bash
+npx supabase login
+npx supabase link --project-ref <REF_DEL_PROGETTO>
+npx supabase migration list
+npx supabase migration repair 20261010000000 --status applied
+npx supabase migration list
+```
+
+`migration repair` registra la migrazione come applicata senza eseguirne il SQL. Usalo solo se lo schema completo è già presente e la versione manca dalla cronologia remota. Vedi la [documentazione Supabase sulla riparazione delle migrazioni](https://supabase.com/docs/reference/cli/supabase-migration-repair).
 
 ## 3. Autenticazione
 
