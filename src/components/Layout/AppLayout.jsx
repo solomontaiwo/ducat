@@ -47,16 +47,17 @@ const AppLayout = ({ children }) => {
   return (
     <AddTransactionContext.Provider value={addContext}>
       <div
-        className="flex min-h-screen flex-col bg-background text-foreground"
+        className="flex min-h-screen flex-col text-foreground"
         style={{ "--mobile-nav-height": `${BOTTOM_NAV_HEIGHT_PX}px` }}
       >
+        {showNavigation && <div className="ambient-backdrop" aria-hidden="true" />}
         {showNavigation && !isMobile && <Sidebar onAdd={openAddTransaction} addDisabled={addDisabled} />}
 
         <main
           className={
             showNavigation
-              ? `relative flex-1 overflow-x-hidden px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pl-[calc(248px+2.5rem)] md:pr-10 md:pt-8 md:pb-12 ${isMobile ? "app-content-safe-mobile" : ""}`
-              : "relative flex-1 overflow-x-hidden p-0"
+              ? `relative flex-1 overflow-x-clip px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pl-[calc(248px+2.5rem)] md:pr-10 md:pt-8 md:pb-12 ${isMobile ? "app-content-safe-mobile" : ""}`
+              : "relative flex-1 overflow-x-clip p-0"
           }
         >
           <div className="w-full space-y-5">

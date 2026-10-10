@@ -113,7 +113,7 @@ const Dashboard = () => {
 
   return (
     <div className="page-shell">
-      <header className="flex items-start justify-between gap-x-4 gap-y-1">
+      <header className="mobile-glass-header flex items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <p className="pl-1 text-sm font-semibold text-muted-foreground md:pl-0">
             {profileNameLoading

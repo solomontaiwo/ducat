@@ -392,7 +392,7 @@ const TransactionList = () => {
           </div>
         )}
 
-        <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <header className="mobile-glass-header flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <h1 className="pl-1 text-[1.75rem] font-extrabold leading-tight md:pl-0 md:text-3xl">{t("transactions.title")}</h1>
           <HeaderProfileButton />
           <div className="max-md:order-last max-md:basis-full">

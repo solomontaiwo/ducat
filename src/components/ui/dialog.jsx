@@ -39,19 +39,19 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
           // Mobile: full-screen modal covering the entire viewport; pad top for iOS notch/status bar
           "fixed inset-0 z-50 w-full rounded-none border-0",
           "[padding-top:env(safe-area-inset-top)] sm:pt-0",
-          "bg-card text-foreground shadow-2xl",
+          "glass-thick text-foreground",
           // Keep the full form visible immediately; only the backdrop fades.
           // Desktop (sm+): switch to centred modal
           "sm:inset-x-auto sm:inset-y-auto sm:left-1/2 sm:top-1/2",
           "sm:-translate-x-1/2 sm:-translate-y-1/2",
           "sm:w-[92vw] sm:max-w-lg",
-          "sm:rounded-3xl sm:border sm:border-border",
+          "sm:rounded-[28px]",
         ],
         // ── default variant ────────────────────────────────────────────────
         variant === "default" && [
           "fixed left-1/2 top-1/2 z-50 grid w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 gap-4",
-          "border border-border bg-card p-5 sm:p-6 shadow-xl text-foreground",
-          "rounded-3xl",
+          "glass-thick p-5 sm:p-6 text-foreground",
+          "rounded-[28px]",
         ],
         className
       )}

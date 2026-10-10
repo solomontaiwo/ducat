@@ -43,6 +43,15 @@
   --radius: 18px;
   --mobile-nav-height: 76px;
   --shadow-card: 0 1px 2px rgb(20 25 36 / 0.05), 0 8px 24px rgb(20 25 36 / 0.05);
+  /* Liquid glass: only for floating chrome (bars, header, sheets, toasts). */
+  --glass-bg: 255 255 255 / 0.72;
+  --glass-thick-bg: 248 250 255 / 0.86;
+  --glass-border: 255 255 255 / 0.7;
+  --glass-highlight: 255 255 255 / 0.9;
+  --glass-shadow: 0 10px 30px rgb(20 25 36 / 0.12);
+  --glass-active: 255 255 255 / 0.8;
+  --ambient-1: 221 83% 53% / 0.22;
+  --ambient-2: 262 83% 58% / 0.12;
 }
 
 .dark {
@@ -78,6 +87,14 @@
   --cat-4: 214 45% 38%;
   --cat-5: 220 9% 52%;
   --shadow-card: none;
+  --glass-bg: 28 33 46 / 0.72;
+  --glass-thick-bg: 24 29 40 / 0.88;
+  --glass-border: 255 255 255 / 0.12;
+  --glass-highlight: 255 255 255 / 0.16;
+  --glass-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+  --glass-active: 255 255 255 / 0.1;
+  --ambient-1: 217 91% 60% / 0.2;
+  --ambient-2: 262 83% 65% / 0.12;
 }
 
 @layer base {
@@ -112,9 +129,78 @@
     @apply rounded-[var(--radius)] border border-border bg-card text-card-foreground;
     box-shadow: var(--shadow-card);
   }
+  /*
+   * Liquid glass. Translucent, blurred material for the layer that floats
+   * above the content. Content (cards, lists, forms) stays solid so amounts
+   * keep their contrast. Falls back to an opaque surface when the browser
+   * cannot blur or the user asked for less transparency.
+   */
+  .glass,
+  .glass-thick,
+  .glass-tint {
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+  }
   .glass {
-    @apply rounded-[var(--radius)] border border-border bg-card;
-    box-shadow: var(--shadow-card);
+    background: rgb(var(--glass-bg));
+    border: 1px solid rgb(var(--glass-border));
+    box-shadow: inset 0 1px 0 rgb(var(--glass-highlight)), var(--glass-shadow);
+  }
+  .glass-thick {
+    background: rgb(var(--glass-thick-bg));
+    border: 1px solid rgb(var(--glass-border));
+    box-shadow: inset 0 1px 0 rgb(var(--glass-highlight)), 0 20px 50px rgb(20 25 36 / 0.2);
+    -webkit-backdrop-filter: blur(34px) saturate(180%);
+    backdrop-filter: blur(34px) saturate(180%);
+  }
+  .glass-tint {
+    background: linear-gradient(180deg, hsl(var(--primary) / 0.92), hsl(var(--hero) / 0.94));
+    border: 1px solid rgb(255 255 255 / 0.4);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 12px 28px hsl(var(--primary) / 0.35);
+  }
+  /* The pill that marks the active item inside a glass bar. */
+  .glass-active {
+    background: rgb(var(--glass-active));
+    box-shadow: inset 0 1px 0 rgb(var(--glass-highlight)), 0 2px 8px rgb(20 25 36 / 0.08);
+  }
+  /* Page headers float as glass on phones; on larger screens they stay flat. */
+  @media (max-width: 767px) {
+    .mobile-glass-header {
+      position: sticky;
+      top: calc(env(safe-area-inset-top) + 0.5rem);
+      z-index: 30;
+      margin-left: -0.375rem;
+      margin-right: -0.375rem;
+      padding: 0.75rem 0.75rem 0.75rem 1rem;
+      border-radius: 28px;
+      background: rgb(var(--glass-bg));
+      border: 1px solid rgb(var(--glass-border));
+      box-shadow: inset 0 1px 0 rgb(var(--glass-highlight)), var(--glass-shadow);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      backdrop-filter: blur(28px) saturate(180%);
+    }
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass, .mobile-glass-header { background: hsl(var(--card)); }
+    .glass-thick { background: hsl(var(--card)); }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .glass, .glass-thick, .mobile-glass-header {
+      background: hsl(var(--card));
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    .glass-tint { background: hsl(var(--primary)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+  /* Two soft colour fields behind the app, so the glass has something to refract. */
+  .ambient-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(60vmax 60vmax at -10% -15%, hsl(var(--ambient-1)), transparent 60%),
+      radial-gradient(50vmax 50vmax at 115% 45%, hsl(var(--ambient-2)), transparent 60%);
   }
   .page-shell {
     @apply mx-auto w-full max-w-6xl space-y-5 md:space-y-6;

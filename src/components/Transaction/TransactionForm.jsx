@@ -374,7 +374,7 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
         )}
       </div>
 
-      <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-card px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:flex-row sm:justify-end sm:pb-4">
+      <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:flex-row sm:justify-end sm:pb-4">
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel} className="sm:w-auto">
             {t("transactionModal.cancel")}

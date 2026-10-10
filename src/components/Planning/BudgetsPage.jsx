@@ -102,7 +102,7 @@ const BudgetsPage = () => {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5 md:space-y-6">
-      <header className="flex items-center gap-2">
+      <header className="mobile-glass-header flex items-center gap-2">
         <BackButton />
         <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("budgets.title")}</h1>
       </header>

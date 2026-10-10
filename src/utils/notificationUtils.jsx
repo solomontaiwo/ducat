@@ -58,7 +58,7 @@ export const NotificationProvider = ({ children }) => {
       case "warning":
         return "border-amber-500/40 bg-amber-500/20 text-amber-900 dark:text-amber-100";
       default:
-        return "border-border bg-card text-foreground";
+        return "glass text-foreground";
     }
   };
 
@@ -74,7 +74,7 @@ export const NotificationProvider = ({ children }) => {
             <div
               key={toast.id}
               role={toast.type === "danger" ? "alert" : "status"}
-              className={`animate-toast-in rounded-xl border px-4 py-3 shadow-lg backdrop-blur ${getToastStyles(toast.type)}`}
+              className={`animate-toast-in rounded-2xl border px-4 py-3 shadow-lg backdrop-blur-xl ${getToastStyles(toast.type)}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1 text-sm">

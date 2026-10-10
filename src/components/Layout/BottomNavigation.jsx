@@ -24,6 +24,7 @@ const BottomNavigation = ({ onAdd, addDisabled = false }) => {
     { icon: FiBarChart2, label: t("navbar.analytics"), path: "/analytics" },
   ];
   const barHeight = BOTTOM_NAV_HEIGHT_PX - 12;
+  const activeIndex = items.findIndex((item) => item.path === location.pathname);
 
   return (
     <nav
@@ -32,9 +33,16 @@ const BottomNavigation = ({ onAdd, addDisabled = false }) => {
     >
       <div className="mx-auto flex max-w-md items-center gap-2.5">
         <div
-          className="grid min-w-0 flex-1 grid-cols-3 items-center rounded-[26px] border border-border bg-card/95 px-1.5 shadow-[0_10px_30px_rgb(20_25_36/0.12)] backdrop-blur-xl dark:shadow-[0_10px_30px_rgb(0_0_0/0.5)]"
+          className="glass relative grid min-w-0 flex-1 grid-cols-3 items-center rounded-full px-1.5"
           style={{ height: `${barHeight}px` }}
         >
+          {activeIndex >= 0 && (
+            <span
+              aria-hidden="true"
+              className="glass-active absolute bottom-1.5 top-1.5 rounded-full transition-[left] duration-300 ease-out motion-reduce:transition-none"
+              style={{ width: "calc((100% - 12px) / 3)", left: `calc(6px + ${activeIndex} * (100% - 12px) / 3)` }}
+            />
+          )}
           {items.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -45,8 +53,8 @@ const BottomNavigation = ({ onAdd, addDisabled = false }) => {
                 onClick={() => navigate(item.path)}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "relative flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-semibold leading-none transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  "relative flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-full text-[11px] font-semibold leading-none transition-colors",
+                  isActive ? "text-accent-foreground" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <Icon className="h-[22px] w-[22px]" strokeWidth={isActive ? 2.4 : 2} aria-hidden="true" />
@@ -65,7 +73,7 @@ const BottomNavigation = ({ onAdd, addDisabled = false }) => {
           onClick={onAdd}
           disabled={addDisabled}
           aria-label={t("navbar.add")}
-          className="flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_24px_rgb(29_78_216/0.35)] transition active:scale-95 disabled:opacity-50 dark:shadow-[0_10px_24px_rgb(0_0_0/0.5)]"
+          className="glass-tint flex shrink-0 items-center justify-center rounded-full text-white transition active:scale-95 disabled:opacity-50"
           style={{ height: `${barHeight}px`, width: `${barHeight}px` }}
         >
           <FiPlus className="h-7 w-7" strokeWidth={2.6} aria-hidden="true" />
