@@ -300,11 +300,12 @@
     "overspentAmount": "{{amount}} overspent",
     "byCategory": "By category",
     "compare": {
-      "previousPeriod": "previous period",
       "up": "▲ {{pct}}% vs {{ref}}",
       "down": "▼ {{pct}}% vs {{ref}}",
       "flat": "= steady vs {{ref}}",
-      "categoryLabel": "Change compared with {{ref}}"
+      "categoryLabel": "Change compared with {{ref}}",
+      "detail": "Compared with {{range}}.",
+      "sameDays": "The same number of days as the current period so far."
     }
   },
   "transactionModal": {
@@ -777,5 +778,26 @@
   },
   "preferences": {
     "saveError": "Unable to save preferences"
+  },
+  "backupRestore": {
+    "title": "Restore backup",
+    "rowSummary": "Import a JSON backup from this account",
+    "description": "Adds only missing transactions and recurring rules. Existing records are preserved. Use a backup from the same account, up to 10 MB.",
+    "file": "JSON backup file",
+    "reading": "Checking backup…",
+    "summary": "{{transactions}} transactions and {{recurring}} recurring rules in the backup.",
+    "settings": "Also restore budgets and preferences",
+    "settingsHint": "Replaces your current budgets and preferences with those from the backup.",
+    "restore": "Restore",
+    "restoring": "Restoring…",
+    "tooLarge": "The file exceeds the 10 MB limit.",
+    "wrongAccount": "This backup belongs to another account.",
+    "invalid": "Invalid backup or unsupported version. No data has been changed.",
+    "failed": "Restore could not be confirmed. You can retry without duplicating records.",
+    "success": "Restore complete: {{transactions}} transactions and {{recurring}} recurring rules added."
+  },
+  "planning": {
+    "loadError": "Budgets, recurring rules or preferences are unavailable. Retry before editing them.",
+    "retry": "Retry"
   }
 }

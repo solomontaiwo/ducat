@@ -9,6 +9,7 @@ import { dateKeyToDate, todayDateKey } from "../utils/dateUtils.js";
 import { minorToMajor } from "../utils/money.js";
 import { dueOccurrences, nextOccurrence, occurrenceRequestId } from "../utils/recurrence.js";
 import { DEFAULT_PREFERENCES, budgetLimitsSchema, normalizePreferences, preferencesSchema, recurringInputSchema } from "../schemas/planning.js";
+import { onLocalChange } from "../services/changeEvents.js";
 
 const DEMO_RECURRING_KEY = "soldi-sotto-demo-recurring";
 const DEMO_BUDGETS_KEY = "soldi-sotto-demo-budgets";
@@ -19,6 +20,8 @@ const INERT = Object.freeze({
   budgets: {},
   preferences: DEFAULT_PREFERENCES,
   ready: false,
+  error: "",
+  retry: () => {},
   addRecurring: async () => false,
   updateRecurring: async () => false,
   deleteRecurring: async () => false,
@@ -33,12 +36,8 @@ const PlanningContext = createContext(INERT);
 export const usePlanning = () => useContext(PlanningContext);
 
 const readDemo = (key, fallback) => {
-  try {
-    const parsed = JSON.parse(readLocalValue(key) || "null");
-    return parsed ?? fallback;
-  } catch {
-    return fallback;
-  }
+  const parsed = JSON.parse(readLocalValue(key) || "null");
+  return parsed ?? fallback;
 };
 
 const occurrencePayload = (rule, dateKey) => ({
@@ -67,63 +66,104 @@ export const PlanningProvider = ({ children }) => {
   const [recurring, setRecurring] = useState([]);
   const [budgets, setBudgets] = useState({});
   const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
-  const [ready, setReady] = useState(false);
+  const [status, setStatus] = useState({ recurring: "loading", budgets: "loading", preferences: "loading" });
+  const [loadErrors, setLoadErrors] = useState({});
+  const [reloadRevision, setReloadRevision] = useState(0);
+  const ready = Object.values(status).every((value) => value === "ready");
+  const error = Object.keys(loadErrors).length ? t("planning.loadError") : "";
+  const retry = useCallback(() => setReloadRevision((value) => value + 1), []);
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  const source = isDemo ? "demo" : userId;
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+  const loadedSourceRef = useRef(null);
+  const preferencesQueueRef = useRef(Promise.resolve());
   const preferencesRef = useRef(preferences);
   preferencesRef.current = preferences;
   const recurringRef = useRef(recurring);
   recurringRef.current = recurring;
 
   useEffect(() => {
-    setReady(false);
-    if (isDemo) {
-      setRecurring(readDemo(DEMO_RECURRING_KEY, []));
-      setBudgets(readDemo(DEMO_BUDGETS_KEY, {}));
-      setPreferences(normalizePreferences(readDemo(DEMO_PREFERENCES_KEY, {})));
-      setReady(true);
-      return undefined;
+    setStatus({ recurring: "loading", budgets: "loading", preferences: "loading" });
+    setLoadErrors({});
+    if (loadedSourceRef.current !== source) {
+      setRecurring([]);
+      setBudgets({});
+      setPreferences(DEFAULT_PREFERENCES);
+      loadedSourceRef.current = source;
     }
-    setRecurring([]);
-    setBudgets({});
-    setPreferences(DEFAULT_PREFERENCES);
+    if (isDemo) {
+      const loadDemo = () => {
+        try {
+          const rules = readDemo(DEMO_RECURRING_KEY, []);
+          setRecurring(rules.map((rule) => ({ ...recurringInputSchema.parse(rule), id: rule.id })));
+          setBudgets(budgetLimitsSchema.parse(readDemo(DEMO_BUDGETS_KEY, {})));
+          setPreferences(normalizePreferences(readDemo(DEMO_PREFERENCES_KEY, {})));
+          setLoadErrors({});
+          setStatus({ recurring: "ready", budgets: "ready", preferences: "ready" });
+        } catch (error) {
+          console.error("Demo planning data unavailable", error);
+          setLoadErrors({ demo: true });
+          setStatus({ recurring: "error", budgets: "error", preferences: "error" });
+        }
+      };
+      loadDemo();
+      return onLocalChange("demo-recurring", loadDemo);
+    }
     if (!userId) return undefined;
 
     let cancelled = false;
     let unsubscribers = [];
-    let loaded = 0;
-    const markLoaded = () => { loaded += 1; if (loaded === 3 && !cancelled) setReady(true); };
+    const markLoaded = (topic) => {
+      if (cancelled) return;
+      setStatus((previous) => ({ ...previous, [topic]: "ready" }));
+      setLoadErrors((previous) => { const next = { ...previous }; delete next[topic]; return next; });
+    };
+    const onError = (topic) => (error) => {
+      if (cancelled) return;
+      console.error("Planning data unavailable", error);
+      setStatus((previous) => ({ ...previous, [topic]: "error" }));
+      setLoadErrors((previous) => ({ ...previous, [topic]: true }));
+    };
     import("../services/planningService.js").then(({ PlanningService }) => {
       if (cancelled) return;
-      const onError = (error) => { console.error("Planning data unavailable", error); markLoaded(); };
-      let recurringSeen = false;
-      let budgetsSeen = false;
-      let preferencesSeen = false;
       unsubscribers = [
         PlanningService.subscribeRecurring(userId, (rules) => {
+          if (cancelled) return;
           setRecurring(rules);
-          if (!recurringSeen) { recurringSeen = true; markLoaded(); }
-        }, onError),
+          markLoaded("recurring");
+        }, onError("recurring")),
         PlanningService.subscribeBudgets(userId, (limits) => {
-          setBudgets(limits);
-          if (!budgetsSeen) { budgetsSeen = true; markLoaded(); }
-        }, onError),
+          if (cancelled) return;
+          setBudgets(budgetLimitsSchema.parse(limits));
+          markLoaded("budgets");
+        }, onError("budgets")),
         PlanningService.subscribePreferences(userId, (stored) => {
+          if (cancelled) return;
           setPreferences(normalizePreferences(stored || {}));
-          if (!preferencesSeen) { preferencesSeen = true; markLoaded(); }
-        }, onError),
+          markLoaded("preferences");
+        }, onError("preferences")),
       ];
-    }).catch((error) => console.error("Unable to load planning service", error));
+    }).catch(onError("service"));
     return () => { cancelled = true; unsubscribers.forEach((unsubscribe) => unsubscribe()); };
-  }, [isDemo, userId]);
+  }, [isDemo, userId, source, reloadRevision]);
 
   const writeDemoRecurring = useCallback((updater) => {
     const next = updater(recurringRef.current);
+    if (!writeLocalValue(DEMO_RECURRING_KEY, JSON.stringify(next))) throw new Error("Demo storage unavailable");
     recurringRef.current = next;
     setRecurring(next);
-    writeLocalValue(DEMO_RECURRING_KEY, JSON.stringify(next));
   }, []);
 
   const addRecurring = useCallback(async (data) => {
     try {
+      if (statusRef.current.recurring !== "ready") throw new Error("Recurring rules have not loaded");
       const input = recurringInputSchema.parse({ currency: "EUR", nextIndex: 1, paused: false, ...data });
       if (isDemo) {
         writeDemoRecurring((rules) => [...rules, { ...input, id: crypto.randomUUID() }]);
@@ -143,6 +183,7 @@ export const PlanningProvider = ({ children }) => {
 
   const updateRecurring = useCallback(async (id, patch) => {
     try {
+      if (statusRef.current.recurring !== "ready") throw new Error("Recurring rules have not loaded");
       if (isDemo) {
         writeDemoRecurring((rules) => rules.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)));
       } else if (userId) {
@@ -161,6 +202,7 @@ export const PlanningProvider = ({ children }) => {
 
   const deleteRecurring = useCallback(async (id) => {
     try {
+      if (statusRef.current.recurring !== "ready") throw new Error("Recurring rules have not loaded");
       if (isDemo) {
         writeDemoRecurring((rules) => rules.filter((rule) => rule.id !== id));
       } else if (userId) {
@@ -177,11 +219,38 @@ export const PlanningProvider = ({ children }) => {
     }
   }, [isDemo, userId, writeDemoRecurring, notification, t]);
 
+  const registerRuleOccurrence = useCallback(async (rule, occurrence, silent = false) => {
+    if (!mountedRef.current || sourceRef.current !== source || statusRef.current.recurring !== "ready") return { ok: false, created: false };
+    try {
+      if (isDemo) {
+        const ok = await addTransaction({
+          ...occurrencePayload(rule, occurrence.dateKey),
+          recurringOccurrence: { id: rule.id, index: occurrence.index },
+        }, { silent });
+        return { ok, created: ok };
+      }
+      if (!userId) return { ok: false, created: false };
+      const { PlanningService } = await import("../services/planningService.js");
+      if (!mountedRef.current || sourceRef.current !== source) return { ok: false, created: false };
+      const created = await PlanningService.registerOccurrence(rule.id, occurrence.index);
+      if (sourceRef.current === userId) {
+        setRecurring((rules) => rules.map((stored) => stored.id === rule.id
+          ? { ...stored, nextIndex: Math.max(stored.nextIndex, occurrence.index + 1) }
+          : stored));
+      }
+      return { ok: true, created };
+    } catch (error) {
+      console.error("Unable to register recurring occurrence", error);
+      notification.error(t("recurring.saveError"));
+      return { ok: false, created: false };
+    }
+  }, [isDemo, userId, source, addTransaction, notification, t]);
+
   const registerOccurrence = useCallback(async (rule) => {
-    const { index, dateKey } = nextOccurrence(rule);
-    if (!(await addTransaction(occurrencePayload(rule, dateKey)))) return false;
-    return updateRecurring(rule.id, { nextIndex: index + 1 });
-  }, [addTransaction, updateRecurring]);
+    const result = await registerRuleOccurrence(rule, nextOccurrence(rule));
+    if (result.ok && !isDemo) notification.success(t("notifications.addSuccess"));
+    return result.ok;
+  }, [registerRuleOccurrence, isDemo, notification, t]);
 
   const skipOccurrence = useCallback(
     (rule) => updateRecurring(rule.id, { nextIndex: rule.nextIndex + 1 }),
@@ -190,10 +259,11 @@ export const PlanningProvider = ({ children }) => {
 
   const saveBudgets = useCallback(async (limits) => {
     try {
+      if (statusRef.current.budgets !== "ready") throw new Error("Budgets have not loaded");
       const parsed = budgetLimitsSchema.parse(limits);
       if (isDemo) {
+        if (!writeLocalValue(DEMO_BUDGETS_KEY, JSON.stringify(parsed))) throw new Error("Demo storage unavailable");
         setBudgets(parsed);
-        writeLocalValue(DEMO_BUDGETS_KEY, JSON.stringify(parsed));
       } else if (userId) {
         const { PlanningService } = await import("../services/planningService.js");
         await PlanningService.saveBudgets(userId, parsed);
@@ -209,30 +279,41 @@ export const PlanningProvider = ({ children }) => {
   }, [isDemo, userId, notification, t]);
 
   /** Merges a partial change into the preferences and saves the result. */
-  const savePreferences = useCallback(async (patch) => {
-    try {
-      const next = preferencesSchema.parse({ ...preferencesRef.current, ...patch });
-      preferencesRef.current = next;
-      setPreferences(next);
-      if (isDemo) {
-        writeLocalValue(DEMO_PREFERENCES_KEY, JSON.stringify(next));
-      } else if (userId) {
-        const { PlanningService } = await import("../services/planningService.js");
-        await PlanningService.savePreferences(userId, next);
-      } else {
+  const savePreferences = useCallback((patch) => {
+    const task = preferencesQueueRef.current.then(async () => {
+      try {
+        if (sourceRef.current !== source || statusRef.current.preferences !== "ready") {
+          throw new Error("Preferences have not loaded");
+        }
+        const parsedPatch = preferencesSchema.partial().parse(patch);
+        let next = preferencesSchema.parse({ ...preferencesRef.current, ...parsedPatch });
+        if (isDemo) {
+          if (!writeLocalValue(DEMO_PREFERENCES_KEY, JSON.stringify(next))) throw new Error("Demo storage unavailable");
+        } else if (userId) {
+          const { PlanningService } = await import("../services/planningService.js");
+          if (!mountedRef.current || sourceRef.current !== source) return false;
+          next = normalizePreferences(await PlanningService.savePreferences(userId, parsedPatch));
+        } else {
+          return false;
+        }
+        if (sourceRef.current !== source) return false;
+        preferencesRef.current = next;
+        setPreferences(next);
+        return true;
+      } catch (error) {
+        console.error("Unable to save preferences", error);
+        notification.error(t("preferences.saveError"));
         return false;
       }
-      return true;
-    } catch (error) {
-      console.error("Unable to save preferences", error);
-      notification.error(t("preferences.saveError"));
-      return false;
-    }
-  }, [isDemo, userId, notification, t]);
+    });
+    preferencesQueueRef.current = task;
+    return task;
+  }, [isDemo, userId, source, notification, t]);
 
   // Register the occurrences of automatic rules that came due while the app
   // was closed. Deterministic request ids keep this safe across devices.
   const catchingUpRef = useRef(false);
+  const [catchUpRevision, setCatchUpRevision] = useState(0);
   useEffect(() => {
     if (!ready || catchingUpRef.current) return;
     const today = todayDateKey();
@@ -245,23 +326,30 @@ export const PlanningProvider = ({ children }) => {
     catchingUpRef.current = true;
     (async () => {
       let registered = 0;
+      let succeeded = true;
       for (const { rule, due } of work) {
-        let lastIndex = null;
         for (const occurrence of due) {
-          if (!(await addTransaction(occurrencePayload(rule, occurrence.dateKey), { silent: true }))) break;
-          lastIndex = occurrence.index;
-          registered += 1;
+          if (!mountedRef.current || sourceRef.current !== source) return;
+          const result = await registerRuleOccurrence(rule, occurrence, true);
+          if (!result.ok) { succeeded = false; break; }
+          if (result.created) registered += 1;
         }
-        if (lastIndex !== null) await updateRecurring(rule.id, { nextIndex: lastIndex + 1 });
       }
-      if (registered) notification.info(t("recurring.autoRegistered", { count: registered }));
-    })().finally(() => { catchingUpRef.current = false; });
-  }, [ready, recurring, addTransaction, updateRecurring, notification, t]);
+      if (registered && mountedRef.current && sourceRef.current === source) notification.info(t("recurring.autoRegistered", { count: registered }));
+      return succeeded;
+    })().then((succeeded) => {
+      catchingUpRef.current = false;
+      if (mountedRef.current && (succeeded || sourceRef.current !== source)) setCatchUpRevision((value) => value + 1);
+    }).catch((error) => {
+      catchingUpRef.current = false;
+      console.error("Recurring catch-up failed", error);
+    });
+  }, [ready, recurring, source, registerRuleOccurrence, catchUpRevision, notification, t]);
 
   const value = useMemo(() => ({
-    recurring, budgets, preferences, ready,
+    recurring, budgets, preferences, ready, error, retry,
     addRecurring, updateRecurring, deleteRecurring, registerOccurrence, skipOccurrence, saveBudgets, savePreferences,
-  }), [recurring, budgets, preferences, ready, addRecurring, updateRecurring, deleteRecurring, registerOccurrence, skipOccurrence, saveBudgets, savePreferences]);
+  }), [recurring, budgets, preferences, ready, error, retry, addRecurring, updateRecurring, deleteRecurring, registerOccurrence, skipOccurrence, saveBudgets, savePreferences]);
 
   return <PlanningContext.Provider value={value}>{children}</PlanningContext.Provider>;
 };

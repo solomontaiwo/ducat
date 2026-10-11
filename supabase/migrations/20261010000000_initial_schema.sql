@@ -1,9 +1,11 @@
 -- Soldi Sotto: schema, row level security and helper functions.
 -- Every table belongs to one user and is reachable only by that user.
+-- Replay-safe bootstrap for projects initialized manually in the SQL Editor.
+-- Existing tables must already match this schema; later changes need new migrations.
 
 -- Profiles ---------------------------------------------------------------
 
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   username text not null check (char_length(btrim(username)) between 1 and 50),
   display_name text not null check (char_length(btrim(display_name)) between 1 and 50),
@@ -14,7 +16,7 @@ create table public.profiles (
 
 -- Transactions -----------------------------------------------------------
 
-create table public.transactions (
+create table if not exists public.transactions (
   -- Text ids keep the client generated, idempotent ids (`<uid>_<requestId>`)
   -- and the ids carried over from Firestore.
   id text primary key check (id ~ '^[A-Za-z0-9_-]{1,200}$'),
@@ -30,14 +32,14 @@ create table public.transactions (
   updated_at timestamptz not null default now()
 );
 
-create index transactions_user_date_idx on public.transactions (user_id, date_key desc, id desc);
-create index transactions_user_type_date_idx on public.transactions (user_id, type, date_key desc);
-create index transactions_user_created_idx on public.transactions (user_id, created_at desc);
-create index transactions_user_category_idx on public.transactions (user_id, category);
+create index if not exists transactions_user_date_idx on public.transactions (user_id, date_key desc, id desc);
+create index if not exists transactions_user_type_date_idx on public.transactions (user_id, type, date_key desc);
+create index if not exists transactions_user_created_idx on public.transactions (user_id, created_at desc);
+create index if not exists transactions_user_category_idx on public.transactions (user_id, category);
 
 -- Recurring rules --------------------------------------------------------
 
-create table public.recurring (
+create table if not exists public.recurring (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   type text not null check (type in ('income', 'expense')),
@@ -54,18 +56,18 @@ create table public.recurring (
   updated_at timestamptz not null default now()
 );
 
-create index recurring_user_idx on public.recurring (user_id);
+create index if not exists recurring_user_idx on public.recurring (user_id);
 
 -- Budgets and preferences (one row per user) -----------------------------
 
-create table public.budgets (
+create table if not exists public.budgets (
   user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
   limits jsonb not null default '{}'::jsonb
     check (jsonb_typeof(limits) = 'object' and pg_column_size(limits) < 8192),
   updated_at timestamptz not null default now()
 );
 
-create table public.preferences (
+create table if not exists public.preferences (
   user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
   -- Validated by the app (src/schemas/planning.js); unknown or invalid values
   -- fall back to the defaults when read.
@@ -77,7 +79,7 @@ create table public.preferences (
 -- Integrity triggers -----------------------------------------------------
 
 -- Ownership and creation time never change; updated_at is set by the server.
-create function public.keep_row_identity() returns trigger
+create or replace function public.keep_row_identity() returns trigger
 language plpgsql set search_path = '' as $$
 begin
   new.user_id := old.user_id;
@@ -89,7 +91,7 @@ begin
 end;
 $$;
 
-create function public.keep_profile_identity() returns trigger
+create or replace function public.keep_profile_identity() returns trigger
 language plpgsql set search_path = '' as $$
 begin
   new.id := old.id;
@@ -102,7 +104,7 @@ $$;
 -- A recurring rule only moves forward: an occurrence once registered or
 -- skipped is never produced again. A late write from another device that
 -- carries an older index keeps the newer one.
-create function public.recurring_next_index_forward() returns trigger
+create or replace function public.recurring_next_index_forward() returns trigger
 language plpgsql set search_path = '' as $$
 begin
   new.next_index := greatest(new.next_index, old.next_index);
@@ -110,21 +112,21 @@ begin
 end;
 $$;
 
-create trigger profiles_identity before update on public.profiles
+create or replace trigger profiles_identity before update on public.profiles
   for each row execute function public.keep_profile_identity();
-create trigger transactions_identity before update on public.transactions
+create or replace trigger transactions_identity before update on public.transactions
   for each row execute function public.keep_row_identity();
-create trigger recurring_identity before update on public.recurring
+create or replace trigger recurring_identity before update on public.recurring
   for each row execute function public.keep_row_identity();
-create trigger recurring_forward before update on public.recurring
+create or replace trigger recurring_forward before update on public.recurring
   for each row execute function public.recurring_next_index_forward();
-create trigger budgets_identity before update on public.budgets
+create or replace trigger budgets_identity before update on public.budgets
   for each row execute function public.keep_row_identity();
-create trigger preferences_identity before update on public.preferences
+create or replace trigger preferences_identity before update on public.preferences
   for each row execute function public.keep_row_identity();
 
 -- A profile is created with every account, named after the sign-up form.
-create function public.handle_new_user() returns trigger
+create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare
   chosen text := left(btrim(coalesce(
@@ -143,11 +145,11 @@ begin
 end;
 $$;
 
-create trigger on_auth_user_created after insert on auth.users
+create or replace trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
 -- Keep the profile email in step with the confirmed account email.
-create function public.handle_user_email_change() returns trigger
+create or replace function public.handle_user_email_change() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
   update public.profiles set email = new.email where id = new.id;
@@ -155,7 +157,7 @@ begin
 end;
 $$;
 
-create trigger on_auth_user_email_changed after update of email on auth.users
+create or replace trigger on_auth_user_email_changed after update of email on auth.users
   for each row when (old.email is distinct from new.email)
   execute function public.handle_user_email_change();
 
@@ -163,7 +165,7 @@ create trigger on_auth_user_email_changed after update of email on auth.users
 
 -- Only accounts with a confirmed email reach their data, like the old
 -- Firestore rules (email_verified == true).
-create function public.is_verified() returns boolean
+create or replace function public.is_verified() returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from auth.users
@@ -177,32 +179,42 @@ alter table public.recurring enable row level security;
 alter table public.budgets enable row level security;
 alter table public.preferences enable row level security;
 
-create policy "own profile" on public.profiles for all to authenticated
-  using (id = (select auth.uid()))
-  with check (id = (select auth.uid()));
+-- PostgreSQL has no CREATE POLICY IF NOT EXISTS; preserve existing policies.
+do $$
+declare
+  table_name text;
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_policies
+    where schemaname = 'public' and tablename = 'profiles' and policyname = 'own profile'
+  ) then
+    create policy "own profile" on public.profiles for all to authenticated
+      using (id = (select auth.uid()))
+      with check (id = (select auth.uid()));
+  end if;
 
-create policy "own transactions" on public.transactions for all to authenticated
-  using (user_id = (select auth.uid()) and (select public.is_verified()))
-  with check (user_id = (select auth.uid()) and (select public.is_verified()));
-
-create policy "own recurring" on public.recurring for all to authenticated
-  using (user_id = (select auth.uid()) and (select public.is_verified()))
-  with check (user_id = (select auth.uid()) and (select public.is_verified()));
-
-create policy "own budgets" on public.budgets for all to authenticated
-  using (user_id = (select auth.uid()) and (select public.is_verified()))
-  with check (user_id = (select auth.uid()) and (select public.is_verified()));
-
-create policy "own preferences" on public.preferences for all to authenticated
-  using (user_id = (select auth.uid()) and (select public.is_verified()))
-  with check (user_id = (select auth.uid()) and (select public.is_verified()));
+  foreach table_name in array array['transactions', 'recurring', 'budgets', 'preferences'] loop
+    if not exists (
+      select 1 from pg_catalog.pg_policies
+      where schemaname = 'public' and tablename = table_name and policyname = 'own ' || table_name
+    ) then
+      execute format(
+        'create policy %I on public.%I for all to authenticated
+          using (user_id = (select auth.uid()) and (select public.is_verified()))
+          with check (user_id = (select auth.uid()) and (select public.is_verified()))',
+        'own ' || table_name, table_name
+      );
+    end if;
+  end loop;
+end;
+$$;
 
 revoke all on public.profiles, public.transactions, public.recurring, public.budgets, public.preferences from anon;
 grant select, insert, update, delete on public.profiles, public.transactions, public.recurring, public.budgets, public.preferences to authenticated;
 
 -- Aggregates (run with the caller's rights, so RLS applies) --------------
 
-create function public.transaction_totals(
+create or replace function public.transaction_totals(
   p_type text default 'all',
   p_start date default null,
   p_end date default null
@@ -219,7 +231,7 @@ language sql stable security invoker set search_path = '' as $$
     and (p_end is null or date_key <= p_end);
 $$;
 
-create function public.transaction_category_counts()
+create or replace function public.transaction_category_counts()
 returns table (category text, count bigint)
 language sql stable security invoker set search_path = '' as $$
   select category, count(*)::bigint
@@ -229,7 +241,7 @@ language sql stable security invoker set search_path = '' as $$
 $$;
 
 -- Account deletion: removes the auth user, the cascade removes the data.
-create function public.delete_my_account() returns void
+create or replace function public.delete_my_account() returns void
 language plpgsql security definer set search_path = '' as $$
 begin
   if auth.uid() is null then
@@ -249,4 +261,17 @@ grant execute on function public.delete_my_account() to authenticated;
 grant execute on function public.is_verified() to authenticated;
 
 -- Realtime: changes are pushed to the owner's other devices.
-alter publication supabase_realtime add table public.transactions, public.recurring, public.budgets, public.preferences;
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array['transactions', 'recurring', 'budgets', 'preferences'] loop
+    if not exists (
+      select 1 from pg_catalog.pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = table_name
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', table_name);
+    end if;
+  end loop;
+end;
+$$;

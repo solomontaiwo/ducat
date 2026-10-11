@@ -64,7 +64,7 @@ const initialState = (transaction, expenseCategories, incomeCategories, preferen
 const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transaction", autoFocusAmount = false, className }) => {
   const isEdit = !!transaction;
   const { visibleExpenseCategories: expenseCategories, visibleIncomeCategories: incomeCategories, expenseCategories: allExpense, incomeCategories: allIncome } = useCategories();
-  const { preferences } = usePlanning();
+  const { preferences, ready: planningReady } = usePlanning();
   const notification = useNotification();
   const { t, i18n } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
@@ -74,7 +74,6 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
   // Once the user picks a category by hand, suggestions stop overriding it.
   const [categoryTouched, setCategoryTouched] = useState(false);
   const { transactions: history } = useUnifiedTransactions();
-  const { addRecurring } = usePlanning();
   const [repeat, setRepeat] = useState(DEFAULT_REPEAT);
 
   // Reset whenever another transaction is opened in the same form instance.
@@ -146,6 +145,10 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
       return;
     }
     if (submitting) return;
+    if (repeat.enabled && !planningReady) {
+      notification.error(t("planning.loadError"));
+      return;
+    }
     setSubmitting(true);
 
     const payload = {
@@ -157,6 +160,9 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
       date: dateKeyToDate(formData.date),
       category: formData.category,
       clientRequestId: requestIdRef.current,
+      ...(repeat.enabled && !isEdit ? {
+        recurring: { id: requestIdRef.current, frequency: repeat.frequency, mode: repeat.mode },
+      } : {}),
     };
 
     let success = false;
@@ -166,22 +172,11 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
       setSubmitting(false);
     }
     if (!success) return;
-    if (!isEdit && repeat.enabled) {
-      await addRecurring({
-        type: payload.type,
-        amountMinor: payload.amountMinor,
-        description: payload.description,
-        category: payload.category,
-        frequency: repeat.frequency,
-        mode: repeat.mode,
-        anchorDateKey: payload.dateKey,
-      });
-    }
     if (!isEdit) {
       writeLocalValue(QUICK_ADD_PREF_KEY, JSON.stringify({ type: formData.type, category: formData.category }));
     }
     navigator.vibrate?.(50);
-  }, [addRecurring, categoryLabel, formData, isEdit, notification, onSubmit, repeat, submitting, t]);
+  }, [categoryLabel, formData, isEdit, notification, onSubmit, planningReady, repeat, submitting, t]);
 
   const nextRepeatLabel = useMemo(() => {
     if (!repeat.enabled) return "";
@@ -335,6 +330,7 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
               <button
                 type="button"
                 role="switch"
+                disabled={!planningReady}
                 aria-checked={repeat.enabled}
                 aria-labelledby={`${idPrefix}-repeat-label`}
                 onClick={() => setRepeat((current) => ({ ...current, enabled: !current.enabled }))}

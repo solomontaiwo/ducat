@@ -29,8 +29,8 @@ const BudgetsPage = () => {
   const [touched, setTouched] = useState(false);
 
   useEffect(() => {
-    if (!touched) setValues(Object.fromEntries(Object.entries(budgets).map(([category, minor]) => [category, toInput(minor)])));
-  }, [budgets, touched]);
+    if (ready && !touched) setValues(Object.fromEntries(Object.entries(budgets).map(([category, minor]) => [category, toInput(minor)])));
+  }, [budgets, touched, ready]);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,6 +135,7 @@ const BudgetsPage = () => {
                   inputMode="decimal"
                   autoComplete="off"
                   value={values[value] || ""}
+                  disabled={!ready || saving}
                   onChange={(event) => setValue(value, event.target.value)}
                   placeholder={suggestion ? toInput(suggestion) : "—"}
                   aria-label={t("budgets.limitFor", { category: label })}
@@ -149,7 +150,7 @@ const BudgetsPage = () => {
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         {hasSuggestions && (
-          <Button variant="outline" onClick={applySuggestions}>{t("budgets.useSuggestions")}</Button>
+          <Button variant="outline" onClick={applySuggestions} disabled={!ready || saving}>{t("budgets.useSuggestions")}</Button>
         )}
         <Button size="lg" onClick={handleSave} disabled={saving || !ready}>{t("budgets.save")}</Button>
       </div>

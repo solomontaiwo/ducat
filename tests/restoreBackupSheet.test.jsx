@@ -1,0 +1,45 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import RestoreBackupSheet from '../src/components/Profile/RestoreBackupSheet.jsx';
+const mocks = vi.hoisted(() => ({ restore: vi.fn(), success: vi.fn(), t: key => key }));
+vi.mock('../src/context/AuthProvider.jsx', () => ({ useAuth: () => ({ currentUser: { uid: 'owner', emailVerified: true } }) }));
+vi.mock('../src/utils/notificationUtils.jsx', () => ({ useNotification: () => ({ success: mocks.success }) }));
+vi.mock('../src/services/backupService.js', () => ({ BackupService: { restore: mocks.restore } }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: mocks.t }) }));
+const backup = { schemaVersion: 2, account: { uid: 'owner' }, transactions: [], recurring: [], budgets: {}, preferences: null };
+const file = data => ({ size: 100, text: vi.fn(async () => JSON.stringify(data)) });
+const choose = data => fireEvent.change(screen.getByLabelText('backupRestore.file'), { target: { files: [file(data)] } });
+beforeEach(() => { vi.clearAllMocks(); vi.spyOn(console, 'error').mockImplementation(() => {}); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+it('requires a valid backup and explicit restore, leaving settings unchecked', async () => {
+  mocks.restore.mockResolvedValue({ transactions: 0, recurring: 0 });
+  const close = vi.fn(); render(<RestoreBackupSheet onClose={close} />);
+  expect(screen.getByRole('button', { name: 'backupRestore.restore' })).toBeDisabled();
+  choose(backup);
+  await screen.findByText('backupRestore.summary');
+  expect(mocks.restore).not.toHaveBeenCalled();
+  expect(screen.getByRole('checkbox')).not.toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: 'backupRestore.restore' }));
+  await waitFor(() => expect(close).toHaveBeenCalledOnce());
+  expect(mocks.restore).toHaveBeenCalledWith(expect.objectContaining({ uid: 'owner' }), expect.objectContaining({ schemaVersion: 2 }), { restoreSettings: false });
+});
+it('rejects a file from another account before any write', async () => {
+  render(<RestoreBackupSheet onClose={vi.fn()} />);
+  choose({ ...backup, account: { uid: 'other' } });
+  expect(await screen.findByRole('alert')).toHaveTextContent('backupRestore.wrongAccount');
+  expect(mocks.restore).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'backupRestore.restore' })).toBeDisabled();
+});
+it('keeps the reviewed file on failure so retry uses the same data and option', async () => {
+  mocks.restore.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ transactions: 0, recurring: 0 });
+  const close = vi.fn(); render(<RestoreBackupSheet onClose={close} />); choose(backup);
+  await screen.findByText('backupRestore.summary');
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: 'backupRestore.restore' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('backupRestore.failed');
+  expect(close).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'backupRestore.restore' }));
+  await waitFor(() => expect(close).toHaveBeenCalledOnce());
+  expect(mocks.restore.mock.calls[1][1]).toEqual(mocks.restore.mock.calls[0][1]);
+  expect(mocks.restore.mock.calls[1][2]).toEqual({ restoreSettings: true });
+});
