@@ -88,6 +88,7 @@ const RecurringPage = () => {
                   <button
                     type="button"
                     onClick={() => setSelected(rule)}
+                    disabled={!ready}
                     className={cn("flex w-full min-w-0 items-center gap-3 rounded-xl px-2 py-3 text-left transition-colors hover:bg-muted/60", rule.paused && "opacity-60")}
                   >
                     <CategoryBadge category={rule.category} type={rule.type} />
@@ -117,26 +118,26 @@ const RecurringPage = () => {
           {selected && (
             <div className="grid gap-2 pt-2">
               {!selected.paused && (
-                <Button variant="outline" className="h-12 justify-start" onClick={() => run(() => skipOccurrence(selected))}>
+                <Button variant="outline" className="h-12 justify-start" disabled={!ready} onClick={() => run(() => skipOccurrence(selected))}>
                   <FiSkipForward aria-hidden="true" />
                   {t("recurring.skip")} ({shortDate(nextOccurrence(selected).dateKey, i18n.language)})
                 </Button>
               )}
               <Button
                 variant="outline"
-                className="h-12 justify-start"
+                className="h-12 justify-start" disabled={!ready}
                 onClick={() => run(() => updateRecurring(selected.id, { mode: selected.mode === "auto" ? "confirm" : "auto" }))}
               >
                 <FiZap aria-hidden="true" />
                 {selected.mode === "auto" ? t("recurring.switchToConfirm") : t("recurring.switchToAuto")}
               </Button>
-              <Button variant="outline" className="h-12 justify-start" onClick={() => run(() => updateRecurring(selected.id, selected.paused
+              <Button variant="outline" className="h-12 justify-start" disabled={!ready} onClick={() => run(() => updateRecurring(selected.id, selected.paused
                 ? { paused: false, nextIndex: firstIndexFrom(selected, todayDateKey()) }
                 : { paused: true }))}>
                 {selected.paused ? <FiPlay aria-hidden="true" /> : <FiPause aria-hidden="true" />}
                 {selected.paused ? t("recurring.resume") : t("recurring.pause")}
               </Button>
-              <Button variant="outline" className="h-12 justify-start text-destructive hover:text-destructive" onClick={() => run(() => deleteRecurring(selected.id))}>
+              <Button variant="outline" className="h-12 justify-start text-destructive hover:text-destructive" disabled={!ready} onClick={() => run(() => deleteRecurring(selected.id))}>
                 <FiTrash2 aria-hidden="true" />
                 {t("recurring.delete")}
               </Button>

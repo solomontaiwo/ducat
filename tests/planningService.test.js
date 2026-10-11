@@ -68,7 +68,7 @@ describe("PlanningService", () => {
     await PlanningService.saveBudgets("u1", { casa: 1000 });
     await PlanningService.savePreferences("u1", { ...DEFAULT_PREFERENCES, monthStartDay: 27 });
     expect(supabase.calls[0]).toMatchObject({ table: "budgets", action: "upsert", payload: { user_id: "u1", limits: { casa: 1000 } }, options: { onConflict: "user_id" } });
-    expect(supabase.calls[1]).toMatchObject({ table: "preferences", action: "upsert", payload: { user_id: "u1", data: expect.objectContaining({ monthStartDay: 27 }) } });
+    expect(supabase.calls[1]).toMatchObject({ rpc: "save_preferences_patch", args: { p_patch: expect.objectContaining({ monthStartDay: 27 }) } });
     await expect(PlanningService.savePreferences("u1", { ...DEFAULT_PREFERENCES, monthStartDay: 40 })).rejects.toBeDefined();
   });
 
@@ -79,4 +79,39 @@ describe("PlanningService", () => {
     await vi.waitFor(() => expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "permission-denied" })));
     stop();
   });
+});
+
+it('ignores a slow obsolete response after a more recent reload', async () => {
+  vi.clearAllMocks(); supabase.reset();
+  let resolveOld;
+  supabase.respond = () => new Promise(done => { resolveOld = done; });
+  const onData = vi.fn();
+  const stop = PlanningService.subscribeBudgets('u1', onData);
+  await vi.waitFor(() => expect(resolveOld).toBeDefined());
+  supabase.respond = () => ({ data: { limits: { casa: 3000 } } });
+  window.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(onData).toHaveBeenCalledWith({ casa: 3000 }));
+  resolveOld({ data: { limits: { casa: 1000 } } });
+  await new Promise(done => setTimeout(done, 0));
+  expect(onData).toHaveBeenCalledOnce();
+  stop();
+});
+
+it('reloads after a remote deletion without a user filter and on reconnect', async () => {
+  vi.clearAllMocks(); supabase.reset();
+  supabase.respond = () => ({ data: { limits: { casa: 1000 } } });
+  const onData = vi.fn(), stop = PlanningService.subscribeBudgets('u1', onData);
+  await vi.waitFor(() => expect(onData).toHaveBeenCalledOnce());
+  expect(supabase.channels[0].on).toHaveBeenCalledWith('postgres_changes', { event: 'DELETE', schema: 'public', table: 'budgets' }, expect.any(Function));
+  supabase.respond = () => ({ data: null });
+  supabase.channels[0].handlers[1]();
+  window.dispatchEvent(new Event('focus'));
+  await vi.waitFor(() => expect(onData).toHaveBeenLastCalledWith({}));
+  expect(onData).toHaveBeenCalledTimes(2);
+  supabase.channels[0].subscribe.mock.calls[0][0]('SUBSCRIBED');
+  await vi.waitFor(() => expect(onData).toHaveBeenCalledTimes(3));
+  stop();
+  window.dispatchEvent(new Event('online'));
+  await new Promise(done => setTimeout(done, 80));
+  expect(onData).toHaveBeenCalledTimes(3);
 });

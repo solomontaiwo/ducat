@@ -1,5 +1,30 @@
 import { getTransactionAmountMinor, minorToMajor } from "./money.js";
 import { coerceDateKey } from "./dateUtils.js";
+import { z } from "zod";
+import { transactionV2InputSchema } from "../schemas/transaction.jsx";
+import { DEFAULT_PREFERENCES, budgetLimitsSchema, preferencesSchema, recurringInputSchema } from "../schemas/planning.js";
+
+const backupSchema = z.object({
+  schemaVersion: z.literal(2),
+  account: z.object({ uid: z.string().min(1) }),
+  transactions: z.array(transactionV2InputSchema.extend({
+    id: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/),
+  })).max(100000),
+  recurring: z.array(recurringInputSchema.extend({ id: z.uuid() })).max(10000).default([]),
+  budgets: budgetLimitsSchema.default({}),
+  preferences: preferencesSchema.partial().nullable().default(null),
+});
+
+/** Validate before writing: a backup can only be restored into its original account. */
+export const parseAccountBackup = (raw, userId) => {
+  const parsed = backupSchema.parse(typeof raw === "string" ? JSON.parse(raw) : raw);
+  if (parsed.account.uid !== userId) throw Object.assign(new Error("Backup belongs to another account"), { code: "backup/wrong-account" });
+  for (const rows of [parsed.transactions, parsed.recurring]) {
+    if (new Set(rows.map((row) => row.id)).size !== rows.length) throw new Error("Duplicate backup ids");
+  }
+  parsed.preferences = preferencesSchema.parse({ ...DEFAULT_PREFERENCES, ...parsed.preferences });
+  return parsed;
+};
 
 export const buildAccountExport = ({ user, profileName, transactions, recurring = [], budgets = {}, preferences = null, exportedAt = new Date() }) => ({
   schemaVersion: 2,

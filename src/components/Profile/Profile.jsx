@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { differenceInCalendarDays, differenceInCalendarMonths, format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
 import {
   FiCalendar, FiDatabase, FiDownload, FiEdit2, FiGlobe, FiGrid, FiKey, FiLock, FiMail, FiMoon, FiPlusCircle,
-  FiRepeat, FiSmartphone, FiTarget, FiTrash2,
+  FiRepeat, FiSmartphone, FiTarget, FiTrash2, FiUpload,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
@@ -19,7 +19,7 @@ import Sheet from "../ui/sheet";
 import BackButton from "../Planning/BackButton.jsx";
 import { SettingsGroup, SettingsRow, InlineSegmented } from "./SettingsList.jsx";
 import { CategoriesSheet, EmailSheet, ExportSheet, InstallSheet, MonthStartSheet, NameSheet, PasswordSheet, QuickAddSheet } from "./ProfileSheets.jsx";
-import { buildAccountExport, downloadJson } from "../../utils/accountExport.js";
+import { downloadJson } from "../../utils/accountExport.js";
 import { deleteCurrentAccount } from "../../services/accountService.js";
 import { removeLocalValue, writeLocalValue } from "../../utils/storage.js";
 import { useInstallPrompt } from "../../utils/installPrompt.js";
@@ -32,9 +32,9 @@ import formatCurrency, { formatSignedAmount } from "../../utils/formatCurrency.j
 import { minorToMajor } from "../../utils/money.js";
 import { cn } from "../../lib/utils";
 
-// Account deletion relies on the deleteAccount Cloud Function (Blaze plan).
-// Enable it at build time with VITE_ENABLE_ACCOUNT_DELETION=true once it is deployed.
+// Enable only after deploying the database migration that enforces reauthentication.
 const ACCOUNT_DELETION_ENABLED = import.meta.env.VITE_ENABLE_ACCOUNT_DELETION === "true";
+const RestoreBackupSheet = lazy(() => import("./RestoreBackupSheet.jsx"));
 const BACKUP_REMINDER_DAYS = 30;
 
 const compactCurrency = (value) => formatCurrency(value).replace(/,00(?=\s|$)/, "");
@@ -107,7 +107,7 @@ const useBudgetStatus = () => {
 
 const Profile = () => {
   const { currentUser, loading: userLoading, logout, profileName, profileNameLoading, refreshProfileName } = useAuth();
-  const { loading: transactionsLoading, fetchAllTransactions } = useUnifiedTransactions();
+  const { loading: transactionsLoading } = useUnifiedTransactions();
   const { recurring, budgets, preferences, savePreferences } = usePlanning();
   const { expenseCategories, incomeCategories } = useCategories();
   const { theme, toggleTheme } = useTheme();
@@ -172,8 +172,8 @@ const Profile = () => {
   const backup = async () => {
     setBackingUp(true);
     try {
-      const transactions = await fetchAllTransactions({ forceRefresh: true });
-      const payload = buildAccountExport({ user: currentUser, profileName: displayName, transactions, recurring, budgets, preferences });
+      const { BackupService } = await import("../../services/backupService.js");
+      const payload = await BackupService.fetch(currentUser, displayName);
       downloadJson(payload, `soldi-sotto-backup-${new Date().toISOString().slice(0, 10)}.json`);
       await savePreferences({ lastBackupAt: Date.now() });
       notification.success(t("profile.exportSuccess"));
@@ -356,6 +356,7 @@ const Profile = () => {
               subtitleTone={backupStale ? "warning" : undefined}
               onClick={backingUp ? undefined : backup}
             />
+            <SettingsRow icon={FiUpload} tone="blue" title={t("backupRestore.title")} subtitle={t("backupRestore.rowSummary")} onClick={() => setSheet("restore")} />
             {(install.canPrompt || install.needsManualSteps) && (
               <SettingsRow icon={FiSmartphone} title={t("profilePage.install.title")} subtitle={t("profilePage.install.summary")} onClick={installApp} />
             )}
@@ -391,6 +392,7 @@ const Profile = () => {
       <CategoriesSheet open={sheet === "categories"} onClose={close} />
       <ExportSheet open={sheet === "export"} onClose={close} firstDate={summary?.firstDate || undefined} />
       <InstallSheet open={sheet === "install"} onClose={close} />
+      {sheet === "restore" && <Suspense fallback={null}><RestoreBackupSheet onClose={close} /></Suspense>}
       {ACCOUNT_DELETION_ENABLED && (
         <Sheet
           open={sheet === "delete"}

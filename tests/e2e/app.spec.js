@@ -262,3 +262,21 @@ test("a payday month start moves the overview period", async ({ page }) => {
   await goTo(page, "dashboard");
   await expect(page.getByTestId("cycle-range")).toHaveText(/27 \w+ – 26 \w+/);
 });
+
+test('starting demo again preserves saved user transactions', async ({ page }) => {
+  await page.goto('.');
+  await page.evaluate(() => {
+    localStorage.setItem('soldi-sotto-demo-transactions', JSON.stringify([{
+      id: 'saved-restart', type: 'expense', amountMinor: 1250, currency: 'EUR', description: 'Movimento conservato',
+      category: 'altro', dateKey: '2026-01-01', isSample: false,
+    }]));
+  });
+  await page.getByRole('button', { name: /try (the )?demo|prova (la )?demo/i }).first().click();
+  await page.getByRole('searchbox').fill('Movimento conservato');
+  await expect(page.getByRole('button', { name: /Movimento conservato/ })).toBeVisible();
+  const ids = await page.evaluate(() => JSON.parse(localStorage.getItem('soldi-sotto-demo-transactions')).map(item => item.id));
+  expect(ids).toEqual(['saved-restart']);
+  await page.reload();
+  await page.getByRole('searchbox').fill('Movimento conservato');
+  await expect(page.getByRole('button', { name: /Movimento conservato/ })).toBeVisible();
+});

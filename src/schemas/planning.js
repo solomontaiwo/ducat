@@ -2,6 +2,12 @@ import { z } from "zod";
 import { MAX_AMOUNT_MINOR } from "../utils/money";
 import { isDateKey } from "../utils/dateUtils";
 
+export const recurringDraftSchema = z.object({
+  id: z.uuid(),
+  frequency: z.enum(["weekly", "monthly", "yearly"]),
+  mode: z.enum(["auto", "confirm"]),
+});
+
 export const recurringInputSchema = z.object({
   type: z.enum(["income", "expense"]),
   amountMinor: z.number().int().positive().max(MAX_AMOUNT_MINOR),

@@ -13,8 +13,13 @@ import {
     import { transactionV2InputSchema } from "../schemas/transaction.jsx";
     import { DEFAULT_CURRENCY, getTransactionAmountMinor, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
     import { coerceDateKey, dateKeyToDate, todayDateKey } from "../utils/dateUtils.js";
-    import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/storage.js";
+    import { readLocalValue, removeLocalValue, writeLocalValue, writeLocalBatch } from "../utils/storage.js";
 
+import { recurringDraftSchema, recurringInputSchema } from "../schemas/planning.js";
+import { occurrenceDateKey, occurrenceRequestId } from "../utils/recurrence.js";
+import { emitLocalChange } from "../services/changeEvents.js";
+
+const DEMO_RECURRING_KEY = "soldi-sotto-demo-recurring";
 const DemoContext = createContext();
 
 export const useDemo = () => useContext(DemoContext);
@@ -62,6 +67,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
         const transactions = parsed.map(normalizeDemoTransaction);
         // Sort by date descending
         transactions.sort((a, b) => b.date - a.date);
+        latestRef.current = transactions;
         setDemoTransactions(transactions);
       }
     } catch (error) {
@@ -85,32 +91,61 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
 
   // Adds a new demo transaction
   const addDemoTransaction = useCallback(async (transactionData, { silent = false } = {}) => {
-    const current = latestRef.current;
-    const userTransactionCount = current.filter(t => !t.isSample).length;
-    if (userTransactionCount >= MAX_DEMO_TRANSACTIONS) {
-      notification.warning(t('demo.limitReached', { limit: MAX_DEMO_TRANSACTIONS }));
+    try {
+      const current = latestRef.current;
+      const rules = transactionData.recurring || transactionData.recurringOccurrence
+        ? JSON.parse(readLocalValue(DEMO_RECURRING_KEY) || "[]") : [];
+      if (!Array.isArray(rules)) throw new Error("Invalid recurring cache");
+      let nextRules = rules;
+      let payload = transactionData;
+      let id = transactionData.clientRequestId || crypto.randomUUID();
+      if (transactionData.recurringOccurrence) {
+        const { id: ruleId, index } = transactionData.recurringOccurrence;
+        const rule = rules.find((item) => item.id === ruleId);
+        if (!rule || !Number.isInteger(index) || index < 0 || index >= 10000) throw new Error("Invalid occurrence");
+        if (index < rule.nextIndex) return true;
+        if (rule.paused || index !== rule.nextIndex) throw new Error("Occurrence changed");
+        const dateKey = occurrenceDateKey(rule.anchorDateKey, rule.frequency, index);
+        payload = { ...rule, dateKey };
+        id = occurrenceRequestId(rule.id, dateKey);
+        nextRules = rules.map((item) => item.id === ruleId ? { ...item, nextIndex: index + 1 } : item);
+      }
+      const existing = current.find((item) => item.id === id);
+      if (existing && !transactionData.recurringOccurrence && !transactionData.recurring) return true;
+      if (!existing && current.filter((item) => !item.isSample).length >= MAX_DEMO_TRANSACTIONS) {
+        notification.warning(t('demo.limitReached', { limit: MAX_DEMO_TRANSACTIONS }));
+        return false;
+      }
+      const newTransaction = existing || normalizeDemoTransaction({
+        ...payload,
+        amountMinor: Number.isSafeInteger(payload.amountMinor) ? payload.amountMinor : parseMoneyToMinor(payload.amount),
+        dateKey: payload.dateKey || coerceDateKey(payload.date),
+        id,
+        createdAt: new Date(),
+        isSample: false,
+      });
+      if (transactionData.recurring) {
+        const draft = recurringDraftSchema.parse(transactionData.recurring);
+        const input = recurringInputSchema.parse({
+          ...newTransaction, ...draft, anchorDateKey: newTransaction.dateKey, nextIndex: 1, paused: false,
+        });
+        if (!rules.some((rule) => rule.id === draft.id)) nextRules = [...rules, { ...input, id: draft.id }];
+      }
+      const updatedTransactions = existing ? current : [newTransaction, ...current];
+      const entries = [[DEMO_STORAGE_KEY, JSON.stringify(updatedTransactions)]];
+      if (nextRules !== rules) entries.push([DEMO_RECURRING_KEY, JSON.stringify(nextRules)]);
+      if (!writeLocalBatch(entries)) throw new Error("Demo storage unavailable");
+      latestRef.current = updatedTransactions;
+      setDemoTransactions(updatedTransactions);
+      if (nextRules !== rules) emitLocalChange("demo-recurring");
+      if (!silent) notification.success(t('demo.transactionAdded'));
+      return true;
+    } catch (error) {
+      console.error("Unable to save demo transaction", error);
+      notification.error(t('notifications.addError'));
       return false;
     }
-
-    const newTransaction = normalizeDemoTransaction({
-      ...transactionData,
-      amountMinor: Number.isSafeInteger(transactionData.amountMinor)
-        ? transactionData.amountMinor
-        : parseMoneyToMinor(transactionData.amount),
-      dateKey: transactionData.dateKey || coerceDateKey(transactionData.date),
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-      isSample: false, 
-    });
-
-    const updatedTransactions = [newTransaction, ...current];
-    latestRef.current = updatedTransactions;
-    setDemoTransactions(updatedTransactions);
-    saveDemoTransactions(updatedTransactions);
-    
-    if (!silent) notification.success(t('demo.transactionAdded'));
-    return true;
-  }, [saveDemoTransactions, notification, t]);
+  }, [notification, t]);
 
   // Updates an existing demo transaction
   const updateDemoTransaction = useCallback(async (transactionId, updatedData) => {
@@ -119,6 +154,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
         ? normalizeDemoTransaction({ ...transaction, ...updatedData })
         : transaction
     );
+    latestRef.current = updatedTransactions;
     setDemoTransactions(updatedTransactions);
     saveDemoTransactions(updatedTransactions);
     notification.success(t('demo.transactionUpdated'));
@@ -130,6 +166,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
     const updatedTransactions = demoTransactions.filter(
       transaction => transaction.id !== transactionId
     );
+    latestRef.current = updatedTransactions;
     setDemoTransactions(updatedTransactions);
     saveDemoTransactions(updatedTransactions);
     notification.success(t('demo.transactionDeleted'));
@@ -138,6 +175,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
 
   // Clears all demo transactions
   const clearDemoTransactions = useCallback(() => {
+    latestRef.current = [];
     setDemoTransactions([]);
     removeLocalValue(DEMO_STORAGE_KEY);
     notification.success(t('demo.allTransactionsCleared'));
@@ -215,6 +253,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
     ];
 
     const normalizedSamples = sampleTransactions.map(normalizeDemoTransaction);
+    latestRef.current = normalizedSamples;
     setDemoTransactions(normalizedSamples);
     saveDemoTransactions(normalizedSamples);
     notification.info(t('demo.sampleTransactionsAdded'));
@@ -226,13 +265,13 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
 
   // If demo was just activated and no transactions exist, generate samples
   useEffect(() => {
-    if (seedOnMount && !hasSeededRef.current) {
+    if (!loading && seedOnMount && !hasSeededRef.current) {
       if (demoTransactions.length === 0) {
         generateSampleTransactions();
       }
       hasSeededRef.current = true;
     }
-  }, [seedOnMount, demoTransactions.length, generateSampleTransactions]);
+  }, [loading, seedOnMount, demoTransactions.length, generateSampleTransactions]);
 
   const value = useMemo(() => ({
     transactions: demoTransactions,

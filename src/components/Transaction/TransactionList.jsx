@@ -79,14 +79,17 @@ const TransactionList = () => {
     return t(`categories.${category}`, { defaultValue: category });
   }, [expenseCategories, incomeCategories, t]);
 
-  // Full-history snapshot used by search, loaded once on the first search.
+  // Refresh the full-history search snapshot after every transaction revision.
   const [historyIndex, setHistoryIndex] = useState(null);
+  const [historyRevision, setHistoryRevision] = useState(null);
+  const [historyOwner, setHistoryOwner] = useState(null);
+  const userId = currentUser?.uid;
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [removedIds, setRemovedIds] = useState(() => new Set());
   const searchSource = useMemo(() => {
     if (isDemo) return transactions;
-    return mergeTransactions(historyIndex || allLoadedTransactions, transactions, removedIds);
-  }, [isDemo, historyIndex, allLoadedTransactions, transactions, removedIds]);
+    return mergeTransactions(historyOwner === userId && historyRevision === recentRevision ? historyIndex || [] : [], transactions, removedIds);
+  }, [isDemo, historyIndex, historyOwner, userId, historyRevision, recentRevision, transactions, removedIds]);
 
   const {
     filteredTransactions,
@@ -104,16 +107,27 @@ const TransactionList = () => {
   );
 
   useEffect(() => {
-    if (!isSearching || isDemo || !currentUser || historyIndex || isLoadingHistory) return;
+    if (!isSearching || isDemo || !userId) {
+      setIsLoadingHistory(false);
+      return undefined;
+    }
+    if (historyIndex && historyOwner === userId && historyRevision === recentRevision) return undefined;
     let cancelled = false;
     setIsLoadingHistory(true);
-    fetchAllTransactions()
-      .then((data) => { if (!cancelled) setHistoryIndex(data); })
+    fetchAllTransactions({ forceRefresh: true })
+      .then((data) => {
+        if (!cancelled) {
+          setHistoryIndex(data);
+          setHistoryOwner(userId);
+          setHistoryRevision(recentRevision);
+          setRemovedIds(new Set());
+          setIsLoadingHistory(false);
+        }
+      })
       .catch(() => { if (!cancelled) setLoadError(t("transactions.loadError")); })
       .finally(() => { if (!cancelled) setIsLoadingHistory(false); });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSearching, isDemo, currentUser, historyIndex, fetchAllTransactions, t]);
+  }, [isSearching, isDemo, userId, historyIndex, historyOwner, historyRevision, recentRevision, reloadKey, fetchAllTransactions, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -265,10 +279,11 @@ const TransactionList = () => {
   // Keep the side panel in sync with the list (edits, deletions, period changes).
   useEffect(() => {
     if (!selectedTransaction) return;
-    const fresh = allLoadedTransactions.find((item) => item.id === selectedTransaction.id);
+    if (isSearching && !isDemo && historyOwner === userId && historyRevision !== recentRevision) return;
+    const fresh = (isSearching ? searchSource : allLoadedTransactions).find((item) => item.id === selectedTransaction.id);
     if (!fresh) setSelectedTransaction(null);
     else if (fresh !== selectedTransaction) setSelectedTransaction(fresh);
-  }, [allLoadedTransactions, selectedTransaction]);
+  }, [allLoadedTransactions, isSearching, isDemo, searchSource, selectedTransaction, historyOwner, userId, historyRevision, recentRevision]);
 
   const loading = authLoading || (isLoadingInitial && allLoadedTransactions.length === 0 && transactions.length === 0);
 
@@ -306,7 +321,7 @@ const TransactionList = () => {
   }, [deleteConfirm, deleteTransaction]);
 
   const transactionToDelete = deleteConfirm
-    ? allLoadedTransactions.find((item) => item.id === deleteConfirm) || transactions.find((item) => item.id === deleteConfirm)
+    ? searchSource.find((item) => item.id === deleteConfirm) || allLoadedTransactions.find((item) => item.id === deleteConfirm) || transactions.find((item) => item.id === deleteConfirm)
     : null;
 
   const categories = useMemo(() => {
