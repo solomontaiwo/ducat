@@ -6,7 +6,7 @@ const RECURRING = "recurring";
 const BUDGETS = "budgets";
 const PREFERENCES = "preferences";
 
-const fromRecurringRow = (row) => ({
+export const fromRecurringRow = (row) => ({
   id: row.id,
   userId: row.user_id,
   type: row.type,
@@ -42,12 +42,14 @@ const toRecurringRow = (data) => Object.fromEntries(
 
 const subscribe = (table, userId, load, onData, onError) => {
   let active = true;
+  let request = 0;
   const reload = async () => {
+    const currentRequest = ++request;
     try {
       const data = await load();
-      if (active) onData(data);
+      if (active && request === currentRequest) onData(data);
     } catch (error) {
-      if (active) onError?.(error);
+      if (active && request === currentRequest) onError?.(error);
     }
   };
   const stop = watchTable({ supabase, table, userId, reload });
@@ -93,9 +95,17 @@ export const PlanningService = {
   }, onData, onError),
 
   savePreferences: async (userId, preferences) => {
-    const parsed = preferencesSchema.parse(preferences);
-    unwrap(await supabase.from(PREFERENCES).upsert({ user_id: userId, data: parsed }, { onConflict: "user_id" }));
+    const parsed = preferencesSchema.partial().parse(preferences);
+    const saved = unwrap(await supabase.rpc("save_preferences_patch", { p_patch: parsed }));
     emitLocalChange(PREFERENCES);
+    return saved;
+  },
+
+  registerOccurrence: async (id, index) => {
+    const created = unwrap(await supabase.rpc("register_recurring_occurrence", { p_rule_id: id, p_index: index }));
+    emitLocalChange(RECURRING);
+    emitLocalChange("transactions");
+    return Boolean(created);
   },
 
   saveBudgets: async (userId, limits) => {

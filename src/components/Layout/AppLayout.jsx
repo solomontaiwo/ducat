@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useCallback, useMemo } from "react";
 import { useLocation } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
+import { usePlanning } from "../../context/PlanningProvider.jsx";
 import { AddTransactionContext } from "../../context/AddTransactionContext.jsx";
 import Sidebar from "./Sidebar";
 import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
@@ -17,6 +18,7 @@ const AppLayout = ({ children }) => {
   const location = useLocation();
   const { currentUser } = useAuth();
   const { isDemo, canAddMoreTransactions } = useUnifiedTransactions();
+  const { error: planningError, retry: retryPlanning } = usePlanning();
   const { t } = useTranslation();
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const [showAddModal, setShowAddModal] = useState(false);
@@ -61,6 +63,12 @@ const AppLayout = ({ children }) => {
           }
         >
           <div className="w-full space-y-5">
+            {showNavigation && planningError && (
+              <div role="alert" className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm">
+                <p>{planningError}</p>
+                <button type="button" onClick={retryPlanning} className="rounded-xl border border-warning/50 px-3 py-2 font-semibold">{t("planning.retry")}</button>
+              </div>
+            )}
             {showNavigation && currentUser && !currentUser.emailVerified && (
               <div className="mx-auto flex max-w-6xl flex-col gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <p>{t("security.emailVerificationRequired")}</p>

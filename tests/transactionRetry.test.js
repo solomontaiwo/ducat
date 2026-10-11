@@ -44,3 +44,16 @@ describe("TransactionService.add retries", () => {
     expect(supabase.calls).toHaveLength(0);
   });
 });
+
+it('submits the initial transaction and recurring rule in one RPC with stable IDs', async () => {
+  supabase.reset();
+  const draft = { id: '00000000-0000-4000-8000-00000000000a', frequency: 'monthly', mode: 'confirm' };
+  await TransactionService.add('owner', { ...input, recurring: draft }, { requestId: 'stable' });
+  await TransactionService.add('owner', { ...input, recurring: draft }, { requestId: 'stable' });
+  expect(supabase.calls).toHaveLength(2);
+  expect(supabase.calls[0]).toEqual(supabase.calls[1]);
+  expect(supabase.calls[0]).toMatchObject({ rpc: 'add_transaction_with_recurring', args: {
+    p_id: 'owner_stable', p_rule_id: draft.id, p_frequency: 'monthly', p_mode: 'confirm',
+    p_transaction: expect.objectContaining({ amount_minor: 1250, date_key: '2026-09-06' }),
+  } });
+});

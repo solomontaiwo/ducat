@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useCategories } from "../../utils/categories.jsx";
@@ -22,6 +22,8 @@ const QuickAddForm = () => {
   const [category, setCategory] = useState(expenseCategories[0]?.value || "");
   const [date, setDate] = useState(todayDateKey);
   const [submitting, setSubmitting] = useState(false);
+  const requestIdRef = useRef(crypto.randomUUID());
+  const submittingRef = useRef(false);
   const [categoryTouched, setCategoryTouched] = useState(false);
   const categories = type === "expense" ? expenseCategories : incomeCategories;
   const disabled = isDemo && !canAddMoreTransactions;
@@ -41,6 +43,7 @@ const QuickAddForm = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (disabled || submittingRef.current) return;
     let amountMinor;
     try {
       amountMinor = parseMoneyToMinor(amount.replace(",", "."));
@@ -49,6 +52,7 @@ const QuickAddForm = () => {
       return;
     }
     const categoryLabel = categories.find((item) => item.value === category)?.label || category;
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const success = await addTransaction({
@@ -59,14 +63,16 @@ const QuickAddForm = () => {
         dateKey: date,
         date: dateKeyToDate(date),
         category,
-        clientRequestId: crypto.randomUUID(),
+        clientRequestId: requestIdRef.current,
       });
       if (success) {
+        requestIdRef.current = crypto.randomUUID();
         setAmount("");
         setDescription("");
         setCategoryTouched(false);
       }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
