@@ -3,7 +3,8 @@ import { emitLocalChange, watchTable } from "./changeEvents.js";
 import { transactionV2InputSchema, transactionV2PatchSchema } from "../schemas/transaction.jsx";
 import { DEFAULT_CURRENCY, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
 import { compareTransactions } from "../utils/transactionOrder.js";
-import { coerceDateKey, dateKeyToDate } from "../utils/dateUtils.js";
+import { coerceDateKey, dateKeyToDate, isDateKey } from "../utils/dateUtils.js";
+import { recurringDraftSchema } from "../schemas/planning.js";
 
 const TABLE = "transactions";
 const COLUMNS = "id, user_id, type, amount_minor, currency, description, category, date_key, schema_version, created_at, updated_at";
@@ -18,6 +19,12 @@ const inFlight = new Map();
 let cacheRevision = 0;
 
 const safeId = (value) => String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+const cursorId = (value) => {
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(value)) {
+    throw Object.assign(new Error("Invalid transaction cursor"), { code: "invalid-argument" });
+  }
+  return value;
+};
 
 export { compareTransactions };
 
@@ -137,17 +144,19 @@ export const TransactionService = {
   /** The most recently created transactions, kept current while subscribed. */
   subscribeToRecent: (userId, limitCount, onUpdate, onError, onInvalid) => {
     let active = true;
+    let request = 0;
     const reload = async () => {
+      const currentRequest = ++request;
       try {
         const rows = unwrap(await supabase.from(TABLE).select(COLUMNS)
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(limitCount));
-        if (!active) return;
+        if (!active || currentRequest !== request) return;
         invalidateCache();
         onUpdate(normalizeRows(rows, onInvalid), []);
       } catch (error) {
-        if (active) onError?.(error);
+        if (active && currentRequest === request) onError?.(error);
       }
     };
     const stop = watchTable({ supabase, table: TABLE, userId, reload });
@@ -190,9 +199,10 @@ export const TransactionService = {
   /** Keyset pagination, newest first. The cursor is the last row returned. */
   fetchPage: async (userId, { pageSize = DEFAULT_PAGE_SIZE, cursor = null, onInvalid, type = "all", startDate, endDate } = {}) => {
     let query = orderNewestFirst(applyFilters(supabase.from(TABLE).select(COLUMNS), { userId, type, startDate, endDate }));
-    if (cursor?.dateKey && cursor?.id) {
-      const dateKey = coerceDateKey(cursor.dateKey);
-      const id = safeId(cursor.id);
+    if (cursor !== null) {
+      if (!isDateKey(cursor?.dateKey)) throw Object.assign(new Error("Invalid cursor date"), { code: "invalid-argument" });
+      const dateKey = cursor.dateKey;
+      const id = cursorId(cursor.id);
       query = query.or(`date_key.lt.${dateKey},and(date_key.eq.${dateKey},id.lt.${id})`);
     }
     const rows = unwrap(await query.limit(pageSize));
@@ -274,6 +284,16 @@ export const TransactionService = {
   add: async (userId, data, { requestId = crypto.randomUUID() } = {}) => {
     const input = toV2Input(data);
     const id = `${safeId(userId)}_${safeId(requestId)}`;
+    if (data.recurring) {
+      const rule = recurringDraftSchema.parse(data.recurring);
+      unwrap(await supabase.rpc("add_transaction_with_recurring", {
+        p_id: id, p_rule_id: rule.id, p_transaction: toRow(input),
+        p_frequency: rule.frequency, p_mode: rule.mode,
+      }));
+      afterWrite();
+      emitLocalChange("recurring");
+      return { id };
+    }
     const { error } = await supabase.from(TABLE).insert({ id, user_id: userId, ...toRow(input), schema_version: 2 });
     // A retry reuses the same id. If the first attempt actually reached the
     // server the row is already there: confirm that instead of failing.

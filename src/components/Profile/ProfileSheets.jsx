@@ -165,7 +165,7 @@ PasswordSheet.propTypes = { open: PropTypes.bool.isRequired, onClose: PropTypes.
 export const MonthStartSheet = ({ open, onClose }) => {
   const { t, i18n } = useTranslation();
   const { isDemo, transactions, fetchAllTransactions } = useUnifiedTransactions();
-  const { preferences, savePreferences } = usePlanning();
+  const { preferences, ready, savePreferences } = usePlanning();
   const [mode, setMode] = useState("calendar");
   const [day, setDay] = useState(27);
   const [suggested, setSuggested] = useState(null);
@@ -210,7 +210,7 @@ export const MonthStartSheet = ({ open, onClose }) => {
       onOpenChange={(next) => !next && onClose()}
       title={t("profilePage.monthStart.title")}
       description={t("profilePage.monthStart.hint")}
-      footer={<Button size="lg" className="w-full" onClick={save}>{t("save")}</Button>}
+      footer={<Button size="lg" className="w-full" onClick={save} disabled={!ready}>{t("save")}</Button>}
     >
       <div role="radiogroup" aria-label={t("profilePage.monthStart.title")} className="space-y-2">
         {[
@@ -273,7 +273,7 @@ MonthStartSheet.propTypes = { open: PropTypes.bool.isRequired, onClose: PropType
 /* ── Quick add defaults ────────────────────────────────────────────────── */
 export const QuickAddSheet = ({ open, onClose }) => {
   const { t } = useTranslation();
-  const { preferences, savePreferences } = usePlanning();
+  const { preferences, ready, savePreferences } = usePlanning();
   const { visibleExpenseCategories, visibleIncomeCategories } = useCategories();
   const [type, setType] = useState("last");
   const [category, setCategory] = useState("");
@@ -307,7 +307,7 @@ export const QuickAddSheet = ({ open, onClose }) => {
       onOpenChange={(next) => !next && onClose()}
       title={t("profilePage.quickAdd.title")}
       description={t("profilePage.quickAdd.hint")}
-      footer={<Button size="lg" className="w-full" onClick={save}>{t("save")}</Button>}
+      footer={<Button size="lg" className="w-full" onClick={save} disabled={!ready}>{t("save")}</Button>}
     >
       <div className="space-y-2">
         <p className="text-sm font-bold">{t("profilePage.quickAdd.startWith")}</p>
@@ -416,7 +416,7 @@ export const CategoriesSheet = ({ open, onClose }) => {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { isDemo, transactions } = useUnifiedTransactions();
-  const { preferences, savePreferences } = usePlanning();
+  const { preferences, ready, savePreferences } = usePlanning();
   const { expenseCategories, incomeCategories } = useCategories();
   const [type, setType] = useState("expense");
   const [order, setOrder] = useState({ expense: [], income: [] });
@@ -486,7 +486,7 @@ export const CategoriesSheet = ({ open, onClose }) => {
       onOpenChange={(next) => !next && onClose()}
       title={t("profilePage.categories.title")}
       description={t("profilePage.categories.hint")}
-      footer={<Button size="lg" className="w-full" onClick={save}>{t("save")}</Button>}
+      footer={<Button size="lg" className="w-full" onClick={save} disabled={!ready}>{t("save")}</Button>}
     >
       <SegmentedField
         label={t("profilePage.categories.title")}

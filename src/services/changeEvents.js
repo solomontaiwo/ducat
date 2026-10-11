@@ -39,15 +39,24 @@ export const watchTable = ({ supabase, table, topic = table, userId, reload, del
     channel = supabase
       .channel(`${table}:${userId}:${channelSequence}`)
       .on("postgres_changes", { event: "*", schema: "public", table, filter: `user_id=eq.${userId}` }, schedule)
-      .subscribe();
+      // Delete payloads can lack user_id; reload through the owner's RLS-protected query.
+      .on("postgres_changes", { event: "DELETE", schema: "public", table }, schedule)
+      .subscribe((status) => { if (status === "SUBSCRIBED") schedule(); });
   } catch (error) {
     console.warn(`Realtime unavailable for ${table}`, error);
   }
   reload();
+  const onVisible = () => { if (document.visibilityState === "visible") schedule(); };
+  window.addEventListener("online", schedule);
+  window.addEventListener("focus", schedule);
+  document.addEventListener("visibilitychange", onVisible);
   return () => {
     active = false;
     clearTimeout(timer);
     stopLocal();
+    window.removeEventListener("online", schedule);
+    window.removeEventListener("focus", schedule);
+    document.removeEventListener("visibilitychange", onVisible);
     if (channel) supabase.removeChannel(channel);
   };
 };

@@ -145,3 +145,15 @@ Lo script si può rilanciare: aggiunge solo ciò che manca (account per email, m
 - **Rollback**: `git revert` del merge su `main` ripubblica la versione Firebase. I dati inseriti su Supabase nel frattempo non tornano su Firebase.
 - Tieni il progetto Firebase così com'è per circa un mese come riserva, poi eliminalo e cancella i secret `VITE_FIREBASE_*` da GitHub.
 - Backup: il piano Free non offre backup scaricabili. Oltre al "Backup completo" nel profilo dell'app, ogni tanto puoi esportare il database con `pg_dump` usando la connection string di **Project Settings → Database** (es. `pg_dump "$DATABASE_URL" --data-only --schema=public -f backup.sql`).
+
+## Migrazione delle correzioni dell'audit
+
+Prima di pubblicare questa versione, applica **anche** `supabase/migrations/20261011000000_audit_reliability.sql` tramite `npx supabase db push`. Se usi il SQL Editor, esegui le migrazioni nell'ordine del nome del file. Non rieseguire solo lo schema iniziale dopo la nuova migrazione: sostituirebbe la funzione di eliminazione con la versione precedente.
+
+La nuova migrazione aggiunge le funzioni per salvare movimento e ricorrenza nella stessa transazione, registrare una scadenza con avanzamento atomico dell'indice, aggiornare le preferenze per campi e leggere/ripristinare un backup completo. Tutte queste operazioni rispettano RLS e richiedono un account con email verificata.
+
+L'eliminazione dell'account richiede un'autenticazione con password negli ultimi due minuti, verificata nel database tramite il campo `amr` del JWT firmato da Supabase. La richiesta della password nel profilo esegue già questa autenticazione. Il rinnovo del token da solo non basta. Vedi i [campi JWT di Supabase](https://supabase.com/docs/guides/auth/jwt-fields).
+
+Dal profilo, **Ripristina backup** accetta file JSON schemaVersion 2 fino a 10 MB, esportati dallo stesso account. Aggiunge soltanto gli ID mancanti; i movimenti e le ricorrenze già presenti restano invariati. Budget e preferenze vengono sostituiti solo scegliendo l'opzione dedicata. Il ripristino è una singola transazione: un errore nei dati annulla tutte le scritture. Un tentativo ripetuto dopo una risposta persa non duplica gli ID.
+
+`npm run test:db` verifica le migrazioni, RLS, rollback dei salvataggi composti e del ripristino, tentativi ripetuti, date delle ricorrenze e autenticazione recente. Dopo l'applicazione sul progetto Supabase, verifica con un account di prova anche Realtime tra due browser, un backup con relativo ripristino e, se abilitata, l'eliminazione dell'account di prova.

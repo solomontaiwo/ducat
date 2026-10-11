@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 
 const root = join(import.meta.dirname, "..", "..");
 const migrationsDir = join(root, "supabase", "migrations");
-const initialSchema = readFileSync(join(migrationsDir, "20261010000000_initial_schema.sql"), "utf8");
+const migrations = readdirSync(migrationsDir).filter((name) => name.endsWith(".sql")).sort().map((name) => readFileSync(join(migrationsDir, name), "utf8"));
 
 const ALICE = "00000000-0000-4000-8000-00000000000a";
 const BOB = "00000000-0000-4000-8000-00000000000b";
@@ -13,14 +13,15 @@ const CAROL = "00000000-0000-4000-8000-00000000000c"; // email not confirmed
 
 let db;
 
-const asAdmin = () => db.exec("reset role; select set_config('request.jwt.claim.sub', '', false);");
-const asUser = async (uid) => {
+const asAdmin = () => db.exec("reset role; select set_config('request.jwt.claim.sub', '', false); select set_config('request.jwt.claims', '{}', false);");
+const asUser = async (uid, claims = {}) => {
   await db.exec("reset role;");
   await db.query("select set_config('request.jwt.claim.sub', $1, false)", [uid]);
+  await db.query("select set_config('request.jwt.claims', $1, false)", [JSON.stringify(claims)]);
   await db.exec("set role authenticated;");
 };
 const asAnon = async () => {
-  await db.exec("reset role; select set_config('request.jwt.claim.sub', '', false); set role anon;");
+  await db.exec("reset role; select set_config('request.jwt.claim.sub', '', false); select set_config('request.jwt.claims', '{}', false); set role anon;");
 };
 
 const transaction = (overrides = {}) => ({
@@ -45,9 +46,7 @@ const insertTransaction = (row) => {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(readFileSync(join(import.meta.dirname, "supabaseStub.sql"), "utf8"));
-  for (const file of readdirSync(migrationsDir).filter((name) => name.endsWith(".sql")).sort()) {
-    await db.exec(readFileSync(join(migrationsDir, file), "utf8"));
-  }
+  for (const migration of migrations) await db.exec(migration);
 }, 60_000);
 
 afterAll(async () => {
@@ -89,8 +88,9 @@ describe("initial schema migration", () => {
       return result;
     };
     const before = await snapshot();
-    await db.exec(initialSchema);
-    await db.exec(initialSchema);
+    for (let replay = 0; replay < 2; replay += 1) {
+      for (const migration of migrations) await db.exec(migration);
+    }
     expect(await snapshot()).toEqual(before);
 
     await asUser(BOB);
@@ -255,8 +255,8 @@ describe("budgets and preferences", () => {
 });
 
 describe("account deletion", () => {
-  it("removes the account and every row it owns", async () => {
-    await asUser(ALICE);
+  it("removes the account and every row it owns after recent password authentication", async () => {
+    await asUser(ALICE, { amr: [{ method: "password", timestamp: Math.floor(Date.now() / 1000) }] });
     await insertTransaction(transaction());
     await db.query(`insert into public.budgets (limits) values ('{}')`);
     await db.query("select public.delete_my_account()");
@@ -270,5 +270,132 @@ describe("account deletion", () => {
   it("is not available to anonymous visitors", async () => {
     await asAnon();
     await expect(db.query("select public.delete_my_account()")).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe('atomic planning writes', () => {
+  const ruleId = '00000000-0000-4000-8000-000000000011';
+  const row = { ...transaction(), currency: 'EUR', date_key: '2026-01-31' };
+  const add = (overrides = {}, frequency = 'monthly') => db.query(
+    'select public.add_transaction_with_recurring($1, $2, $3, $4, $5)',
+    ['initial', ruleId, JSON.stringify({ ...row, ...overrides }), frequency, 'confirm']
+  );
+  const occurrence = (index) => db.query('select public.register_recurring_occurrence($1, $2) as created', [ruleId, index]);
+
+  it('rolls back the initial transaction if its rule is invalid', async () => {
+    await asUser(ALICE);
+    await expect(add({}, 'daily')).rejects.toThrow(/check/);
+    expect((await db.query('select * from public.transactions')).rows).toEqual([]);
+    expect((await db.query('select * from public.recurring')).rows).toEqual([]);
+  });
+  it('creates both records once and registers anchored month-end occurrences once', async () => {
+    await asUser(ALICE);
+    await add(); await add();
+    expect((await db.query('select id from public.transactions')).rows).toHaveLength(1);
+    expect((await occurrence(1)).rows).toEqual([{ created: true }]);
+    expect((await occurrence(1)).rows).toEqual([{ created: false }]);
+    await occurrence(2);
+    const records = (await db.query('select id, date_key::text from public.transactions order by date_key')).rows;
+    expect(records.map(item => item.date_key)).toEqual(['2026-01-31', '2026-02-28', '2026-03-31']);
+    expect(records[1].id).toHaveLength(88);
+    expect((await db.query('select next_index from public.recurring')).rows).toEqual([{ next_index: 3 }]);
+  });
+  it('leaves the index unchanged when inserting an occurrence fails', async () => {
+    await asUser(BOB);
+    await insertTransaction(transaction({ id: `${ALICE}_rec-${ruleId}-2026-02-28`, user_id: BOB }));
+    await asUser(ALICE);
+    await add();
+    await expect(occurrence(1)).rejects.toThrow(/unavailable|row-level security/);
+    expect((await db.query('select next_index from public.recurring')).rows).toEqual([{ next_index: 1 }]);
+  });
+  it('rejects skipped future indices, paused rules and rules owned by another user', async () => {
+    await asUser(ALICE); await add();
+    await expect(occurrence(2)).rejects.toThrow(/changed/);
+    await db.query('update public.recurring set paused = true');
+    await expect(occurrence(1)).rejects.toThrow(/changed/);
+    await asUser(BOB);
+    await expect(occurrence(1)).rejects.toThrow(/unavailable/);
+    await expect(add()).rejects.toThrow(/unavailable|row-level security/);
+    await asUser(CAROL);
+    await expect(add()).rejects.toThrow(/row-level security/);
+    await asAnon();
+    await expect(occurrence(1)).rejects.toThrow(/permission denied/);
+    await expect(add()).rejects.toThrow(/permission denied/);
+  });
+  it('merges preference patches instead of replacing other fields', async () => {
+    await asUser(ALICE);
+    await db.query(`select public.save_preferences_patch('{"monthStartDay":27,"quickAmounts":[5,10]}')`);
+    await db.query(`select public.save_preferences_patch('{"hiddenCategories":["food"]}')`);
+    expect((await db.query('select data from public.preferences')).rows[0].data).toEqual({ monthStartDay: 27, quickAmounts: [5, 10], hiddenCategories: ['food'] });
+    await asUser(BOB);
+    expect((await db.query(`select public.save_preferences_patch('{"monthStartDay":1}') as data`)).rows[0].data).toEqual({ monthStartDay: 1 });
+    await asUser(CAROL);
+    await expect(db.query(`select public.save_preferences_patch('{}')`)).rejects.toThrow(/row-level security/);
+  });
+});
+
+describe('backup snapshot and restore', () => {
+  const backup = (overrides = {}) => ({
+    schemaVersion: 2, account: { uid: ALICE }, transactions: [{ id: 'restored', type: 'expense', amountMinor: 1250, currency: 'EUR', description: 'Spesa', category: 'food', dateKey: '2026-10-01' }],
+    recurring: [{ id: '00000000-0000-4000-8000-000000000012', type: 'expense', amountMinor: 1250, currency: 'EUR', description: 'Spesa', category: 'food', anchorDateKey: '2026-10-01', frequency: 'weekly', nextIndex: 1, mode: 'confirm', paused: false }],
+    budgets: { food: 9000 }, preferences: { monthStartDay: 27 }, ...overrides,
+  });
+  const restore = (value, settings = false) => db.query('select public.restore_account_backup($1, $2) as result', [JSON.stringify(value), settings]);
+  it('includes the complete private history and planning data in a single snapshot', async () => {
+    await asUser(ALICE);
+    await restore(backup(), true);
+    await db.query(`insert into public.transactions (id, type, amount_minor, description, category, date_key)
+      select 'many-' || n, 'expense', 1, 'Test', 'food', '2026-10-01'::date from generate_series(1, 1005) n`);
+    await asUser(BOB); await insertTransaction(transaction({ id: 'bob', user_id: BOB }));
+    await asUser(ALICE);
+    const result = (await db.query('select public.read_account_backup() as result')).rows[0].result;
+    expect(result.transactions).toHaveLength(1006);
+    expect(result.transactions.some(row => row.id === 'bob')).toBe(false);
+    expect(result.recurring).toHaveLength(1);
+    expect(result.budgets).toEqual({ food: 9000 });
+    expect(result.preferences).toEqual({ monthStartDay: 27 });
+    await asUser(CAROL);
+    await expect(db.query('select public.read_account_backup()')).rejects.toThrow(/verified/);
+    await asAnon();
+    await expect(db.query('select public.read_account_backup()')).rejects.toThrow(/permission denied/);
+  });
+  it('restores only missing records, preserves duplicates, and restores settings only when selected', async () => {
+    await asUser(ALICE);
+    await db.query(`select public.save_preferences_patch('{"monthStartDay":1}')`);
+    expect((await restore(backup())).rows[0].result).toEqual({ transactions: 1, recurring: 1 });
+    await db.query(`update public.transactions set amount_minor = 555 where id = 'restored'`);
+    expect((await restore(backup())).rows[0].result).toEqual({ transactions: 0, recurring: 0 });
+    expect((await db.query('select amount_minor from public.transactions')).rows).toEqual([{ amount_minor: 555 }]);
+    expect((await db.query('select data from public.preferences')).rows[0].data).toEqual({ monthStartDay: 1 });
+    await restore(backup(), true);
+    expect((await db.query('select data from public.preferences')).rows[0].data).toEqual({ monthStartDay: 27 });
+  });
+  it('rolls back all writes when a later record or the settings are invalid', async () => {
+    await asUser(ALICE);
+    const valid = backup();
+    await expect(restore(backup({ recurring: [{ ...valid.recurring[0], amountMinor: -1 }] }))).rejects.toThrow(/check/);
+    await expect(restore(backup({ preferences: [] }), true)).rejects.toThrow(/invalid backup settings/);
+    expect((await db.query('select * from public.transactions')).rows).toEqual([]);
+    expect((await db.query('select * from public.recurring')).rows).toEqual([]);
+    expect((await db.query('select * from public.budgets')).rows).toEqual([]);
+  });
+  it('rejects different accounts, unverified users and anonymous calls', async () => {
+    await asUser(BOB); await expect(restore(backup())).rejects.toThrow(/another account/);
+    await asUser(CAROL); await expect(restore(backup({ account: { uid: CAROL } }))).rejects.toThrow(/another account/);
+    await asAnon(); await expect(restore(backup())).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe('server-enforced recent authentication', () => {
+  it.each([
+    {}, { amr: [{ method: 'password', timestamp: Math.floor(Date.now() / 1000) - 180 }] },
+    { amr: [{ method: 'password', timestamp: Math.floor(Date.now() / 1000) + 180 }] },
+    { amr: [{ method: 'token_refresh', timestamp: Math.floor(Date.now() / 1000) }] },
+    { amr: [{ method: 'password', timestamp: 'not-a-time' }] }, { amr: 'password' },
+  ])('rejects deletion without a recent signed password authentication: %j', async claims => {
+    await asUser(ALICE, claims);
+    await expect(db.query('select public.delete_my_account()')).rejects.toThrow(/recent password/);
+    await asAdmin();
+    expect((await db.query('select id from auth.users where id = $1', [ALICE])).rows).toHaveLength(1);
   });
 });

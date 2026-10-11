@@ -778,5 +778,26 @@
   },
   "preferences": {
     "saveError": "Impossibile salvare le preferenze"
+  },
+  "backupRestore": {
+    "title": "Ripristina backup",
+    "rowSummary": "Importa un backup JSON di questo account",
+    "description": "Aggiunge solo i movimenti e le ricorrenze mancanti. I dati già presenti vengono conservati. Usa un backup dello stesso account, fino a 10 MB.",
+    "file": "File di backup JSON",
+    "reading": "Verifica del backup…",
+    "summary": "{{transactions}} movimenti e {{recurring}} ricorrenze nel backup.",
+    "settings": "Ripristina anche budget e preferenze",
+    "settingsHint": "Sostituisce i budget e le preferenze attuali con quelli del backup.",
+    "restore": "Ripristina",
+    "restoring": "Ripristino…",
+    "tooLarge": "Il file supera il limite di 10 MB.",
+    "wrongAccount": "Questo backup appartiene a un altro account.",
+    "invalid": "Backup non valido o versione non supportata. Nessun dato è stato modificato.",
+    "failed": "Ripristino non confermato. Puoi riprovare senza duplicare i dati.",
+    "success": "Ripristino completato: {{transactions}} movimenti e {{recurring}} ricorrenze aggiunti."
+  },
+  "planning": {
+    "loadError": "Budget, ricorrenze o preferenze non disponibili. Riprova prima di modificarli.",
+    "retry": "Riprova"
   }
 }
