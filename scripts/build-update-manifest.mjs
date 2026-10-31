@@ -40,6 +40,9 @@ const tag = argv("tag");
 const version = argv("version");
 const notes = argv("notes", "");
 const outDir = argv("out");
+// Optional comma-separated list of platform keys (e.g. "darwin-aarch64").
+// When omitted, every platform in PLATFORMS is expected and missing artifacts fail the build.
+const selectedPlatforms = argv("platforms", "").split(",").filter(Boolean);
 
 /** CI artifact name → updater manifest entry. */
 const PLATFORMS = [
@@ -98,6 +101,7 @@ await mkdir(outDir, { recursive: true });
 
 const platforms = {};
 for (const platform of PLATFORMS) {
+  if (selectedPlatforms.length > 0 && !selectedPlatforms.includes(platform.key)) continue;
   const base = path.resolve(downloadedDir);
   const bundle = await findOne(base, platform.bundleGlob, platform.artifact);
   const sig = await findOne(base, platform.sigGlob, platform.artifact);

@@ -1,4 +1,4 @@
-name: Desktop builds
+name: Desktop build (macOS)
 
 on:
   push:
@@ -23,27 +23,6 @@ jobs:
             artifact: macos-arm64
             files: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
             updater-files: src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz*
-          - name: macOS Intel
-            runner: macos-latest
-            target: x86_64-apple-darwin
-            bundles: app,dmg
-            artifact: macos-x64
-            files: src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
-            updater-files: src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz*
-          - name: Windows x64
-            runner: windows-latest
-            target: x86_64-pc-windows-msvc
-            bundles: nsis
-            artifact: windows-x64
-            files: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe
-            updater-files: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe.sig
-          - name: Windows ARM64
-            runner: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            bundles: nsis
-            artifact: windows-arm64
-            files: src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*-setup.exe
-            updater-files: src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*-setup.exe.sig
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
@@ -136,198 +115,10 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  ubuntu-package:
-    name: Ubuntu x64 package
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
-    runs-on: ubuntu-24.04
-    container: ubuntu:22.04
-    env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-      VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION }}
-      VITE_DESKTOP_WEB_URL: ${{ vars.VITE_DESKTOP_WEB_URL }}
-      VITE_APP_VERSION: ${{ github.sha }}
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      DEBIAN_FRONTEND: noninteractive
-    steps:
-      - name: Install build dependencies
-        run: |
-          apt-get update
-          apt-get install -y libwebkit2gtk-4.1-dev build-essential ca-certificates curl wget file git tar gzip libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install Rust
-        shell: bash
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
-      - name: Verify public Supabase configuration
-        run: |
-          node -e 'if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_PUBLISHABLE_KEY) { console.error("Missing Supabase build configuration"); process.exit(1) }'
-          node -e 'const value = process.env.VITE_DESKTOP_WEB_URL; if (value) { const url = new URL(value); if (url.protocol !== "https:" || !url.pathname.endsWith("/")) throw new Error("Desktop web URL must be HTTPS and end with a slash"); }'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Ubuntu package
-        run: npm run tauri -- build --target x86_64-unknown-linux-gnu --bundles deb
-
-      - name: Check Ubuntu installation
-        shell: bash
-        run: |
-          set -euo pipefail
-          apt-get install -y ./src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
-          ldd /usr/bin/soldi-sotto > /tmp/soldi-sotto-ldd.txt
-          if grep -q 'not found' /tmp/soldi-sotto-ldd.txt; then cat /tmp/soldi-sotto-ldd.txt; exit 1; fi
-          dpkg-query -W soldi-sotto
-
-      - name: Upload Ubuntu package
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: soldi-sotto-linux-x64-${{ github.sha }}
-          path: |
-            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
-            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb.sig
-          if-no-files-found: error
-          retention-days: 30
-
-  fedora-package:
-    name: Fedora x64 package
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
-    runs-on: ubuntu-latest
-    container: fedora:latest
-    env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-      VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION }}
-      VITE_DESKTOP_WEB_URL: ${{ vars.VITE_DESKTOP_WEB_URL }}
-      VITE_APP_VERSION: ${{ github.sha }}
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-    steps:
-      - name: Install build dependencies
-        run: dnf install -y gcc gcc-c++ make pkgconf-pkg-config webkit2gtk4.1-devel openssl-devel curl wget file libayatana-appindicator-gtk3-devel librsvg2-devel libxdo-devel rust cargo git tar gzip
-
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Verify public Supabase configuration
-        run: |
-          node -e 'if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_PUBLISHABLE_KEY) { console.error("Missing Supabase build configuration"); process.exit(1) }'
-          node -e 'const value = process.env.VITE_DESKTOP_WEB_URL; if (value) { const url = new URL(value); if (url.protocol !== "https:" || !url.pathname.endsWith("/")) throw new Error("Desktop web URL must be HTTPS and end with a slash"); }'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Fedora package
-        run: npm run tauri -- build --target x86_64-unknown-linux-gnu --bundles rpm
-
-      - name: Check Fedora installation
-        run: |
-          set -eu
-          dnf install -y ./src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
-          ldd /usr/bin/soldi-sotto > /tmp/soldi-sotto-ldd.txt
-          if grep -q 'not found' /tmp/soldi-sotto-ldd.txt; then cat /tmp/soldi-sotto-ldd.txt; exit 1; fi
-          rpm -q soldi-sotto
-
-      - name: Upload Fedora package
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: soldi-sotto-fedora-x64-${{ github.sha }}
-          path: src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
-          if-no-files-found: error
-          retention-days: 30
-
-  arch-package:
-    name: Arch Linux x64 package
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
-    runs-on: ubuntu-latest
-    container: archlinux:base
-    env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-      VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION }}
-      VITE_DESKTOP_WEB_URL: ${{ vars.VITE_DESKTOP_WEB_URL }}
-      VITE_APP_VERSION: ${{ github.sha }}
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-    steps:
-      - name: Install build dependencies
-        run: pacman -Syu --noconfirm --needed base-devel webkit2gtk-4.1 openssl curl wget file libappindicator librsvg xdotool rust git jq
-
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Verify public Supabase configuration
-        run: |
-          node -e 'if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_PUBLISHABLE_KEY) { console.error("Missing Supabase build configuration"); process.exit(1) }'
-          node -e 'const value = process.env.VITE_DESKTOP_WEB_URL; if (value) { const url = new URL(value); if (url.protocol !== "https:" || !url.pathname.endsWith("/")) throw new Error("Desktop web URL must be HTTPS and end with a slash"); }'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build native Arch executable
-        run: npm run tauri -- build --target x86_64-unknown-linux-gnu --no-bundle
-
-      - name: Create Arch package
-        shell: bash
-        run: |
-          set -euo pipefail
-          stage="$RUNNER_TEMP/soldi-sotto-arch"
-          install -d "$stage/root/usr/bin" "$stage/root/usr/share/applications" "$stage/root/usr/share/icons/hicolor/512x512/apps"
-          install -m755 src-tauri/target/x86_64-unknown-linux-gnu/release/soldi-sotto "$stage/root/usr/bin/soldi-sotto"
-          install -m644 packaging/arch/soldi-sotto.desktop "$stage/root/usr/share/applications/soldi-sotto.desktop"
-          install -m644 public/icon-512.png "$stage/root/usr/share/icons/hicolor/512x512/apps/soldi-sotto.png"
-          tar -C "$stage/root" -cf "$stage/root.tar" usr
-          cp packaging/arch/PKGBUILD "$stage/PKGBUILD"
-          version=$(jq -er '.version | gsub("[-+]"; ".")' package.json)
-          useradd -m packager
-          chown -R packager:packager "$stage"
-          cd "$stage"
-          runuser -u packager -- env SOLDI_SOTTO_VERSION="$version" makepkg --noconfirm --nodeps
-          mkdir -p "$GITHUB_WORKSPACE/arch-artifact"
-          cp ./*.pkg.tar.zst "$GITHUB_WORKSPACE/arch-artifact/"
-
-      - name: Check Arch installation
-        shell: bash
-        run: |
-          set -euo pipefail
-          pacman -U --noconfirm arch-artifact/*.pkg.tar.zst
-          ldd /usr/bin/soldi-sotto > /tmp/soldi-sotto-ldd.txt
-          if grep -q 'not found' /tmp/soldi-sotto-ldd.txt; then cat /tmp/soldi-sotto-ldd.txt; exit 1; fi
-          pacman -Q soldi-sotto-bin
-
-      - name: Upload Arch package
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: soldi-sotto-arch-x64-${{ github.sha }}
-          path: arch-artifact/*.pkg.tar.zst
-          if-no-files-found: error
-          retention-days: 30
-
   release:
     name: Publish desktop release
     if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
-    needs: [desktop, ubuntu-package, fedora-package, arch-package]
+    needs: [desktop]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -372,12 +163,6 @@ jobs:
             cp -- "${matches[0]}" "release-assets/Soldi-Sotto-${version}-${output}"
           }
           copy_one macos-arm64 '*.dmg' macos-arm64.dmg
-          copy_one macos-x64 '*.dmg' macos-x64.dmg
-          copy_one windows-x64 '*-setup.exe' windows-x64-setup.exe
-          copy_one windows-arm64 '*-setup.exe' windows-arm64-setup.exe
-          copy_one linux-x64 '*.deb' ubuntu-x64.deb
-          copy_one fedora-x64 '*.rpm' fedora-x64.rpm
-          copy_one arch-x64 '*.pkg.tar.zst' arch-x64.pkg.tar.zst
           printf '%s\n' "$version" > "$RUNNER_TEMP/soldi-sotto-release-version"
 
       - name: Build update manifest
@@ -403,6 +188,7 @@ jobs:
             --tag "$tag" \
             --version "$version" \
             --notes "$notes" \
+            --platforms darwin-aarch64 \
             --out release-assets
 
       - name: Publish release
