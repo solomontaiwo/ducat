@@ -32,6 +32,7 @@ import { cycleMonthFor, cycleRange } from "../../utils/monthCycle.js";
 import formatCurrency, { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { minorToMajor } from "../../utils/money.js";
 import { cn } from "../../lib/utils";
+import { APP_VERSION } from "../../utils/appVersion";
 
 // Enable only after deploying the database migration that enforces reauthentication.
 const ACCOUNT_DELETION_ENABLED = import.meta.env.VITE_ENABLE_ACCOUNT_DELETION === "true";
@@ -383,6 +384,9 @@ const Profile = () => {
             <Link to="/privacy" className="hover:underline">Privacy</Link>
             <span aria-hidden="true">·</span>
             <Link to="/terms" className="hover:underline">{t("profilePage.terms")}</Link>
+          </p>
+          <p className="text-center text-xs text-muted-foreground/60" data-testid="app-version">
+            Soldi Sotto · v{APP_VERSION}
           </p>
         </div>
       </div>
