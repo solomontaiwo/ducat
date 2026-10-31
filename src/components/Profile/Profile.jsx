@@ -19,6 +19,7 @@ import Sheet from "../ui/sheet";
 import BackButton from "../Planning/BackButton.jsx";
 import { SettingsGroup, SettingsRow, InlineSegmented } from "./SettingsList.jsx";
 import { CategoriesSheet, EmailSheet, ExportSheet, InstallSheet, MonthStartSheet, NameSheet, PasswordSheet, QuickAddSheet } from "./ProfileSheets.jsx";
+import UpdateChecker from "../Update/UpdateChecker";
 import { downloadJson } from "../../utils/accountExport.js";
 import { deleteCurrentAccount } from "../../services/accountService.js";
 import { removeLocalValue, writeLocalValue } from "../../utils/storage.js";
@@ -358,6 +359,7 @@ const Profile = () => {
               onClick={backingUp ? undefined : backup}
             />
             <SettingsRow icon={FiUpload} tone="blue" title={t("backupRestore.title")} subtitle={t("backupRestore.rowSummary")} onClick={() => setSheet("restore")} />
+            <UpdateChecker />
             {(install.canPrompt || install.needsManualSteps) && (
               <SettingsRow icon={FiSmartphone} title={t("profilePage.install.title")} subtitle={t("profilePage.install.summary")} onClick={installApp} />
             )}

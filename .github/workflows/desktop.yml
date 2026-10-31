@@ -10,6 +10,7 @@ permissions:
 jobs:
   desktop:
     name: ${{ matrix.name }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -18,33 +19,38 @@ jobs:
           - name: macOS Apple Silicon
             runner: macos-latest
             target: aarch64-apple-darwin
-            bundles: dmg
+            bundles: app,dmg
             artifact: macos-arm64
             files: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            updater-files: src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz*
           - name: macOS Intel
             runner: macos-latest
             target: x86_64-apple-darwin
-            bundles: dmg
+            bundles: app,dmg
             artifact: macos-x64
             files: src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+            updater-files: src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz*
           - name: Windows x64
             runner: windows-latest
             target: x86_64-pc-windows-msvc
             bundles: nsis
             artifact: windows-x64
             files: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe
+            updater-files: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe.sig
           - name: Windows ARM64
             runner: windows-11-arm
             target: aarch64-pc-windows-msvc
             bundles: nsis
             artifact: windows-arm64
             files: src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*-setup.exe
+            updater-files: src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*-setup.exe.sig
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
       VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION }}
       VITE_DESKTOP_WEB_URL: ${{ vars.VITE_DESKTOP_WEB_URL }}
       VITE_APP_VERSION: ${{ github.sha }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -124,12 +130,15 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: soldi-sotto-${{ matrix.artifact }}-${{ github.sha }}
-          path: ${{ matrix.files }}
+          path: |
+            ${{ matrix.files }}
+            ${{ matrix.updater-files }}
           if-no-files-found: error
           retention-days: 30
 
   ubuntu-package:
     name: Ubuntu x64 package
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
     runs-on: ubuntu-24.04
     container: ubuntu:22.04
     env:
@@ -138,6 +147,7 @@ jobs:
       VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION }}
       VITE_DESKTOP_WEB_URL: ${{ vars.VITE_DESKTOP_WEB_URL }}
       VITE_APP_VERSION: ${{ github.sha }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       DEBIAN_FRONTEND: noninteractive
     steps:
       - name: Install build dependencies
@@ -184,12 +194,15 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: soldi-sotto-linux-x64-${{ github.sha }}
-          path: src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+          path: |
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb.sig
           if-no-files-found: error
           retention-days: 30
 
   fedora-package:
     name: Fedora x64 package
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
     runs-on: ubuntu-latest
     container: fedora:latest
     env:
@@ -198,6 +211,7 @@ jobs:
       VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION }}
       VITE_DESKTOP_WEB_URL: ${{ vars.VITE_DESKTOP_WEB_URL }}
       VITE_APP_VERSION: ${{ github.sha }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
     steps:
       - name: Install build dependencies
         run: dnf install -y gcc gcc-c++ make pkgconf-pkg-config webkit2gtk4.1-devel openssl-devel curl wget file libayatana-appindicator-gtk3-devel librsvg2-devel libxdo-devel rust cargo git tar gzip
@@ -240,6 +254,7 @@ jobs:
 
   arch-package:
     name: Arch Linux x64 package
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
     runs-on: ubuntu-latest
     container: archlinux:base
     env:
@@ -248,6 +263,7 @@ jobs:
       VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION }}
       VITE_DESKTOP_WEB_URL: ${{ vars.VITE_DESKTOP_WEB_URL }}
       VITE_APP_VERSION: ${{ github.sha }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
     steps:
       - name: Install build dependencies
         run: pacman -Syu --noconfirm --needed base-devel webkit2gtk-4.1 openssl curl wget file libappindicator librsvg xdotool rust git jq
@@ -310,6 +326,7 @@ jobs:
 
   release:
     name: Publish desktop release
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
     needs: [desktop, ubuntu-package, fedora-package, arch-package]
     runs-on: ubuntu-24.04
     permissions:
@@ -317,6 +334,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
 
       - name: Download desktop packages
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -354,6 +376,23 @@ jobs:
           copy_one fedora-x64 '*.rpm' fedora-x64.rpm
           copy_one arch-x64 '*.pkg.tar.zst' arch-x64.pkg.tar.zst
           printf '%s\n' "$version" > "$RUNNER_TEMP/soldi-sotto-release-version"
+
+      - name: Build update manifest
+        shell: bash
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          version=$(cat "$RUNNER_TEMP/soldi-sotto-release-version")
+          tag="desktop-v${version}-run${RUN_ID}-${RUN_ATTEMPT}"
+          node scripts/build-update-manifest.mjs \
+            --downloaded downloaded \
+            --repo "$GITHUB_REPOSITORY" \
+            --tag "$tag" \
+            --version "$version" \
+            --notes "Aggiornamento a Soldi Sotto ${version}." \
+            --out release-assets
 
       - name: Publish release
         shell: bash
