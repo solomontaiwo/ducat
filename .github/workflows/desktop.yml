@@ -307,3 +307,80 @@ jobs:
           path: arch-artifact/*.pkg.tar.zst
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: Publish desktop release
+    needs: [desktop, ubuntu-package, fedora-package, arch-package]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download desktop packages
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: soldi-sotto-*-${{ github.sha }}
+          path: downloaded
+
+      - name: Prepare release assets
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          version=$(node -p 'require("./package.json").version')
+          if [[ ! "$version" =~ ^[0-9A-Za-z.+-]+$ ]]; then
+            echo "Invalid package version for release filenames" >&2
+            exit 1
+          fi
+          mkdir -p release-assets
+          copy_one() {
+            local artifact="$1" pattern="$2" output="$3"
+            local matches=(downloaded/"soldi-sotto-$artifact-$COMMIT_SHA"/$pattern)
+            if (( ${#matches[@]} != 1 )) || [[ ! -f "${matches[0]}" ]]; then
+              echo "Expected exactly one $artifact package, found ${#matches[@]}" >&2
+              exit 1
+            fi
+            cp -- "${matches[0]}" "release-assets/Soldi-Sotto-${version}-${output}"
+          }
+          copy_one macos-arm64 '*.dmg' macos-arm64.dmg
+          copy_one macos-x64 '*.dmg' macos-x64.dmg
+          copy_one windows-x64 '*-setup.exe' windows-x64-setup.exe
+          copy_one windows-arm64 '*-setup.exe' windows-arm64-setup.exe
+          copy_one linux-x64 '*.deb' ubuntu-x64.deb
+          copy_one fedora-x64 '*.rpm' fedora-x64.rpm
+          copy_one arch-x64 '*.pkg.tar.zst' arch-x64.pkg.tar.zst
+          printf '%s\n' "$version" > "$RUNNER_TEMP/soldi-sotto-release-version"
+
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          SOURCE_REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          version=$(cat "$RUNNER_TEMP/soldi-sotto-release-version")
+          tag="desktop-v${version}-run${RUN_ID}-${RUN_ATTEMPT}"
+          notes="$RUNNER_TEMP/soldi-sotto-release-notes.md"
+          {
+            printf 'Desktop build for version `%s`.\n\n' "$version"
+            printf 'Commit: `%s`\n\n' "$COMMIT_SHA"
+            printf 'Choose the installer for your operating system and architecture. '
+            printf 'The macOS and Windows installers are not signed or notarized.\n'
+          } > "$notes"
+          options=(--draft)
+          if [[ "$SOURCE_REF" != "refs/heads/$DEFAULT_BRANCH" && "$SOURCE_REF" != refs/tags/* ]]; then
+            options+=(--prerelease)
+          fi
+          gh release create "$tag" release-assets/* \
+            --target "$COMMIT_SHA" --title "Soldi Sotto ${version} · build ${RUN_ID}.${RUN_ATTEMPT}" \
+            --notes-file "$notes" "${options[@]}"
+          gh release edit "$tag" --draft=false
