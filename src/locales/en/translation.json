@@ -802,5 +802,25 @@
   "planning": {
     "loadError": "Budgets, recurring rules or preferences are unavailable. Retry before editing them.",
     "retry": "Retry"
+  },
+  "updater": {
+    "title": "Updates",
+    "rowSummary": "Check for app updates",
+    "checking": "Checking for updates…",
+    "checkingBody": "Looking for a newer version…",
+    "upToDate": "You're up to date",
+    "upToDateBody": "You already have the latest version.",
+    "availableTitle": "Update available",
+    "availableDescription": "Version {{version}} is available.",
+    "releaseNotes": "Release notes",
+    "install": "Install now",
+    "later": "Later",
+    "downloadingTitle": "Downloading",
+    "downloadingBody": "Downloading the update… {{progress}}%",
+    "downloadedTitle": "Update ready",
+    "downloadedBody": "Restart the app to finish installing.",
+    "restart": "Restart now",
+    "error": "Update failed",
+    "retry": "Retry"
   }
 }

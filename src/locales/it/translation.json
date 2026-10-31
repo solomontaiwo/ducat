@@ -802,5 +802,25 @@
   "planning": {
     "loadError": "Budget, ricorrenze o preferenze non disponibili. Riprova prima di modificarli.",
     "retry": "Riprova"
+  },
+  "updater": {
+    "title": "Aggiornamenti",
+    "rowSummary": "Verifica la disponibilità di aggiornamenti",
+    "checking": "Verifica aggiornamenti…",
+    "checkingBody": "Controllo della disponibilità di una nuova versione…",
+    "upToDate": "Sei aggiornato",
+    "upToDateBody": "Hai già l'ultima versione disponibile.",
+    "availableTitle": "Nuovo aggiornamento disponibile",
+    "availableDescription": "È disponibile la versione {{version}}.",
+    "releaseNotes": "Novità",
+    "install": "Installa ora",
+    "later": "Più tardi",
+    "downloadingTitle": "Download in corso",
+    "downloadingBody": "Scaricamento dell'aggiornamento… {{progress}}%",
+    "downloadedTitle": "Aggiornamento pronto",
+    "downloadedBody": "Riavvia l'app per completare l'installazione.",
+    "restart": "Riavvia ora",
+    "error": "Aggiornamento non riuscito",
+    "retry": "Riprova"
   }
 }
