@@ -548,7 +548,8 @@
       "sent": "Se l’indirizzo è registrato, riceverai un’email con le istruzioni.",
       "submit": "Invia istruzioni",
       "sending": "Invio…",
-      "backToLogin": "Torna al login"
+      "backToLogin": "Torna al login",
+      "desktopHint": "Apri il link nell’email e scegli la nuova password nel browser, poi torna all’app e accedi."
     },
     "verifyEmail": {
       "title": "Verifica la tua email",
@@ -564,7 +565,9 @@
       "checkFailed": "Impossibile controllare la verifica. Riprova.",
       "sent": "Email di verifica inviata.",
       "tooManyRequests": "Troppi tentativi. Attendi prima di riprovare.",
-      "sendFailed": "Invio non riuscito. Riprova più tardi."
+      "sendFailed": "Invio non riuscito. Riprova più tardi.",
+      "desktopHint": "Dopo aver confermato l’indirizzo nel browser, torna qui e accedi con email e password.",
+      "desktopLogin": "Vai al login"
     },
     "resetPassword": {
       "title": "Nuova password",

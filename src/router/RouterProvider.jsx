@@ -13,8 +13,9 @@ export const normalizeInternalPath = (path) => {
     throw new Error("Only absolute internal application paths are allowed");
   }
 
-  const url = new URL(path, window.location.origin);
-  if (url.origin !== window.location.origin) {
+  const current = new URL(window.location.href);
+  const url = new URL(path, current);
+  if (url.protocol !== current.protocol || url.host !== current.host) {
     throw new Error("Cross-origin navigation is not allowed");
   }
 

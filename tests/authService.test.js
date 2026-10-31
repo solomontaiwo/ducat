@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../src/utils/supabaseClient.js", async (importOriginal) => {
   const { createFakeSupabase } = await import("./helpers/fakeSupabase.js");
@@ -22,6 +22,7 @@ const supabaseUser = (overrides = {}) => ({
 
 describe("authService", () => {
   beforeEach(() => { vi.clearAllMocks(); supabase.reset(); });
+  afterEach(() => vi.unstubAllEnvs());
 
   it("exposes the account in the shape the app uses", () => {
     expect(toAppUser(supabaseUser())).toEqual({
@@ -46,6 +47,15 @@ describe("authService", () => {
 
   it("builds links inside the app base path", () => {
     expect(appUrl("reset-password")).toBe(new URL("reset-password", new URL(import.meta.env.BASE_URL, window.location.origin)).href);
+  });
+
+  it("uses the public web app for desktop authentication links", () => {
+    vi.stubEnv("MODE", "desktop");
+    vi.stubEnv("VITE_DESKTOP_WEB_URL", "https://example.com/staging/");
+    expect(appUrl("reset-password")).toBe("https://example.com/staging/reset-password");
+    expect(appUrl("dashboard")).toBe("https://example.com/staging/dashboard");
+    vi.stubEnv("VITE_DESKTOP_WEB_URL", "http://example.com/");
+    expect(() => appUrl("profile")).toThrow();
   });
 
   it("normalizes the email on sign in", async () => {

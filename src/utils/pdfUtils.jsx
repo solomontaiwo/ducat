@@ -1,4 +1,5 @@
 import JsPDF from "jspdf";
+import { saveFile } from "./saveFile.js";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
@@ -133,6 +134,10 @@ export const generatePeriodPDFReport = async (
   const profileName = await getCurrentProfileName(user);
   const { doc, model } = createPDFReport({ transactions, startDate, endDate, periodLabel, lang });
   const filename = generateExportFileName(periodLabel, startDate, endDate, profileName, "pdf");
+  if (import.meta.env.MODE === "desktop") {
+    const saved = await saveFile(doc.output("blob"), filename);
+    return { success: saved, filename, transactionCount: model.transactionCount };
+  }
   doc.save(filename);
   return { success: true, filename, transactionCount: model.transactionCount };
 };

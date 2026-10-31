@@ -3,7 +3,12 @@ import { toEmailLanguage } from "../utils/emailLanguage.js";
 
 /** Absolute URL of an app route, used for the links in auth emails. */
 export const appUrl = (path = "") => {
-  const base = new URL(import.meta.env.BASE_URL || "/", window.location.origin);
+  const base = import.meta.env.MODE === "desktop"
+    ? new URL(import.meta.env.VITE_DESKTOP_WEB_URL || "https://solomontaiwo.github.io/soldi-sotto/")
+    : new URL(import.meta.env.BASE_URL || "/", window.location.origin);
+  if (import.meta.env.MODE === "desktop" && (base.protocol !== "https:" || !base.pathname.endsWith("/"))) {
+    throw new Error("Desktop web URL must be HTTPS and end with a slash");
+  }
   return new URL(String(path).replace(/^\/+/, ""), base).href;
 };
 

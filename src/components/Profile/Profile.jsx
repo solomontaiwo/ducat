@@ -174,7 +174,8 @@ const Profile = () => {
     try {
       const { BackupService } = await import("../../services/backupService.js");
       const payload = await BackupService.fetch(currentUser, displayName);
-      downloadJson(payload, `soldi-sotto-backup-${new Date().toISOString().slice(0, 10)}.json`);
+      const saved = await downloadJson(payload, `soldi-sotto-backup-${new Date().toISOString().slice(0, 10)}.json`);
+      if (!saved) return;
       await savePreferences({ lastBackupAt: Date.now() });
       notification.success(t("profile.exportSuccess"));
     } catch (error) {

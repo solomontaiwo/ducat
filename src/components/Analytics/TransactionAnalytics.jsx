@@ -22,6 +22,7 @@ import { exportAnalyticsCsv, exportAnalyticsPdf } from "../../utils/analyticsExp
 import { calculateStats } from "../../utils/statsUtils.jsx";
 import { formatRowDate } from "../../utils/transactionGrouping.js";
 import { useTheme } from "../../utils/ThemeProvider.jsx";
+import { useNotification } from "../../utils/notificationUtils.jsx";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { writeLocalValue } from "../../utils/storage.js";
 import { cn } from "../../lib/utils";
@@ -74,6 +75,7 @@ const TransactionAnalytics = () => {
   const { currentUser } = useAuth();
   const { expenseCategories, incomeCategories } = useCategories();
   const { t, i18n } = useTranslation();
+  const notification = useNotification();
   const { isDarkMode } = useTheme();
   const [categoryType, setCategoryType] = useState("expense");
   const { budgets, ready: planningReady, preferences } = usePlanning();
@@ -152,13 +154,14 @@ const TransactionAnalytics = () => {
   })), [extendedStats.monthlyTrend, locale]);
   const hasTrend = trend.some((month) => month.income > 0 || month.expense > 0);
 
+  const handleExportError = () => notification.error(t("profilePage.export.error"));
   const exportCsv = () => exportAnalyticsCsv({
     transactions: extendedStats.filteredTransactions, currentUser, period, startDate, endDate,
-  });
+  }).catch(handleExportError);
   const exportPdf = () => exportAnalyticsPdf({
     transactions: extendedStats.filteredTransactions, currentUser, period, customRange, startDate, endDate,
     t, language: i18n.language,
-  });
+  }).catch(handleExportError);
   const canExport = !!extendedStats?.filteredTransactions?.length;
 
   if (contextLoading || isLoadingAnalyticsData) {

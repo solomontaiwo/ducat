@@ -5,10 +5,18 @@ import { visualizer } from 'rollup-plugin-visualizer'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const { ANALYZE } = loadEnv(mode, '', '')
+  const desktop = mode === 'desktop'
 
   return {
   plugins: [
     react(),
+    desktop && {
+      name: 'desktop-content-security-policy',
+      transformIndexHtml(html) {
+        return html.replace("connect-src 'self'", "connect-src 'self' ipc: http://ipc.localhost")
+          .replace('; upgrade-insecure-requests', '')
+      },
+    },
     ANALYZE === 'true' && visualizer({
       filename: 'dist/bundle-report.html',
       template: 'treemap',
@@ -17,7 +25,7 @@ export default defineConfig(({ mode }) => {
       open: false,
     }),
   ].filter(Boolean),
-  base: '/soldi-sotto/',
+  base: desktop ? '/' : '/soldi-sotto/',
   build: {
     rollupOptions: {
       output: {
