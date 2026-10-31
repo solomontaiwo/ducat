@@ -396,6 +396,7 @@ jobs:
             | sed -E 's/^feat(\([^)]*\))?: ?/Nuovo: /; s/^fix(\([^)]*\))?: ?/Fix: /' \
             | head -12)
           if [ -z "$notes" ]; then notes="Aggiornamento a Soldi Sotto ${version}."; fi
+          printf '%s\n' "$notes" > "$RUNNER_TEMP/soldi-sotto-changelog"
           node scripts/build-update-manifest.mjs \
             --downloaded downloaded \
             --repo "$GITHUB_REPOSITORY" \
@@ -420,8 +421,10 @@ jobs:
           tag="desktop-v${version}-run${RUN_ID}-${RUN_ATTEMPT}"
           notes="$RUNNER_TEMP/soldi-sotto-release-notes.md"
           {
-            printf 'Desktop build for version `%s`.\n\n' "$version"
-            printf 'Commit: `%s`\n\n' "$COMMIT_SHA"
+            printf '## Changelog\n\n'
+            sed 's/^/- /' "$RUNNER_TEMP/soldi-sotto-changelog"
+            printf '\n---\n\n'
+            printf 'Desktop build for version `%s` · commit `%s`.\n\n' "$version" "$COMMIT_SHA"
             printf 'Choose the installer for your operating system and architecture. '
             printf 'The macOS and Windows installers are not signed or notarized.\n'
           } > "$notes"
