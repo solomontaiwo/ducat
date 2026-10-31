@@ -107,7 +107,15 @@ jobs:
           $built = "src-tauri/target/$env:TARGET_TRIPLE/release/soldi-sotto.exe"
           $installed = Join-Path $installDir 'soldi-sotto.exe'
           if (-not (Test-Path -LiteralPath $installed -PathType Leaf)) { throw "Installed executable not found: $installed" }
-          if ((Get-FileHash -LiteralPath $built).Hash -ne (Get-FileHash -LiteralPath $installed).Hash) {
+          # Tauri patches the first bundle-type marker for NSIS, then restores the original build.
+          $expectedBytes = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $built).Path)
+          $originalMarker = '__TAURI_BUNDLE_TYPE_VAR_UNK'
+          $nsisMarker = [System.Text.Encoding]::ASCII.GetBytes('__TAURI_BUNDLE_TYPE_VAR_NSS')
+          $markerOffset = [System.Text.Encoding]::Latin1.GetString($expectedBytes).IndexOf($originalMarker, [System.StringComparison]::Ordinal)
+          if ($markerOffset -lt 0) { throw 'Tauri bundle-type marker not found in compiled executable' }
+          [System.Array]::Copy($nsisMarker, 0, $expectedBytes, $markerOffset, $nsisMarker.Length)
+          $expectedHash = [System.Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($expectedBytes))
+          if ($expectedHash -ne (Get-FileHash -LiteralPath $installed).Hash) {
             throw 'Installed executable differs from the compiled executable'
           }
           Write-Host "Verified Windows installation: $env:TARGET_TRIPLE"
