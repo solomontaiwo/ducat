@@ -22,7 +22,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <NotificationProvider>
         {/* The router sits above the data providers: switching between demo and
             account mode remounts them, and must not reset the current route. */}
-        <RouterProvider basename="/soldi-sotto">
+        <RouterProvider basename={import.meta.env.BASE_URL}>
           <AuthProvider>
             <UnifiedTransactionProvider>
               <PlanningProvider>

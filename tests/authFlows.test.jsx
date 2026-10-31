@@ -57,7 +57,7 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
 describe("Login", () => {
   const submit = () => fireEvent.submit(document.querySelector("form"));
@@ -145,6 +145,15 @@ describe("Register", () => {
 });
 
 describe("ForgotPassword", () => {
+  it("explains that desktop password reset continues in the browser", async () => {
+    vi.stubEnv("MODE", "desktop");
+    mocks.sendReset.mockResolvedValue();
+    render(<ForgotPassword />);
+    fill("reset-email", "ada@example.com");
+    fireEvent.submit(document.querySelector("form"));
+    expect(await screen.findByText("auth.forgotPassword.desktopHint")).toBeInTheDocument();
+  });
+
   it.each([
     ["succeeds", () => mocks.sendReset.mockResolvedValue()],
     ["fails", () => mocks.sendReset.mockRejectedValue(Object.assign(new Error("nope"), { code: "auth/user-not-found" }))],
@@ -159,6 +168,16 @@ describe("ForgotPassword", () => {
 });
 
 describe("VerifyEmail", () => {
+  it("lets a pending desktop user return to sign in after confirming in a browser", async () => {
+    vi.stubEnv("MODE", "desktop");
+    mocks.currentUser = { email: "ada@example.com", pending: true };
+    mocks.logout.mockResolvedValue();
+    render(<VerifyEmail />);
+    fireEvent.click(screen.getByRole("button", { name: "auth.verifyEmail.desktopLogin" }));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/login", { replace: true }));
+    expect(mocks.logout).toHaveBeenCalled();
+  });
+
   it("navigates to the dashboard once the email is verified", async () => {
     mocks.refreshCurrentUser.mockResolvedValue({ emailVerified: true });
     render(<VerifyEmail />);

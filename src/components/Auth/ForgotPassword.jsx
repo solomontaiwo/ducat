@@ -40,6 +40,9 @@ const ForgotPassword = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {sent && import.meta.env.MODE === "desktop" && (
+            <p className="text-sm text-muted-foreground">{t("auth.forgotPassword.desktopHint")}</p>
+          )}
           {!sent && (
             <form onSubmit={submit} className="space-y-3">
               <Label htmlFor="reset-email">{t("auth.emailLabel")}</Label>

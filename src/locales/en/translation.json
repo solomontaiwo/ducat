@@ -548,7 +548,8 @@
       "sent": "If the address is registered, you will receive an email with instructions.",
       "submit": "Send instructions",
       "sending": "Sending…",
-      "backToLogin": "Back to login"
+      "backToLogin": "Back to login",
+      "desktopHint": "Open the email link and choose a new password in your browser, then return to the app and sign in."
     },
     "verifyEmail": {
       "title": "Verify your email",
@@ -564,7 +565,9 @@
       "checkFailed": "Unable to check the verification. Please try again.",
       "sent": "Verification email sent.",
       "tooManyRequests": "Too many attempts. Please wait before trying again.",
-      "sendFailed": "Sending failed. Please try again later."
+      "sendFailed": "Sending failed. Please try again later.",
+      "desktopHint": "After confirming your email in the browser, return here and sign in with your email and password.",
+      "desktopLogin": "Go to sign in"
     },
     "resetPassword": {
       "title": "New password",

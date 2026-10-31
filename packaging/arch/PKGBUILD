@@ -1,0 +1,15 @@
+# Packages the executable compiled on Arch Linux.
+pkgname=soldi-sotto-bin
+pkgver=${SOLDI_SOTTO_VERSION:?Set SOLDI_SOTTO_VERSION}
+pkgrel=1
+pkgdesc='Personal finance application'
+arch=('x86_64')
+url='https://github.com/solomontaiwo/soldi-sotto'
+depends=('webkit2gtk-4.1' 'gtk3' 'libappindicator' 'xdotool' 'hicolor-icon-theme')
+source=('root.tar')
+sha256sums=('SKIP')
+options=('!strip')
+
+package() {
+  cp -a "$srcdir/usr" "$pkgdir/"
+}

@@ -551,10 +551,11 @@ export const ExportSheet = ({ open, onClose, firstDate }) => {
     setBusy(true);
     try {
       const options = { transactions: preview, currentUser, startDate: range.startDate, endDate: range.endDate };
+      let saved;
       if (format === "csv") {
-        await exportAnalyticsCsv({ ...options, period: label });
+        saved = await exportAnalyticsCsv({ ...options, period: label });
       } else {
-        await exportAnalyticsPdf({
+        saved = await exportAnalyticsPdf({
           ...options,
           period: "custom",
           customRange: { from: dateToDateKey(range.startDate), to: dateToDateKey(range.endDate) },
@@ -562,7 +563,7 @@ export const ExportSheet = ({ open, onClose, firstDate }) => {
           language: i18n.language,
         });
       }
-      onClose();
+      if (saved) onClose();
     } catch (error) {
       console.error("Export failed", error);
       notification.error(t("profilePage.export.error"));
