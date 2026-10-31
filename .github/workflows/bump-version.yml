@@ -23,6 +23,8 @@ jobs:
           # A PAT (not GITHUB_TOKEN) so the commit below re-triggers the
           # desktop build workflow.
           token: ${{ secrets.RELEASE_PAT }}
+          # Full history: needed to read the version of the previous release.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -31,9 +33,31 @@ jobs:
 
       - name: Bump, commit and push
         run: |
-          VERSION=$(node scripts/bump-version.mjs)
+          # Respect an intentional manual version change (e.g. a minor/major
+          # bump): don't auto-bump the patch, but still push a release marker
+          # commit so the desktop build runs with the manually-chosen version.
+          last_release=$(git log --format='%H' --grep='^chore(release):' -n 1 2>/dev/null || true)
+          manual=""
+          if [ -n "$last_release" ]; then
+            git show "$last_release:package.json" > "$RUNNER_TEMP/last-release-package.json" 2>/dev/null || true
+            prev_version=$(node -p "require('$RUNNER_TEMP/last-release-package.json').version" 2>/dev/null || true)
+            current_version=$(node -p "require('./package.json').version")
+            if [ -n "$prev_version" ] && [ "$prev_version" != "$current_version" ]; then
+              manual="$current_version"
+            fi
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$manual" ]; then
+            echo "Version manually changed to ${manual}; committing release marker."
+            git commit --allow-empty -m "chore(release): ${manual}"
+            git push
+            exit 0
+          fi
+
+          VERSION=$(node scripts/bump-version.mjs)
           git add package.json package-lock.json src-tauri/Cargo.toml
           git commit -m "chore(release): ${VERSION}"
           git push
