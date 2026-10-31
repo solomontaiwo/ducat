@@ -288,8 +288,8 @@ const TransactionAnalytics = () => {
                     width={72}
                   />
                   <Tooltip cursor={{ fill: chart.grid, opacity: 0.5 }} content={<SeriesTooltip colors={chart.tooltip} />} />
-                  <Bar dataKey="income" name={t("dashboard.income")} fill={chart.income} radius={[6, 6, 0, 0]} maxBarSize={28} />
-                  <Bar dataKey="expense" name={t("dashboard.expenses")} fill={chart.expense} radius={[6, 6, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="income" name={t("dashboard.income")} fill={chart.income} radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="expense" name={t("dashboard.expenses")} fill={chart.expense} radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
