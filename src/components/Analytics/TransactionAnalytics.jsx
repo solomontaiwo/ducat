@@ -265,7 +265,7 @@ const TransactionAnalytics = () => {
         />
       </section>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-5">
+      <div className="grid grid-cols-1 gap-4 lg:gap-5">
         <section className="surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="trend-title">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="trend-title" className="text-lg font-bold">{t("analytics.monthlyTrend")}</h2>
@@ -275,7 +275,7 @@ const TransactionAnalytics = () => {
             </div>
           </div>
           {hasTrend ? (
-            <div className="h-64 sm:h-72" data-swipe-ignore="true">
+            <div className="h-72 w-full min-w-0 sm:h-80 lg:h-96" data-swipe-ignore="true">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={trend} margin={{ top: 8, right: 4, left: 0, bottom: 0 }} barGap={4} barCategoryGap="22%">
                   <CartesianGrid vertical={false} stroke={chart.grid} />
