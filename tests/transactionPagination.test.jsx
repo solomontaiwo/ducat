@@ -30,6 +30,8 @@ const intersect = () => act(() => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.fetch.mockReset();
+  mocks.count.mockReset();
   mocks.transactions = [];
   mocks.observers = [];
   mocks.totals = undefined;
@@ -50,12 +52,16 @@ it.each(["success", "failure"])("ignores stale pagination %s after changing peri
     .mockReturnValueOnce(current.promise);
   render(<TransactionList />);
   await screen.findByText("first");
-  intersect();
-  await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(2));
+  await waitFor(() => {
+    intersect();
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+  });
   fireEvent.click(screen.getByRole("button", { name: "transactions.filters.allTime" }));
   await screen.findByText("new-first");
-  intersect();
-  await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(4));
+  await waitFor(() => {
+    intersect();
+    expect(mocks.fetch).toHaveBeenCalledTimes(4);
+  });
   expect(mocks.fetch.mock.calls[3][0].cursor).toBe("new-first");
   await act(async () => {
     if (outcome === "success") old.resolve(page("obsolete", false));
@@ -95,7 +101,7 @@ it("shows period totals from the server and loads every remaining page on reques
   render(<TransactionList />);
   await screen.findByText("first");
   expect(await screen.findByText("3")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "transactions.loadAll" }));
+  fireEvent.click(await screen.findByRole("button", { name: "transactions.loadAll" }));
   await screen.findByText("third");
   expect(screen.getByText("second")).toBeInTheDocument();
   expect(mocks.fetch.mock.calls[1][0]).toMatchObject({ cursor: "first", pageSize: 200 });
