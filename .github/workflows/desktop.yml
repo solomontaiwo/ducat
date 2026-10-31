@@ -386,12 +386,19 @@ jobs:
           set -euo pipefail
           version=$(cat "$RUNNER_TEMP/soldi-sotto-release-version")
           tag="desktop-v${version}-run${RUN_ID}-${RUN_ATTEMPT}"
+          # Changelog: conventional-commit subjects since the previous release bump.
+          prev_bump=$(git log --format='%H' --grep='^chore(release):' --skip=1 -n 1 2>/dev/null || true)
+          notes=$(git log --no-merges --format='%s' "${prev_bump}..HEAD" 2>/dev/null \
+            | grep -v '^chore(release):' \
+            | sed -E 's/^feat(\([^)]*\))?: ?/Nuovo: /; s/^fix(\([^)]*\))?: ?/Fix: /' \
+            | head -12)
+          if [ -z "$notes" ]; then notes="Aggiornamento a Soldi Sotto ${version}."; fi
           node scripts/build-update-manifest.mjs \
             --downloaded downloaded \
             --repo "$GITHUB_REPOSITORY" \
             --tag "$tag" \
             --version "$version" \
-            --notes "Aggiornamento a Soldi Sotto ${version}." \
+            --notes "$notes" \
             --out release-assets
 
       - name: Publish release

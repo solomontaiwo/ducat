@@ -6,6 +6,7 @@ import { FiBarChart2, FiHome, FiList, FiLogOut, FiPlus } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
+import UpdateButton from "../Update/UpdateButton";
 
 const logo = `${import.meta.env.BASE_URL}icon-192.png`;
 
@@ -40,10 +41,14 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
 
   return (
     <aside className="glass fixed bottom-4 left-4 top-4 z-30 flex w-[232px] flex-col gap-6 rounded-[28px] px-3.5 pb-4 pt-5">
-      <Link to="/" className="flex items-center gap-2.5 rounded-xl px-2 py-1">
-        <img src={logo} alt="" width="34" height="34" className="h-[34px] w-[34px] rounded-[11px]" />
-        <span className="font-display text-[19px] font-extrabold tracking-tight">Soldi Sotto</span>
-      </Link>
+      <div className="flex items-center gap-1.5 rounded-xl px-2 py-1">
+        <Link to="/" className="flex min-w-0 items-center gap-2.5">
+          <img src={logo} alt="" width="34" height="34" className="h-[34px] w-[34px] shrink-0 rounded-[11px]" />
+          <span className="truncate font-display text-[19px] font-extrabold tracking-tight">Soldi Sotto</span>
+        </Link>
+        <div className="flex-1" />
+        <UpdateButton />
+      </div>
 
       <Button onClick={onAdd} disabled={addDisabled} size="lg" className="w-full">
         <FiPlus className="h-[18px] w-[18px]" strokeWidth={2.6} aria-hidden="true" />

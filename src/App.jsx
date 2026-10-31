@@ -1,12 +1,11 @@
 import AppRouter from "./router/AppRouter";
-import DesktopUpdateNotifier from "./components/Update/DesktopUpdateNotifier";
+import UpdaterProvider from "./context/UpdaterProvider";
 
 function App() {
   return (
-    <>
+    <UpdaterProvider>
       <AppRouter />
-      <DesktopUpdateNotifier />
-    </>
+    </UpdaterProvider>
   );
 }
 
