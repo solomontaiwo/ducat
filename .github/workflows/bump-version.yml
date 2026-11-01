@@ -54,12 +54,14 @@ jobs:
 
           if [ -n "$manual" ]; then
             echo "Version manually changed to ${manual}; committing release marker."
-            git commit --allow-empty -m "chore(release): ${manual}"
+            node scripts/sync-ios-version.mjs
+            git add package-lock.json ios/App/App.xcodeproj/project.pbxproj
+            git commit -m "chore(release): ${manual}"
             git push
             exit 0
           fi
 
           VERSION=$(node scripts/bump-version.mjs)
-          git add package.json package-lock.json src-tauri/Cargo.toml
+          git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock ios/App/App.xcodeproj/project.pbxproj
           git commit -m "chore(release): ${VERSION}"
           git push
