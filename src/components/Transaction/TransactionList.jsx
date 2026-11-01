@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useMediaQuery } from "react-responsive";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useAuth } from "../../context/AuthProvider.jsx";
@@ -21,7 +21,7 @@ import { useMonthRange } from "../../hooks/useMonthRange.js";
 import { useTransactionFilter } from "../../hooks/useTransactionFilter.jsx";
 import { getPeriodRange } from "../../utils/statsUtils.jsx";
 import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 import { useNotification } from "../../utils/notificationUtils";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
 
@@ -88,10 +88,19 @@ const TransactionList = () => {
   const userId = currentUser?.uid;
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [removedIds, setRemovedIds] = useState(() => new Set());
+  // Deletes are optimistic: an id stays here while the undo toast is open, so
+  // it must be hidden from the list source too (not only from the merged history).
+  const baseTransactions = isDemo || (!hasLoadedPageRef.current && allLoadedTransactions.length === 0)
+    ? transactions
+    : allLoadedTransactions;
+  const visibleTransactions = useMemo(
+    () => (removedIds.size ? baseTransactions.filter((item) => !removedIds.has(item.id)) : baseTransactions),
+    [baseTransactions, removedIds],
+  );
   const searchSource = useMemo(() => {
-    if (isDemo) return transactions;
+    if (isDemo) return visibleTransactions;
     return mergeTransactions(historyOwner === userId && historyRevision === recentRevision ? historyIndex || [] : [], transactions, removedIds);
-  }, [isDemo, historyIndex, historyOwner, userId, historyRevision, recentRevision, transactions, removedIds]);
+  }, [isDemo, visibleTransactions, historyIndex, historyOwner, userId, historyRevision, recentRevision, transactions, removedIds]);
 
   const {
     filteredTransactions,
@@ -103,7 +112,7 @@ const TransactionList = () => {
     selectedType,
     setSelectedType,
   } = useTransactionFilter(
-    isDemo || (!hasLoadedPageRef.current && allLoadedTransactions.length === 0) ? transactions : allLoadedTransactions,
+    visibleTransactions,
     { startDate, endDate },
     { searchSource, getCategoryLabel }
   );
@@ -122,7 +131,6 @@ const TransactionList = () => {
           setHistoryIndex(data);
           setHistoryOwner(userId);
           setHistoryRevision(recentRevision);
-          setRemovedIds(new Set());
           setIsLoadingHistory(false);
         }
       })
@@ -320,12 +328,22 @@ const TransactionList = () => {
     setRemovedIds((previous) => new Set(previous).add(id));
     let undone = false;
 
+    // Closing the app during the undo window must not leave the row undeleted.
+    const flushOnExit = (event) => {
+      if (event.persisted || undone) return;
+      window.removeEventListener("pagehide", flushOnExit);
+      deleteTransaction(id, { silent: true });
+    };
+    window.addEventListener("pagehide", flushOnExit);
+    const stopListening = () => window.removeEventListener("pagehide", flushOnExit);
+
     notification.success(t("notifications.deleteSuccess"), {
       duration: 6000,
       action: {
         label: t("notifications.undo"),
         onClick: () => {
           undone = true;
+          stopListening();
           setRemovedIds((previous) => {
             const next = new Set(previous);
             next.delete(id);
@@ -334,6 +352,7 @@ const TransactionList = () => {
         },
       },
       onClose: () => {
+        stopListening();
         if (undone) return;
         deleteTransaction(id, { silent: true }).then((ok) => {
           if (!ok) {
@@ -651,4 +670,4 @@ const TransactionList = () => {
   );
 };
 
-export default React.memo(TransactionList);
+export default TransactionList;

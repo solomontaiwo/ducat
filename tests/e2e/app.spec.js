@@ -115,6 +115,18 @@ test("adds, edits and deletes a transaction in demo mode", async ({ page, isMobi
     await page.getByRole("complementary").getByRole("button", { name: /^(delete|elimina)$/i }).click();
   }
   await page.getByRole("dialog").getByRole("button", { name: /elimina definitivamente|delete permanently/i }).click();
+  // Optimistic delete: the row disappears at once, and the toast can undo it.
+  await expect(page.getByRole("button", { name: /Biglietto treno/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /^(annulla|undo)$/i }).click();
+  await expect(page.getByRole("button", { name: /Biglietto treno/ })).toHaveCount(1);
+
+  await page.getByRole("button", { name: /Biglietto treno/ }).click();
+  if (isMobile) {
+    await page.getByRole("dialog").getByRole("button", { name: /^(delete|elimina)$/i }).click();
+  } else {
+    await page.getByRole("complementary").getByRole("button", { name: /^(delete|elimina)$/i }).click();
+  }
+  await page.getByRole("dialog").getByRole("button", { name: /elimina definitivamente|delete permanently/i }).click();
   await expect(page.getByRole("button", { name: /Biglietto treno/ })).toHaveCount(0);
 });
 
