@@ -35,3 +35,6 @@ scripts/firebase-to-supabase/*.json
 # Desktop build output
 src-tauri/target/
 src-tauri/gen/
+
+# Xcode derived data from `xcodebuild -derivedDataPath build`
+/build/
