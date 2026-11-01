@@ -1,5 +1,5 @@
 {
-  "appName": "SoldiSotto",
+  "appName": "Ducat",
   "welcome": "Hello!",
   "addTransaction": "Add Transaction",
   "quickActions": "Quick Actions",
@@ -176,13 +176,13 @@
     "badge": "No ads · your data stays yours",
     "headlineStart": "Your money,",
     "headlineEnd": "under control.",
-    "lead": "Log an expense in 3 seconds. Soldi Sotto tells you what's left, where your money goes and what's coming up.",
+    "lead": "Log an expense in 3 seconds. Ducat tells you what's left, where your money goes and what's coming up.",
     "register": "Create your account",
     "tryDemo": "Try the demo",
     "login": "Log in",
     "demoNote": "The demo asks for no email: your data stays on your device.",
     "sections": "Sections",
-    "previewLabel": "Preview of the Soldi Sotto overview",
+    "previewLabel": "Preview of the Ducat overview",
     "preview": {
       "greeting": "Good morning, Giulia",
       "month": "October 2026",
@@ -665,7 +665,7 @@
     "title": "Profile",
     "account": "Your account",
     "verified": "verified ✓",
-    "memberSince": "With Soldi Sotto since {{date}}",
+    "memberSince": "With Ducat since {{date}}",
     "summary": "Your summary",
     "movements": "movements",
     "months": "months tracked",
@@ -756,7 +756,7 @@
     },
     "install": {
       "title": "Install the app",
-      "summary": "Add Soldi Sotto to your home screen",
+      "summary": "Add Ducat to your home screen",
       "iosHint": "On iPhone you install it from Safari in three steps.",
       "step1": "Tap the Share button at the bottom",
       "step2": "Choose “Add to Home Screen”",
@@ -834,5 +834,16 @@
     "runFromAppImage": "The app is not running from the AppImage file (extracted launch or system package). To use automatic updates, start the .AppImage file directly.",
     "appImageReadOnly": "The AppImage folder is not writable: move it to a personal folder (e.g. ~/Applications) and restart the app.",
     "unsupportedInstall": "This installation does not support automatic updates: download the new version from the releases page."
+  },
+  "legal": {
+    "privacyTitle": "Privacy policy",
+    "termsTitle": "Terms of use",
+    "updated": "Last updated: {{date}}",
+    "back": "Back to the app",
+    "contact": "Contact"
+  },
+  "offline": {
+    "title": "You are offline.",
+    "body": "You are seeing data saved on this device. Saving changes and syncing need a connection."
   }
 }

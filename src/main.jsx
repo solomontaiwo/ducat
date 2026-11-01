@@ -14,6 +14,7 @@ import './utils/installPrompt';
 import ErrorBoundary from "./components/ErrorBoundary";
 import { installGlobalErrorReporting } from "./utils/errorReporting";
 import { startNativeShell } from "./platform/native";
+import { installDeepLinkHandler } from "./platform/deepLinks";
 import { isWeb } from "./platform/index.js";
 
 installGlobalErrorReporting();
@@ -59,4 +60,5 @@ ensureLanguage().finally(() => {
     onActive: withClient("startAutoRefresh"),
     onInactive: withClient("stopAutoRefresh"),
   });
+  installDeepLinkHandler();
 });

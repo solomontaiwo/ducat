@@ -1,5 +1,5 @@
 {
-  "appName": "SoldiSotto",
+  "appName": "Ducat",
   "welcome": "Ciao!",
   "addTransaction": "Aggiungi movimento",
   "quickActions": "Azioni Rapide",
@@ -176,13 +176,13 @@
     "badge": "Nessuna pubblicità · i tuoi dati restano tuoi",
     "headlineStart": "I tuoi soldi,",
     "headlineEnd": "sotto controllo.",
-    "lead": "Registri una spesa in 3 secondi. Soldi Sotto ti dice quanto ti resta, dove vanno i soldi e cosa sta per arrivare.",
+    "lead": "Registri una spesa in 3 secondi. Ducat ti dice quanto ti resta, dove vanno i soldi e cosa sta per arrivare.",
     "register": "Crea il tuo account",
     "tryDemo": "Prova la demo",
     "login": "Accedi",
     "demoNote": "La demo non chiede email: i dati restano sul tuo dispositivo.",
     "sections": "Sezioni",
-    "previewLabel": "Anteprima della panoramica di Soldi Sotto",
+    "previewLabel": "Anteprima della panoramica di Ducat",
     "preview": {
       "greeting": "Buongiorno, Giulia",
       "month": "Ottobre 2026",
@@ -665,7 +665,7 @@
     "title": "Profilo",
     "account": "Il tuo account",
     "verified": "verificata ✓",
-    "memberSince": "Con Soldi Sotto da {{date}}",
+    "memberSince": "Con Ducat da {{date}}",
     "summary": "Il tuo riepilogo",
     "movements": "movimenti",
     "months": "mesi tracciati",
@@ -756,7 +756,7 @@
     },
     "install": {
       "title": "Installa l'app",
-      "summary": "Aggiungi Soldi Sotto alla schermata Home",
+      "summary": "Aggiungi Ducat alla schermata Home",
       "iosHint": "Su iPhone si installa da Safari in tre passaggi.",
       "step1": "Tocca il pulsante Condividi in basso",
       "step2": "Scegli «Aggiungi alla schermata Home»",
@@ -834,5 +834,16 @@
     "runFromAppImage": "L'app non è in esecuzione dal file AppImage (avvio estratto o pacchetto di sistema). Per gli aggiornamenti automatici avvia direttamente il file .AppImage.",
     "appImageReadOnly": "La cartella dell'AppImage non è scrivibile: spostala in una cartella personale (es. ~/Applications) e riavvia l'app.",
     "unsupportedInstall": "Questa installazione non supporta gli aggiornamenti automatici: scarica la nuova versione dalla pagina delle release."
+  },
+  "legal": {
+    "privacyTitle": "Informativa privacy",
+    "termsTitle": "Termini d’uso",
+    "updated": "Ultimo aggiornamento: {{date}}",
+    "back": "Torna all’app",
+    "contact": "Contatti"
+  },
+  "offline": {
+    "title": "Sei offline.",
+    "body": "Stai vedendo i dati salvati sul dispositivo. Per salvare modifiche e sincronizzare serve la connessione."
   }
 }

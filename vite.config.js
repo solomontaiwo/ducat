@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => {
   // Both packaged shells load their bundle from the app container root.
   const embedded = mode === 'desktop' || mode === 'mobile'
   const desktop = mode === 'desktop'
+  // GitHub Pages serves a project site under /<repository>/ and the deploy
+  // workflow passes that path in; a custom domain sets VITE_BASE_PATH=/.
+  const basePath = embedded ? '/' : (process.env.VITE_BASE_PATH || '/')
 
   return {
   plugins: [
@@ -27,7 +30,7 @@ export default defineConfig(({ mode }) => {
       open: false,
     }),
   ].filter(Boolean),
-  base: embedded ? '/' : '/soldi-sotto/',
+  base: basePath,
   build: {
     rollupOptions: {
       output: {

@@ -1,5 +1,6 @@
 import { supabase, toDataError, unwrap } from "../utils/supabaseClient.js";
 import { emitLocalChange, watchTable } from "./changeEvents.js";
+import { readOffline, writeOffline } from "../utils/offlineCache.js";
 import { transactionV2InputSchema, transactionV2PatchSchema } from "../schemas/transaction.jsx";
 import { DEFAULT_CURRENCY, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
 import { compareTransactions } from "../utils/transactionOrder.js";
@@ -143,6 +144,7 @@ const notFound = () => Object.assign(new Error("Transaction not found"), { code:
 export const TransactionService = {
   /** The most recently created transactions, kept current while subscribed. */
   subscribeToRecent: (userId, limitCount, onUpdate, onError, onInvalid) => {
+    const cacheId = `transactions-recent:${userId}:${limitCount}`;
     let active = true;
     let request = 0;
     const reload = async () => {
@@ -154,9 +156,17 @@ export const TransactionService = {
           .limit(limitCount));
         if (!active || currentRequest !== request) return;
         invalidateCache();
+        writeOffline(cacheId, rows);
         onUpdate(normalizeRows(rows, onInvalid), []);
       } catch (error) {
-        if (active && currentRequest === request) onError?.(error);
+        if (!active || currentRequest !== request) return;
+        // Offline: show the last copy instead of an empty dashboard.
+        const cached = readOffline(cacheId);
+        if (Array.isArray(cached)) {
+          onUpdate(normalizeRows(cached, onInvalid), []);
+          return;
+        }
+        onError?.(error);
       }
     };
     const stop = watchTable({ supabase, table: TABLE, userId, reload });

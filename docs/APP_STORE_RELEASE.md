@@ -10,20 +10,21 @@ fare richiede credenziali Apple e Xcode su una macchina tua o sul runner CI.
 | Apple Developer Program (99 €/anno) | firma, TestFlight, App Store |
 | Xcode 15+ installato | `xcodebuild`, archivio, TestFlight |
 | Licenza Xcode accettata | `sudo xcodebuild -license accept` (una volta sola) |
-| Un dominio tuo | bundle id definitivo e URL privacy/supporto |
-| Testi privacy e termini veri | obbligatori in App Store Connect |
+| Dominio **ducat.app** (o altro) | Universal Links, privacy/supporto, email |
+| Hosting con header personalizzati | la AASA deve rispondere `application/json` |
+| Testi privacy e termini | già in `src/content/legal.js`, da rileggere |
 
-Il bundle id attuale è **`io.github.solomontaiwo.soldisotto`**. Non è un
-dominio tuo e dopo il primo upload non si cambia più. Decidilo prima:
+Il bundle id è **`app.ducat`** e il nome è **Ducat**. Il bundle id non si cambia
+più dopo il primo upload: se compri un dominio diverso da `ducat.app`, decidilo
+ora.
 
 ```bash
-node scripts/rename-app.mjs --name "Nome Definitivo" --id app.tuodominio
+node scripts/rename-app.mjs --name "Ducat" --id app.il-tuo-dominio
 npm run ios:sync
 ```
 
 Lo script aggiorna Tauri, Capacitor, il progetto Xcode, il manifest PWA, le
-traduzioni e il test e2e. La documentazione e i template email di Supabase non
-vengono toccati: aggiornali a mano.
+traduzioni, i test e la documentazione.
 
 ## 2. Build locale iOS
 
@@ -32,7 +33,7 @@ npm run ios:sync        # build web (mode mobile) + cap sync + versione allineat
 npm run ios:open        # apre il progetto in Xcode
 ```
 
-In Xcode: seleziona il team, poi Run su un simulatore o su un iPhone.
+In Xcode: seleziona il team, poi Run su un simulatore iPhone o iPad.
 
 Per TestFlight da riga di comando, con la firma configurata:
 
@@ -104,7 +105,12 @@ app che termina con `/`), usata nei link delle email.
 - [ ] "Elimina account" visibile nel profilo e funzionante (ora attivo di
       default: `VITE_ENABLE_ACCOUNT_DELETION` è `true` salvo override)
 - [ ] Account di test già verificato nelle note di revisione
-- [ ] Screenshot 6,9" (e 6,5"), icona 1024×1024 **senza canale alpha**
+- [ ] Screenshot 6,9", 6,5" **e iPad 13"** (iPhone + iPad), icona 1024×1024
+      **senza canale alpha**
+- [ ] Privacy policy e termini riletti in `src/content/legal.js`: titolare,
+      indirizzo e email sono quelli veri
+- [ ] `.well-known/apple-app-site-association` raggiungibile in HTTPS e
+      servito come `application/json`
 - [ ] App Privacy: email, nome e dati finanziari "collegati all'utente",
       nessun tracking
 - [ ] `ITSAppUsesNonExemptEncryption = false` (già in `Info.plist` e in
@@ -112,6 +118,7 @@ app che termina con `/`), usata nei link delle email.
 - [ ] Categoria Finanza, età 4+, stato *trader* DSA per l'UE
 - [ ] Export PDF, CSV e JSON provati **dentro il sandbox** (macOS) e sullo
       share sheet (iOS)
+- [ ] Prova in modalità aereo: l'app mostra gli ultimi dati e il banner offline
 
 ## 6. Rischi di rifiuto e dove sono trattati
 
@@ -119,21 +126,65 @@ app che termina con `/`), usata nei link delle email.
 |---|---|---|
 | 2.4.5 | updater fuori dallo Store su Mac App Store | gestito con `VITE_APP_STORE` e `createUpdaterArtifacts: false` |
 | 5.1.1(v) | eliminazione account | attiva di default, funzione `delete_my_account` |
-| 4.2 | app che è "solo un sito" | parzialmente mitigato (share sheet, aptica, safe area, tab bar nativa); per iOS conviene aggiungere la cache offline |
+| 4.2 | app che è "solo un sito" | cache offline, share sheet, aptica, safe area, tab bar nativa |
 | 4.8 | Sign in with Apple | non richiesto finché c'è solo email/password |
 | 3.1.1 | pagamenti in-app | nessun acquisto: non si applica |
-| 5.1.2 | dati verso terzi | Supabase è il backend: va dichiarato nella privacy policy |
+| 5.1.2 | dati verso terzi | Supabase è il backend: dichiarato in privacy policy e App Privacy |
 
-## 7. Cosa non è ancora coperto
+## 7. Stato delle funzioni native
 
-- **Cache offline**: l'app legge da Supabase a ogni avvio. Senza rete mostra
-  solo la demo. È il prossimo lavoro consigliato, sia per la 4.2 sia per l'uso
-  reale in metro o in aereo.
-- **Universal Links**: i link di conferma e reset password aprono il browser.
-  Funziona (l'utente conferma e poi accede), ma il flusso ideale riporta
-  nell'app. Richiede `apple-app-site-association` sul dominio.
-- **iPad**: la build è iPhone-only (`TARGETED_DEVICE_FAMILY = 1`) per ridurre
-  il lavoro di layout e screenshot.
-- **Widget / App Intents**: richiedono codice Swift in `ios/`.
-- **Testi legali**: `src/components/Legal/LegalPage.jsx` contiene ancora i
-  segnaposto.
+Coperte:
+
+- **Cache offline** (`src/utils/offlineCache.js`): ultimi movimenti, budget,
+  ricorrenti e preferenze restano sul dispositivo; senza rete l'app li mostra e
+  un banner avvisa che le modifiche richiedono la connessione. La cache si
+  svuota quando elimini l'account.
+- **Universal Links**: `ios/App/App/App.entitlements` dichiara
+  `applinks:ducat.app`, `scripts/generate-aasa.mjs` scrive
+  `.well-known/apple-app-site-association` in `dist/` e
+  `src/platform/deepLinks.js` apre la rotta giusta nell'app (anche con
+  `#access_token` per conferma email e reset password).
+- **iPad**: la build è universale iPhone + iPad
+  (`TARGETED_DEVICE_FAMILY = "1,2"`), orientamenti gestiti separatamente.
+- **Testi legali**: privacy e termini completi in italiano e inglese, con
+  titolare e contatti in `src/content/legal.js`.
+
+Non coperte:
+
+- **Widget / App Intents / push**: richiedono codice Swift in `ios/`.
+- **Cache delle statistiche**: le pagine Analytics ricaricano dal server; i
+  movimenti recenti sì.
+- **Rinnovo automatico della sessione in background**: gestito da
+  `startAutoRefresh`/`stopAutoRefresh` su `appStateChange`, non da un job nativo.
+
+## 8. Dominio e hosting
+
+**Raccomandazione: comprare `ducat.app` e servire il web da lì.** Non è
+branding fine a sé stesso: senza un dominio tuo alcune cose non funzionano.
+
+| Serve per | GitHub Pages (`*.github.io`) | Dominio + Cloudflare Pages |
+|---|---|---|
+| Universal Links (AASA) | il file `.well-known` viene servito come `application/octet-stream`: Apple si aspetta `application/json` | header impostabili con `public/_headers` |
+| URL privacy e supporto in App Store Connect | `solomontaiwo.github.io/ducat/privacy` | `ducat.app/privacy` |
+| Email di conferma e reset | dominio Supabase | `noreply@ducat.app`, migliore deliverability |
+| Fiducia del revisore | repo personale | prodotto |
+| Costo | 0 € | ~12 €/anno di dominio + hosting gratuito |
+
+Passi, una volta comprato il dominio:
+
+1. In `public/` aggiungi `CNAME` con dentro `ducat.app` (serve solo a GitHub
+   Pages) e configura i DNS verso l'hosting scelto.
+2. Repository variable `VITE_BASE_PATH=/` (senza, il sito resta su `/ducat/`).
+3. Repository variable `VITE_DESKTOP_WEB_URL=https://ducat.app/`.
+4. Secret `APPLE_TEAM_ID=<Team ID>`: `scripts/generate-aasa.mjs` scrive
+   `https://ducat.app/.well-known/apple-app-site-association`.
+5. In Supabase → Authentication → URL Configuration aggiorna Site URL e
+   Redirect URLs a `https://ducat.app/**`.
+6. In Xcode l'entitlement è già `applinks:ducat.app`; se scegli un altro
+   dominio aggiorna `ios/App/App/App.entitlements`.
+7. Verifica con `https://ducat.app/.well-known/apple-app-site-association`:
+   deve rispondere `application/json`, senza redirect.
+
+Se invece resti su GitHub Pages, tieni `VITE_BASE_PATH` vuoto: l'app funziona
+e i link email puntano al sito, ma i Universal Links non sono affidabili e il
+flusso di conferma torna a passare dal browser.

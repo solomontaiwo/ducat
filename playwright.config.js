@@ -6,7 +6,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://127.0.0.1:4173/soldi-sotto/",
+    baseURL: "http://127.0.0.1:4173/",
     trace: "on-first-retry",
     reducedMotion: "reduce",
     // The suite asserts the Italian copy and formatting: pin the browser locale
@@ -16,10 +16,21 @@ export default defineConfig({
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
+    // iPad mini portrait: 744 CSS px, just under the 767px breakpoint, so the
+    // tablet layout is exercised on a touch device with the mobile navigation.
+    {
+      name: "ipad-mini",
+      use: {
+        viewport: { width: 744, height: 1133 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
   ],
   webServer: {
     command: "npm run build && npm run preview -- --host 127.0.0.1",
-    url: "http://127.0.0.1:4173/soldi-sotto/",
+    url: "http://127.0.0.1:4173/",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

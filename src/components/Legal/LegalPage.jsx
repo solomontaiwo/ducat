@@ -1,48 +1,68 @@
+import PropTypes from "prop-types";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "../../router/RouterProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { APP_NAME } from "../../utils/brand.js";
+import {
+  LEGAL_ENTITY,
+  LEGAL_UPDATED,
+  PRIVACY_SECTIONS,
+  TERMS_SECTIONS,
+} from "../../content/legal.js";
 
-const Privacy = () => (
+const fill = (text) =>
+  String(text)
+    .replaceAll("{{app}}", APP_NAME)
+    .replaceAll("{{entity}}", LEGAL_ENTITY.name)
+    .replaceAll("{{address}}", LEGAL_ENTITY.address)
+    .replaceAll("{{email}}", LEGAL_ENTITY.email);
+
+/** Renders one section list for the current app language. */
+const Sections = ({ sections }) => (
   <>
-    <p>Ultimo aggiornamento: 4 agosto 2026.</p>
-    <h2 className="text-lg font-semibold">Dati trattati</h2>
-    <p>L’app memorizza email, nome visualizzato e transazioni inserite dall’utente. Tema, lingua e dati della modalità demo restano nel browser.</p>
-    <h2 className="text-lg font-semibold">Finalità e fornitori</h2>
-    <p>I dati servono esclusivamente a fornire autenticazione, gestione delle transazioni, statistiche ed export. Supabase (autenticazione e database PostgreSQL, ospitato nell’Unione europea) è il servizio tecnico utilizzato.</p>
-    <h2 className="text-lg font-semibold">Controllo dei dati</h2>
-    <p>Dalla pagina Profilo è possibile esportare i dati, richiedere il reset della password, cambiare email ed eliminare definitivamente account e transazioni.</p>
-    <h2 className="text-lg font-semibold">Contatti e titolare</h2>
-    <p>Prima di un rilascio pubblico, il gestore deve inserire qui identità, contatti, base giuridica, tempi di conservazione e ogni informazione richiesta dalla normativa applicabile.</p>
+    {sections.map((section) => (
+      <section key={section.title} className="space-y-2">
+        <h2 className="text-lg font-semibold text-foreground">{fill(section.title)}</h2>
+        {section.paragraphs.map((paragraph) => (
+          <p key={paragraph.slice(0, 40)}>{fill(paragraph)}</p>
+        ))}
+      </section>
+    ))}
   </>
 );
 
-const Terms = () => (
-  <>
-    <p>Ultimo aggiornamento: 4 agosto 2026.</p>
-    <h2 className="text-lg font-semibold">Uso del servizio</h2>
-    <p>Soldi Sotto è uno strumento informativo di gestione personale e non offre consulenza finanziaria, fiscale o legale.</p>
-    <h2 className="text-lg font-semibold">Responsabilità dell’utente</h2>
-    <p>L’utente è responsabile della correttezza dei dati inseriti, della sicurezza delle proprie credenziali e degli export scaricati.</p>
-    <h2 className="text-lg font-semibold">Disponibilità</h2>
-    <p>Backup, supporto, livelli di servizio, giurisdizione e condizioni definitive devono essere stabiliti dal gestore prima del rilascio pubblico.</p>
-  </>
-);
+Sections.propTypes = {
+  sections: PropTypes.arrayOf(PropTypes.shape({
+    title: PropTypes.string.isRequired,
+    paragraphs: PropTypes.arrayOf(PropTypes.string).isRequired,
+  })).isRequired,
+};
 
-const LegalPage = () => {
-  const { pathname } = useLocation();
+const LegalPage = () => {  const { pathname } = useLocation();
+  const { t, i18n } = useTranslation();
   const isPrivacy = pathname === "/privacy";
+  const language = i18n.language?.startsWith("en") ? "en" : "it";
+  const sections = (isPrivacy ? PRIVACY_SECTIONS : TERMS_SECTIONS)[language];
+
   return (
-    <main className="min-h-screen bg-background px-4 py-10 text-foreground">
+    <main className="min-h-[100dvh] bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+2.5rem)] pt-[calc(env(safe-area-inset-top)+2.5rem)] text-foreground">
       <Card className="mx-auto max-w-3xl">
-        <CardHeader>
-          <CardTitle>{isPrivacy ? "Informativa privacy" : "Termini d’uso"}</CardTitle>
+        <CardHeader className="space-y-1">
+          <CardTitle>{t(isPrivacy ? "legal.privacyTitle" : "legal.termsTitle")}</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {t("legal.updated", { date: LEGAL_UPDATED })}
+          </p>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm leading-6 text-muted-foreground">
-          {isPrivacy ? <Privacy /> : <Terms />}
-          <div className="flex gap-4 border-t border-border pt-4">
-            <Link to="/" className="font-semibold text-primary">Torna all’app</Link>
+        <CardContent className="space-y-6 text-sm leading-6 text-muted-foreground">
+          <Sections sections={sections} />
+          <div className="flex flex-wrap gap-4 border-t border-border pt-4">
+            <Link to="/" className="font-semibold text-primary">{t("legal.back")}</Link>
             <Link to={isPrivacy ? "/terms" : "/privacy"} className="font-semibold text-primary">
-              {isPrivacy ? "Termini d’uso" : "Privacy"}
+              {t(isPrivacy ? "legal.termsTitle" : "legal.privacyTitle")}
             </Link>
+            <a href={`mailto:${LEGAL_ENTITY.email}`} className="font-semibold text-primary">
+              {t("legal.contact")}
+            </a>
           </div>
         </CardContent>
       </Card>

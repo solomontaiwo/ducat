@@ -57,12 +57,14 @@ describe("iOS submission requirements", () => {
     expect(infoPlist).toMatch(/<key>ITSAppUsesNonExemptEncryption<\/key>\s*<false\/>/);
   });
 
-  it("is a finance app, iPhone only, portrait", () => {
+  it("is a finance app for iPhone and iPad", () => {
     expect(plistValue("LSApplicationCategoryType")).toBe("public.app-category.finance");
-    expect(pbxproj).toMatch(/TARGETED_DEVICE_FAMILY = 1;/);
+    expect(pbxproj).toMatch(/TARGETED_DEVICE_FAMILY = "1,2";/);
     const orientations = /<key>UISupportedInterfaceOrientations<\/key>\s*<array>([\s\S]*?)<\/array>/.exec(infoPlist)?.[1] ?? "";
     expect(orientations).toContain("UIInterfaceOrientationPortrait");
     expect(orientations).not.toContain("Landscape");
+    const ipad = /<key>UISupportedInterfaceOrientations~ipad<\/key>\s*<array>([\s\S]*?)<\/array>/.exec(infoPlist)?.[1] ?? "";
+    expect(ipad).toContain("UIInterfaceOrientationLandscapeLeft");
   });
 
   it("ships a privacy manifest as a bundle resource", () => {
@@ -77,6 +79,15 @@ describe("iOS submission requirements", () => {
 
   it("registers the deep-link scheme", () => {
     expect(infoPlist).toContain(capacitor.ios.scheme);
+  });
+
+  it("wires Universal Links to the web domain", () => {
+    const entitlementsPath = join(root, "ios/App/App/App.entitlements");
+    expect(existsSync(entitlementsPath)).toBe(true);
+    const entitlements = readFileSync(entitlementsPath, "utf8");
+    expect(entitlements).toContain("com.apple.developer.associated-domains");
+    expect(entitlements).toContain("applinks:");
+    expect(pbxproj).toContain("CODE_SIGN_ENTITLEMENTS = App/App.entitlements;");
   });
 
   it("ships an opaque 1024px icon", () => {

@@ -1,5 +1,6 @@
 import { supabase, unwrap } from "../utils/supabaseClient.js";
 import { emitLocalChange, watchTable } from "./changeEvents.js";
+import { readOffline, writeOffline } from "../utils/offlineCache.js";
 import { budgetLimitsSchema, preferencesSchema, recurringInputSchema, recurringPatchSchema } from "../schemas/planning.js";
 
 const RECURRING = "recurring";
@@ -41,15 +42,24 @@ const toRecurringRow = (data) => Object.fromEntries(
 );
 
 const subscribe = (table, userId, load, onData, onError) => {
+  const cacheId = `${table}:${userId}`;
   let active = true;
   let request = 0;
   const reload = async () => {
     const currentRequest = ++request;
     try {
       const data = await load();
+      writeOffline(cacheId, data);
       if (active && request === currentRequest) onData(data);
     } catch (error) {
-      if (active && request === currentRequest) onError?.(error);
+      if (!active || request !== currentRequest) return;
+      // Offline: keep budgets, recurring rules and preferences usable.
+      const cached = readOffline(cacheId);
+      if (cached !== null && cached !== undefined) {
+        onData(cached);
+        return;
+      }
+      onError?.(error);
     }
   };
   const stop = watchTable({ supabase, table, userId, reload });

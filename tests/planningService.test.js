@@ -8,6 +8,7 @@ vi.mock("../src/utils/supabaseClient.js", async (importOriginal) => {
 import { supabase } from "../src/utils/supabaseClient.js";
 import { PlanningService } from "../src/services/planningService.js";
 import { DEFAULT_PREFERENCES } from "../src/schemas/planning.js";
+import { clearOffline } from "../src/utils/offlineCache.js";
 
 const ruleRow = {
   id: "r1", user_id: "u1", type: "expense", amount_minor: 89000, currency: "EUR", description: "Affitto", category: "casa",
@@ -19,7 +20,7 @@ const rule = {
 };
 
 describe("PlanningService", () => {
-  beforeEach(() => { vi.clearAllMocks(); supabase.reset(); });
+  beforeEach(() => { vi.clearAllMocks(); supabase.reset(); clearOffline(); });
 
   it("streams recurring rules in the app's shape and refreshes after a local write", async () => {
     supabase.respond = (call) => (call.action === "select" && call.table === "recurring" && !call.returning

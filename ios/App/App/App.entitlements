@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Universal Links. The web app must serve
+	  https://<domain>/.well-known/apple-app-site-association with the matching
+	  appID (TEAMID.app.ducat); scripts/generate-aasa.mjs writes it at build time.
+	  Custom scheme links keep working as a fallback during TestFlight.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:ducat.app</string>
+		<string>applinks:www.ducat.app</string>
+	</array>
+</dict>
+</plist>

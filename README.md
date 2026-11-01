@@ -1,6 +1,6 @@
-# SoldiSotto
+# Ducat
 
-SoldiSotto is a personal finance app for the **web, desktop** (macOS, Windows, Linux) **and iPhone**. It is built with React and Vite, packaged with Tauri 2 on the desktop and Capacitor on iOS, and uses Supabase (PostgreSQL, Auth and Realtime) as the backend.
+Ducat is a personal finance app for the **web, desktop** (macOS, Windows, Linux) **and iPhone**. It is built with React and Vite, packaged with Tauri 2 on the desktop and Capacitor on iOS, and uses Supabase (PostgreSQL, Auth and Realtime) as the backend.
 
 ## Features
 
@@ -27,20 +27,20 @@ SoldiSotto is a personal finance app for the **web, desktop** (macOS, Windows, L
 Requirements: Node.js 24 and a Supabase project (see [SUPABASE.md](SUPABASE.md) for the full setup).
 
 ```bash
-git clone https://github.com/solomontaiwo/soldi-sotto.git
-cd soldi-sotto
+git clone https://github.com/solomontaiwo/ducat.git
+cd ducat
 npm install
 cp .env.example .env   # fill in VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
 npm run dev
 ```
 
-The app is served at `http://localhost:5173/soldi-sotto/`. Demo mode works without any backend.
+The app is served at `http://localhost:5173/ducat/`. Demo mode works without any backend.
 
 The database schema, row level security policies and helper functions live in `supabase/migrations/`. The publishable key is meant to be public: access to data is enforced by the policies, not by the key.
 
 ## Desktop app
 
-Download the installer for your platform from the [latest release](https://github.com/solomontaiwo/soldi-sotto/releases/latest):
+Download the installer for your platform from the [latest release](https://github.com/solomontaiwo/ducat/releases/latest):
 
 | Platform | Installer |
 |---|---|
@@ -54,10 +54,10 @@ Download the installer for your platform from the [latest release](https://githu
 On Linux, install the matching artifact with the system package manager:
 
 ```bash
-chmod +x ./Soldi-Sotto-*.AppImage && ./Soldi-Sotto-*.AppImage   # AppImage, no install needed
-sudo apt install ./soldi-sotto.deb        # Ubuntu; substitute the downloaded filename
-sudo dnf install ./soldi-sotto.rpm        # Fedora; substitute the downloaded filename
-sudo pacman -U ./soldi-sotto.pkg.tar.zst  # Arch; substitute the downloaded filename
+chmod +x ./Ducat-*.AppImage && ./Ducat-*.AppImage   # AppImage, no install needed
+sudo apt install ./ducat.deb        # Ubuntu; substitute the downloaded filename
+sudo dnf install ./ducat.rpm        # Fedora; substitute the downloaded filename
+sudo pacman -U ./ducat.pkg.tar.zst  # Arch; substitute the downloaded filename
 ```
 
 The desktop app checks for updates on launch and from the update icon in the sidebar; it shows the changelog and installs updates only after they are verified with the signing key. On Linux only the **AppImage** can update itself: keep it in a writable folder (for example `~/Applications`) because the update replaces that file, and install `fuse2` if the system lacks FUSE. `.deb`, `.rpm` and pacman installs show a notice and must be updated with the package manager (or by downloading the new package). The macOS and Windows installers are **not signed or notarized**, so macOS Gatekeeper or Windows SmartScreen may warn or block the first launch.
@@ -95,12 +95,24 @@ xcodebuild -project ios/App/App.xcodeproj -scheme App \
 
 Differences from the desktop build, all inside `src/platform/`:
 
-| Concern | Web | Desktop (Tauri) | iPhone (Capacitor) |
+| Concern | Web | Desktop (Tauri) | iPhone/iPad (Capacitor) |
 |---|---|---|---|
 | Save a PDF/CSV/JSON | download | save dialog | share sheet |
 | External links | new tab | system browser | in-app browser |
 | Session storage | `localStorage` | `localStorage` | native preferences |
 | Feedback | none | none | haptics |
+| Auth links | same page | public web app | Universal Link into the app |
+
+Offline: the last read of transactions, budgets, recurring rules and
+preferences is cached on the device (`src/utils/offlineCache.js`). Without a
+connection the app shows that copy and a banner explains that changes need the
+network. Writes are never queued, so the cache can only contain data the
+server accepted.
+
+Universal Links: the app declares `applinks:<domain>` in
+`ios/App/App/App.entitlements`, and `scripts/generate-aasa.mjs` writes
+`.well-known/apple-app-site-association` into `dist/` during the build. Set
+`APPLE_TEAM_ID` so the file contains the real team prefix.
 
 ## App Store releases
 
@@ -134,6 +146,15 @@ Every push to `main` builds and publishes the web app through `.github/workflows
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API Keys → publishable key |
 
 Optional repository variable: `VITE_ENABLE_ACCOUNT_DELETION=false` hides account deletion in the profile. It is shown by default, because the App Store requires in-app deletion for any app that lets people create an account.
+
+The base path is derived from the repository name (`/ducat/`), so the site keeps
+working if the repository is renamed. A custom domain sets the repository
+variable `VITE_BASE_PATH=/` and the `CNAME` file in `public/`.
+
+`VITE_RELEASES_REPO` (default `solomontaiwo/ducat`) points the Updates page at
+the GitHub repository that publishes the desktop releases, and
+`VITE_DESKTOP_WEB_URL` is the public web address used in authentication emails
+for the desktop and iOS builds.
 
 ## Quality checks
 

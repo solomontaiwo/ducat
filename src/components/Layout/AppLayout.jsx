@@ -6,6 +6,7 @@ import { usePlanning } from "../../context/PlanningProvider.jsx";
 import { AddTransactionContext } from "../../context/AddTransactionContext.jsx";
 import Sidebar from "./Sidebar";
 import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
+import OfflineNotice from "./OfflineNotice";
 import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
@@ -63,6 +64,7 @@ const AppLayout = ({ children }) => {
           }
         >
           <div className="w-full space-y-5">
+            {showNavigation && <OfflineNotice />}
             {showNavigation && planningError && (
               <div role="alert" className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm">
                 <p>{planningError}</p>

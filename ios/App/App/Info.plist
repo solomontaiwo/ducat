@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Soldi Sotto</string>
+	<string>Ducat</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -19,16 +19,16 @@
 		<string>it</string>
 		<string>en</string>
 	</array>
-	<!-- Deep links: SoldiSotto://<path>. Universal links still need the
+	<!-- Deep links: Ducat://<path>. Universal links still need the
 	     apple-app-site-association file on the web domain. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>io.github.solomontaiwo.soldisotto</string>
+			<string>app.ducat</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>SoldiSotto</string>
+				<string>Ducat</string>
 			</array>
 		</dict>
 	</array>
@@ -77,6 +77,13 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
