@@ -74,7 +74,7 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Build desktop packages
-        run: npm run tauri -- build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+        run: npm run tauri -- build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config '{"plugins":{"updater":{"endpoints":["https://github.com/${{ github.repository }}/releases/latest/download/latest.json"]}}}'
 
       - name: Verify Windows executable architecture
         if: runner.os == 'Windows'
@@ -365,7 +365,7 @@ jobs:
         run: npm ci
 
       - name: Build AppImage
-        run: npm run tauri -- build --target x86_64-unknown-linux-gnu --bundles appimage
+        run: npm run tauri -- build --target x86_64-unknown-linux-gnu --bundles appimage --config '{"plugins":{"updater":{"endpoints":["https://github.com/${{ github.repository }}/releases/latest/download/latest.json"]}}}'
 
       - name: Check updater artifacts
         shell: bash
