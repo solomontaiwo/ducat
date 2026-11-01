@@ -73,6 +73,14 @@ jobs:
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
 
+      # Without a Developer ID, Tauri skips signing and the bundle keeps only the
+      # linker's ad-hoc signature: macOS then reports the app as "damaged"
+      # because Contents/_CodeSignature is missing. Signing ad-hoc here keeps
+      # the bundle valid and downgrades the warning to the usual Gatekeeper prompt.
+      - name: Use ad-hoc signing when no Developer ID is configured
+        if: runner.os == 'macOS' && env.APPLE_SIGNING_IDENTITY == ''
+        run: echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
+
       - name: Build desktop packages
         run: npm run tauri -- build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config '{"plugins":{"updater":{"endpoints":["https://github.com/${{ github.repository }}/releases/latest/download/latest.json"]}}}'
 
