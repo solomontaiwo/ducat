@@ -5,6 +5,8 @@ import { visualizer } from 'rollup-plugin-visualizer'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const { ANALYZE } = loadEnv(mode, '', '')
+  // Both packaged shells load their bundle from the app container root.
+  const embedded = mode === 'desktop' || mode === 'mobile'
   const desktop = mode === 'desktop'
 
   return {
@@ -25,7 +27,7 @@ export default defineConfig(({ mode }) => {
       open: false,
     }),
   ].filter(Boolean),
-  base: desktop ? '/' : '/soldi-sotto/',
+  base: embedded ? '/' : '/soldi-sotto/',
   build: {
     rollupOptions: {
       output: {

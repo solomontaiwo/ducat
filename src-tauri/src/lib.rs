@@ -45,12 +45,18 @@ fn updater_runtime_info(app: tauri::AppHandle) -> UpdaterRuntimeInfo {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_fs::init());
+
+    // The updater is a desktop-only feature: Cargo.toml does not even build the
+    // plugin for iOS or Android, so the registration has to match.
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+
+    builder
         .invoke_handler(tauri::generate_handler![updater_runtime_info])
         .setup(|app| {
             if cfg!(debug_assertions) {

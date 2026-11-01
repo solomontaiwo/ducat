@@ -5,7 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
-  { ignores: ['dist', 'coverage', 'test-results', 'playwright-report', 'functions/node_modules', 'src-tauri/target', 'src-tauri/gen'] },
+  { ignores: ['dist', 'coverage', 'test-results', 'playwright-report', 'functions/node_modules', 'src-tauri/target', 'src-tauri/gen', 'ios/App/App/public', 'ios/App/build', 'ios/App/DerivedData'] },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {

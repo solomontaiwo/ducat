@@ -6,7 +6,7 @@ import { FiBarChart2, FiHome, FiList, FiLogOut, FiPlus, FiRefreshCw } from "reac
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils.js";
-import { isDesktopRuntime } from "../../services/updaterService";
+import { canCheckForUpdates } from "../../services/updaterService";
 
 const logo = `${import.meta.env.BASE_URL}icon-192.png`;
 
@@ -74,7 +74,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
 
       <div className="flex-1" />
 
-      {isDesktopRuntime() && (
+      {canCheckForUpdates() && (
         <Link
           to="/updates"
           aria-current={location.pathname === "/updates" ? "page" : undefined}

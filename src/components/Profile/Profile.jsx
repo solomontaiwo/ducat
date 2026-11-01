@@ -36,7 +36,9 @@ import { cn } from "../../lib/utils.js";
 import { APP_VERSION } from "../../utils/appVersion";
 
 // Enable only after deploying the database migration that enforces reauthentication.
-const ACCOUNT_DELETION_ENABLED = import.meta.env.VITE_ENABLE_ACCOUNT_DELETION === "true";
+// Account deletion is required by the App Store (5.1.1(v)) for any app that
+// lets people create an account, so it is on unless it is explicitly disabled.
+const ACCOUNT_DELETION_ENABLED = import.meta.env.VITE_ENABLE_ACCOUNT_DELETION !== "false";
 const RestoreBackupSheet = lazy(() => import("./RestoreBackupSheet.jsx"));
 const BACKUP_REMINDER_DAYS = 30;
 

@@ -1,13 +1,23 @@
 import { supabase } from "../utils/supabaseClient.js";
 import { toEmailLanguage } from "../utils/emailLanguage.js";
+import { isDesktop, isMobile } from "../platform/index.js";
 
-/** Absolute URL of an app route, used for the links in auth emails. */
+const PUBLIC_WEB_URL = "https://solomontaiwo.github.io/soldi-sotto/";
+
+/**
+ * Absolute URL of an app route, used for the links in auth emails.
+ *
+ * The packaged shells (desktop and iOS) have no public origin of their own, so
+ * their emails must point at the deployed web app: `capacitor://localhost` or
+ * a Tauri asset URL would never open. Both therefore require the public URL.
+ */
 export const appUrl = (path = "") => {
-  const base = import.meta.env.MODE === "desktop"
-    ? new URL(import.meta.env.VITE_DESKTOP_WEB_URL || "https://solomontaiwo.github.io/soldi-sotto/")
+  const packaged = isDesktop() || isMobile();
+  const base = packaged
+    ? new URL(import.meta.env.VITE_DESKTOP_WEB_URL || PUBLIC_WEB_URL)
     : new URL(import.meta.env.BASE_URL || "/", window.location.origin);
-  if (import.meta.env.MODE === "desktop" && (base.protocol !== "https:" || !base.pathname.endsWith("/"))) {
-    throw new Error("Desktop web URL must be HTTPS and end with a slash");
+  if (packaged && (base.protocol !== "https:" || !base.pathname.endsWith("/"))) {
+    throw new Error("The public web URL must be HTTPS and end with a slash");
   }
   return new URL(String(path).replace(/^\/+/, ""), base).href;
 };

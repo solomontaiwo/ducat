@@ -10,7 +10,7 @@ const AuthShell = ({ title, subtitle, error, children, footer, backLabel }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+2.5rem)] pt-[calc(env(safe-area-inset-top)+2.5rem)]">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

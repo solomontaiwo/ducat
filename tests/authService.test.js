@@ -49,13 +49,15 @@ describe("authService", () => {
     expect(appUrl("reset-password")).toBe(new URL("reset-password", new URL(import.meta.env.BASE_URL, window.location.origin)).href);
   });
 
-  it("uses the public web app for desktop authentication links", () => {
-    vi.stubEnv("MODE", "desktop");
-    vi.stubEnv("VITE_DESKTOP_WEB_URL", "https://example.com/staging/");
-    expect(appUrl("reset-password")).toBe("https://example.com/staging/reset-password");
-    expect(appUrl("dashboard")).toBe("https://example.com/staging/dashboard");
-    vi.stubEnv("VITE_DESKTOP_WEB_URL", "http://example.com/");
-    expect(() => appUrl("profile")).toThrow();
+  it("uses the public web app for desktop and iOS authentication links", () => {
+    for (const mode of ["desktop", "mobile"]) {
+      vi.stubEnv("MODE", mode);
+      vi.stubEnv("VITE_DESKTOP_WEB_URL", "https://example.com/staging/");
+      expect(appUrl("reset-password")).toBe("https://example.com/staging/reset-password");
+      expect(appUrl("dashboard")).toBe("https://example.com/staging/dashboard");
+      vi.stubEnv("VITE_DESKTOP_WEB_URL", "http://example.com/");
+      expect(() => appUrl("profile")).toThrow();
+    }
   });
 
   it("normalizes the email on sign in", async () => {

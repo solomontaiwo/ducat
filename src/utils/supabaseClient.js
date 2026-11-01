@@ -16,6 +16,7 @@ if (missing.length > 0) {
 }
 
 import { AUTH_STORAGE_KEY } from "./authStorageKey.js";
+import { authStorage } from "../platform/authStorage.js";
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
@@ -25,6 +26,10 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     detectSessionInUrl: true,
     flowType: "implicit",
     storageKey: AUTH_STORAGE_KEY,
+    // iOS keeps the session in native preferences: WKWebView localStorage can
+    // be evicted and would sign the user out silently. Undefined elsewhere, so
+    // the web and desktop keep the default localStorage store.
+    storage: authStorage(),
   },
 });
 

@@ -13,12 +13,15 @@ import { ensureLanguage } from "./utils/i18n.jsx";
 import './utils/installPrompt';
 import ErrorBoundary from "./components/ErrorBoundary";
 import { installGlobalErrorReporting } from "./utils/errorReporting";
+import { startNativeShell } from "./platform/native";
+import { isWeb } from "./platform/index.js";
 
 installGlobalErrorReporting();
 
 // Registering a service worker makes the web app installable. The worker does
-// not cache anything (see public/sw.js), so it never serves stale data.
-if (import.meta.env.PROD && import.meta.env.MODE !== "desktop" && "serviceWorker" in navigator) {
+// not cache anything (see public/sw.js), so it never serves stale data. The
+// packaged shells load their bundle locally and must not register one.
+if (import.meta.env.PROD && isWeb() && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {});
   });
@@ -44,4 +47,16 @@ ensureLanguage().finally(() => {
       </ThemeProvider>
     </ErrorBoundary>
   );
+
+  // iOS: theme-aware status bar, splash hand-off and paused auth refresh.
+  // No-op on the web and on the desktop. The Supabase client is loaded on
+  // demand so it stays out of the initial bundle on the web.
+  const withClient = (action) => async () => {
+    const { supabase } = await import("./utils/supabaseClient.js");
+    supabase.auth[action]();
+  };
+  startNativeShell({
+    onActive: withClient("startAutoRefresh"),
+    onInactive: withClient("stopAutoRefresh"),
+  });
 });

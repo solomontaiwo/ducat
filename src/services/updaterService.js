@@ -6,8 +6,16 @@
  * bundle never pulls Tauri internals into its graph.
  */
 
+import { isDesktop, isStoreBuild } from "../platform/index.js";
+
 /** True only in the packaged desktop runtime (Vite `desktop` mode). */
-export const isDesktopRuntime = () => import.meta.env.MODE === "desktop";
+export const isDesktopRuntime = () => isDesktop();
+
+/**
+ * Self-updates are never offered in a Mac App Store build: the store owns
+ * updates (guideline 2.4.5) and the sandbox forbids replacing the bundle.
+ */
+export const canCheckForUpdates = () => isDesktop() && !isStoreBuild();
 
 /**
  * Bundle types whose runtime can install an update itself. On Linux this is
@@ -18,7 +26,7 @@ const SELF_UPDATE_BUNDLES = new Set(["appimage", "app", "nsis"]);
 
 /** The bundle type reported by the running desktop app (null in the web app). */
 export const readBundleType = async () => {
-  if (!isDesktopRuntime()) return null;
+  if (!canCheckForUpdates()) return null;
   try {
     const { getBundleType } = await import("@tauri-apps/api/app");
     return await getBundleType();
@@ -35,7 +43,7 @@ export const readBundleType = async () => {
  * into place, so the temp file must live on the same writable mount).
  */
 export const readUpdateRuntime = async () => {
-  if (!isDesktopRuntime()) return null;
+  if (!canCheckForUpdates()) return null;
   try {
     const [{ invoke }, bundleType] = await Promise.all([
       import("@tauri-apps/api/core"),
@@ -72,7 +80,7 @@ export const canSelfUpdate = (runtime) => {
  * `null` (up to date) — and `null` in the web runtime.
  */
 export const checkForUpdates = async () => {
-  if (!isDesktopRuntime()) return null;
+  if (!canCheckForUpdates()) return null;
   const { check } = await import("@tauri-apps/plugin-updater");
   return check();
 };

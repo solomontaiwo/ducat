@@ -29,7 +29,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+    <div className="min-h-[100dvh] flex items-center justify-center bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-[calc(env(safe-area-inset-top)+1rem)]">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>{t("auth.forgotPassword.title")}</CardTitle>

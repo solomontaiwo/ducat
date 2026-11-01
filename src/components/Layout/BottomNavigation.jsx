@@ -4,6 +4,7 @@ import { FiBarChart2, FiHome, FiList, FiPlus } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { cn } from "../../lib/utils.js";
+import { hapticTap } from "../../platform/haptics.js";
 
 export const BOTTOM_NAV_HEIGHT_PX = 76;
 
@@ -50,7 +51,10 @@ const BottomNavigation = ({ onAdd, addDisabled = false }) => {
               <button
                 key={item.path}
                 type="button"
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  hapticTap();
+                  navigate(item.path);
+                }}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "relative flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-full text-[11px] font-semibold leading-none transition-colors",
@@ -70,7 +74,10 @@ const BottomNavigation = ({ onAdd, addDisabled = false }) => {
         </div>
         <button
           type="button"
-          onClick={onAdd}
+          onClick={() => {
+            hapticTap("medium");
+            onAdd();
+          }}
           disabled={addDisabled}
           aria-label={t("navbar.add")}
           className="glass-tint flex shrink-0 items-center justify-center rounded-full text-white transition active:scale-95 disabled:opacity-50"
