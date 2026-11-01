@@ -463,7 +463,10 @@
     "success": "Success",
     "error": "Error",
     "warning": "Warning",
-    "info": "Info"
+    "info": "Info",
+    "close": "Close notification",
+    "undo": "Undo",
+    "retry": "Retry"
   },
   "login": {
     "title": "Welcome back!",

@@ -29,7 +29,7 @@ const TYPES = {
 
 const Toast = ({ toast, onDismiss }) => {
   const { t } = useTranslation();
-  const { id, message, description, type, duration, action } = toast;
+  const { id, message, description, type, duration, action, onClose } = toast;
   const meta = TYPES[type] ?? TYPES.info;
   const Icon = meta.Icon;
 
@@ -46,8 +46,11 @@ const Toast = ({ toast, onDismiss }) => {
     if (closingRef.current) return;
     closingRef.current = true;
     setClosing(true);
-    dismissRef.current = window.setTimeout(() => onDismiss(id), EXIT_MS);
-  }, [id, onDismiss]);
+    dismissRef.current = window.setTimeout(() => {
+      onDismiss(id);
+      onClose?.();
+    }, EXIT_MS);
+  }, [id, onDismiss, onClose]);
 
   useEffect(() => {
     lastTickRef.current = Date.now();
@@ -121,6 +124,7 @@ Toast.propTypes = {
     type: PropTypes.oneOf(["success", "danger", "warning", "info"]).isRequired,
     duration: PropTypes.number.isRequired,
     action: PropTypes.shape({ label: PropTypes.string.isRequired, onClick: PropTypes.func }),
+    onClose: PropTypes.func,
   }).isRequired,
   onDismiss: PropTypes.func.isRequired,
 };
@@ -132,28 +136,40 @@ Toast.propTypes = {
  */
 export const NotificationProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
+  // Authoritative list, kept in sync with state so add/remove never have to run
+  // side effects (like a toast's onClose) inside a state updater.
+  const toastsRef = useRef([]);
 
   const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    const next = toastsRef.current.filter((toast) => toast.id !== id);
+    toastsRef.current = next;
+    setToasts(next);
   }, []);
 
   const addToast = useCallback((message, type = "info", options = {}) => {
     const opts = typeof options === "number" ? { duration: options } : (options || {});
     const duration = opts.duration ?? DURATIONS[type] ?? DURATIONS.info;
-    setToasts((prev) => {
-      // Ignore exact duplicates that are still on screen.
-      if (prev.some((toast) => toast.type === type && toast.message === message)) return prev;
-      const next = [...prev, {
-        id: Date.now() + Math.random(),
-        message,
-        description: opts.description,
-        type,
-        duration,
-        action: opts.action,
-      }];
-      // Keep only the most recent toasts; the oldest unmounts and clears its timers.
-      return next.slice(-MAX_TOASTS);
-    });
+    const current = toastsRef.current;
+    // Ignore exact duplicates still on screen — unless the toast carries an
+    // action/close handler, since each of those is a distinct pending operation.
+    const interactive = Boolean(opts.action || opts.onClose);
+    if (!interactive && current.some((toast) => toast.type === type && toast.message === message)) return;
+
+    const next = [...current, {
+      id: Date.now() + Math.random(),
+      message,
+      description: opts.description,
+      type,
+      duration,
+      action: opts.action,
+      onClose: opts.onClose,
+    }];
+    // Keep only the newest toasts; a dropped toast still gets its onClose so
+    // deferred work (e.g. a pending delete) is never lost.
+    const dropped = next.length > MAX_TOASTS ? next.splice(0, next.length - MAX_TOASTS) : [];
+    toastsRef.current = next;
+    setToasts(next);
+    dropped.forEach((toast) => toast.onClose?.());
   }, []);
 
   const success = useCallback((message, options) => addToast(message, "success", options), [addToast]);

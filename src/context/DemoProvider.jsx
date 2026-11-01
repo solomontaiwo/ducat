@@ -161,15 +161,15 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
     return true;
   }, [demoTransactions, saveDemoTransactions, notification, t]);
 
-  // Deletes a demo transaction
-  const deleteDemoTransaction = useCallback(async (transactionId) => {
+  // Deletes a demo transaction; `silent` lets the caller show its own (undo) toast.
+  const deleteDemoTransaction = useCallback(async (transactionId, { silent = false } = {}) => {
     const updatedTransactions = demoTransactions.filter(
       transaction => transaction.id !== transactionId
     );
     latestRef.current = updatedTransactions;
     setDemoTransactions(updatedTransactions);
     saveDemoTransactions(updatedTransactions);
-    notification.success(t('demo.transactionDeleted'));
+    if (!silent) notification.success(t('demo.transactionDeleted'));
     return true;
   }, [demoTransactions, saveDemoTransactions, notification, t]);
 

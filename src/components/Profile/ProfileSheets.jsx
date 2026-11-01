@@ -566,7 +566,9 @@ export const ExportSheet = ({ open, onClose, firstDate }) => {
       if (saved) onClose();
     } catch (error) {
       console.error("Export failed", error);
-      notification.error(t("profilePage.export.error"));
+      notification.error(t("profilePage.export.error"), {
+        action: { label: t("notifications.retry"), onClick: download },
+      });
     } finally {
       setBusy(false);
     }

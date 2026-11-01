@@ -108,15 +108,15 @@ const AccountTransactionWrapper = ({ children }) => {
     }
   }, [currentUser, notification, t]);
 
-  // Deletes a transaction
-  const deleteTransaction = useCallback(async (transactionId) => {
+  // Deletes a transaction; `silent` lets the caller show its own (undo) toast.
+  const deleteTransaction = useCallback(async (transactionId, { silent = false } = {}) => {
     if (!currentUser) return false;
     
     setIsProcessing(true);
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
       await TransactionService.delete(transactionId);
-      notification.success(t('notifications.deleteSuccess'));
+      if (!silent) notification.success(t('notifications.deleteSuccess'));
       return true;
     } catch (error) {
       console.error("Error deleting transaction:", error);

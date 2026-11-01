@@ -182,7 +182,9 @@ const Profile = () => {
       notification.success(t("profile.exportSuccess"));
     } catch (error) {
       console.error("Unable to export account data", error);
-      notification.error(t("profile.exportError"));
+      notification.error(t("profile.exportError"), {
+        action: { label: t("notifications.retry"), onClick: backup },
+      });
     } finally {
       setBackingUp(false);
     }

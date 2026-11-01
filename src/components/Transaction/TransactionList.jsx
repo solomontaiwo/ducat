@@ -22,12 +22,14 @@ import { useTransactionFilter } from "../../hooks/useTransactionFilter.jsx";
 import { getPeriodRange } from "../../utils/statsUtils.jsx";
 import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { cn } from "../../lib/utils";
+import { useNotification } from "../../utils/notificationUtils";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
 
 const TYPE_FILTERS = ["all", "expense", "income"];
 
 const TransactionList = () => {
   const { t, i18n } = useTranslation();
+  const notification = useNotification();
   const { currentUser, loading: authLoading } = useAuth();
   const {
     transactions, // This is the limited recent stream
@@ -308,17 +310,46 @@ const TransactionList = () => {
     if (await duplicate(actionTransaction)) setActionTransaction(null);
   }, [actionTransaction, duplicate]);
 
-  const confirmDelete = useCallback(async () => {
-    if (deleteConfirm) {
-      const success = await deleteTransaction(deleteConfirm);
-      if (success) {
-        setDeleteConfirm(null);
-        setAllLoadedTransactions((prev) => prev.filter((item) => item.id !== deleteConfirm));
-        setRemovedIds((previous) => new Set(previous).add(deleteConfirm));
-        setSelectedTransaction((current) => (current?.id === deleteConfirm ? null : current));
-      }
-    }
-  }, [deleteConfirm, deleteTransaction]);
+  const confirmDelete = useCallback(() => {
+    const id = deleteConfirm;
+    if (!id) return;
+    setDeleteConfirm(null);
+    setSelectedTransaction((current) => (current?.id === id ? null : current));
+
+    // Hide the row immediately; commit the server delete when the undo toast closes.
+    setRemovedIds((previous) => new Set(previous).add(id));
+    let undone = false;
+
+    notification.success(t("notifications.deleteSuccess"), {
+      duration: 6000,
+      action: {
+        label: t("notifications.undo"),
+        onClick: () => {
+          undone = true;
+          setRemovedIds((previous) => {
+            const next = new Set(previous);
+            next.delete(id);
+            return next;
+          });
+        },
+      },
+      onClose: () => {
+        if (undone) return;
+        deleteTransaction(id, { silent: true }).then((ok) => {
+          if (!ok) {
+            // The delete failed: bring the row back (the provider shows the error).
+            setRemovedIds((previous) => {
+              const next = new Set(previous);
+              next.delete(id);
+              return next;
+            });
+            return;
+          }
+          setAllLoadedTransactions((prev) => prev.filter((item) => item.id !== id));
+        });
+      },
+    });
+  }, [deleteConfirm, deleteTransaction, notification, t]);
 
   const transactionToDelete = deleteConfirm
     ? searchSource.find((item) => item.id === deleteConfirm) || allLoadedTransactions.find((item) => item.id === deleteConfirm) || transactions.find((item) => item.id === deleteConfirm)

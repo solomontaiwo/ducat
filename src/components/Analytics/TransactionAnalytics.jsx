@@ -154,14 +154,19 @@ const TransactionAnalytics = () => {
   })), [extendedStats.monthlyTrend, locale]);
   const hasTrend = trend.some((month) => month.income > 0 || month.expense > 0);
 
-  const handleExportError = () => notification.error(t("profilePage.export.error"));
-  const exportCsv = () => exportAnalyticsCsv({
+  // Runs an export and offers a retry action when it fails.
+  const runExport = (thunk) => thunk().catch(() => {
+    notification.error(t("profilePage.export.error"), {
+      action: { label: t("notifications.retry"), onClick: () => runExport(thunk) },
+    });
+  });
+  const exportCsv = () => runExport(() => exportAnalyticsCsv({
     transactions: extendedStats.filteredTransactions, currentUser, period, startDate, endDate,
-  }).catch(handleExportError);
-  const exportPdf = () => exportAnalyticsPdf({
+  }));
+  const exportPdf = () => runExport(() => exportAnalyticsPdf({
     transactions: extendedStats.filteredTransactions, currentUser, period, customRange, startDate, endDate,
     t, language: i18n.language,
-  }).catch(handleExportError);
+  }));
   const canExport = !!extendedStats?.filteredTransactions?.length;
 
   if (contextLoading || isLoadingAnalyticsData) {
