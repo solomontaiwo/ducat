@@ -15,6 +15,8 @@ if (missing.length > 0) {
   );
 }
 
+import { AUTH_STORAGE_KEY } from "./authStorageKey.js";
+
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
@@ -22,7 +24,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     // Confirmation and password-reset links come back with the session in the URL.
     detectSessionInUrl: true,
     flowType: "implicit",
-    storageKey: "soldi-sotto-auth",
+    storageKey: AUTH_STORAGE_KEY,
   },
 });
 

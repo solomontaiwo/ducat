@@ -7,7 +7,15 @@ describe("money helpers", () => {
     expect(minorToMajor(30)).toBe(0.3);
   });
 
-  it.each(["1.001", "-1", "abc", "1,2,3", Number.NaN, Number.POSITIVE_INFINITY])("rejects invalid amount %s", (value) => {
+  it("accepts thousands separators in either convention", () => {
+    expect(parseMoneyToMinor("1.234")).toBe(123400);
+    expect(parseMoneyToMinor("1,234")).toBe(123400);
+    expect(parseMoneyToMinor("1.234,56")).toBe(123456);
+    expect(parseMoneyToMinor("1,234.56")).toBe(123456);
+    expect(parseMoneyToMinor("1 234,56")).toBe(123456);
+  });
+
+  it.each(["1.0001", "1234.567", "-1", "abc", "1,2,3", Number.NaN, Number.POSITIVE_INFINITY])("rejects invalid amount %s", (value) => {
     expect(() => parseMoneyToMinor(value)).toThrow();
   });
 

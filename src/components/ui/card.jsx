@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 
 export function Card({ className, children, ...props }) {
   return (
@@ -47,15 +47,7 @@ export function CardContent({ className, children, ...props }) {
   );
 }
 
-export function CardFooter({ className, children, ...props }) {
-  return (
-    <div className={cn("flex items-center p-5 pt-0 sm:p-6 sm:pt-0", className)} {...props}>
-      {children}
-    </div>
-  );
-}
-
-Card.propTypes = CardHeader.propTypes = CardContent.propTypes = CardFooter.propTypes = {
+Card.propTypes = CardHeader.propTypes = CardContent.propTypes = {
   className: PropTypes.string,
   children: PropTypes.node,
 };

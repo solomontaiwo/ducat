@@ -7,7 +7,7 @@ import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { Button } from "../ui/button";
 import { CategoryBadge } from "../Transaction/TransactionRow.jsx";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 
 const logo = `${import.meta.env.BASE_URL}icon-192.png`;
 

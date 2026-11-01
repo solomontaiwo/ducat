@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useAuth } from "../../context/AuthProvider.jsx";
-import formatCurrency from "../../utils/formatCurrency.jsx";
+import formatCurrency, { formatCompactCurrency } from "../../utils/formatCurrency.jsx";
 import { useCategories } from "../../utils/categories.jsx";
 import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -25,7 +25,8 @@ import { useTheme } from "../../utils/ThemeProvider.jsx";
 import { useNotification } from "../../utils/notificationUtils.jsx";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { writeLocalValue } from "../../utils/storage.js";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
+import { handleRadioKeyDown } from "../../utils/radioGroup.js";
 import TransactionRow from "../Transaction/TransactionRow.jsx";
 import { Link } from "../../router/RouterProvider";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
@@ -155,16 +156,22 @@ const TransactionAnalytics = () => {
   const hasTrend = trend.some((month) => month.income > 0 || month.expense > 0);
 
   // Runs an export and offers a retry action when it fails.
+  const periodLabel = period === "custom"
+    ? `${t("analytics.custom")} (${customRange.from} - ${customRange.to})`
+    : t(`analytics.periods.${period}`);
+  const csvHeaders = [t("pdf.date"), t("pdf.type"), t("pdf.description"), t("pdf.category"), t("pdf.amount")];
+  const csvTypeLabels = { income: t("pdf.income"), expense: t("pdf.expense") };
   const runExport = (thunk) => thunk().catch(() => {
     notification.error(t("profilePage.export.error"), {
       action: { label: t("notifications.retry"), onClick: () => runExport(thunk) },
     });
   });
   const exportCsv = () => runExport(() => exportAnalyticsCsv({
-    transactions: extendedStats.filteredTransactions, currentUser, period, startDate, endDate,
+    transactions: extendedStats.filteredTransactions, currentUser, period, periodLabel, startDate, endDate,
+    headers: csvHeaders, typeLabels: csvTypeLabels,
   }));
   const exportPdf = () => runExport(() => exportAnalyticsPdf({
-    transactions: extendedStats.filteredTransactions, currentUser, period, customRange, startDate, endDate,
+    transactions: extendedStats.filteredTransactions, currentUser, period, periodLabel, customRange, startDate, endDate,
     t, language: i18n.language,
   }));
   const canExport = !!extendedStats?.filteredTransactions?.length;
@@ -286,7 +293,7 @@ const TransactionAnalytics = () => {
                   <CartesianGrid vertical={false} stroke={chart.grid} />
                   <XAxis dataKey="label" tick={{ fill: chart.axis, fontSize: 12, fontWeight: 600 }} axisLine={false} tickLine={false} />
                   <YAxis
-                    tickFormatter={(value) => formatCurrency(value).replace(/,00\s?/, " ")}
+                    tickFormatter={(value) => formatCompactCurrency(value, i18n.language)}
                     tick={{ fill: chart.axis, fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
@@ -306,7 +313,12 @@ const TransactionAnalytics = () => {
         <section className="surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="category-title">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="category-title" className="text-lg font-bold">{t("analytics.byCategory")}</h2>
-            <div role="radiogroup" aria-label={t("analytics.byCategory")} className="segmented grid-cols-2 p-0.5">
+            <div
+              role="radiogroup"
+              aria-label={t("analytics.byCategory")}
+              className="segmented grid-cols-2 p-0.5"
+              onKeyDown={(event) => handleRadioKeyDown(event, ["expense", "income"], categoryType, setCategoryType)}
+            >
               {["expense", "income"].map((type) => (
                 <button key={type} type="button" role="radio" aria-checked={categoryType === type} className="!h-8 !px-3 !text-[13px]" onClick={() => setCategoryType(type)}>
                   {type === "expense" ? t("dashboard.expenses") : t("dashboard.income")}
@@ -377,9 +389,10 @@ const TransactionAnalytics = () => {
 };
 
 const CategoryDelta = ({ value, higherIsBetter, label }) => {
+  const { i18n } = useTranslation();
   if (!value || Math.abs(value) < 1) return null;
   const better = (value > 0) === higherIsBetter;
-  const amount = formatCurrency(Math.abs(value)).replace(/,00(?=\s|$)/, "");
+  const amount = formatCompactCurrency(Math.abs(value), i18n.language);
   return (
     <span
       className={cn("shrink-0 text-xs font-bold tabular-nums", better ? "text-income" : "text-warning-strong")}
@@ -406,4 +419,4 @@ KpiTile.propTypes = {
   delta: PropTypes.shape({ text: PropTypes.string, tone: PropTypes.string, detail: PropTypes.string }),
 };
 
-export default React.memo(TransactionAnalytics);
+export default TransactionAnalytics;

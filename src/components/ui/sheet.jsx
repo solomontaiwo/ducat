@@ -2,7 +2,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { FiX } from "react-icons/fi";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 
 /**
  * Glass sheet: slides up from the bottom on phones, centred card on larger
@@ -13,10 +13,11 @@ const Sheet = ({ open, onOpenChange, title, description, children, footer, class
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/25 backdrop-blur-[2px] dark:bg-black/60" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-[2px] dark:bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-100 motion-reduce:animate-none" />
         <DialogPrimitive.Content
           className={cn(
             "glass-thick fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-[30px] text-foreground outline-none",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-150 motion-reduce:animate-none",
             "pb-[env(safe-area-inset-bottom)]",
             "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-[92vw] sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:pb-0",
             className
@@ -31,7 +32,7 @@ const Sheet = ({ open, onOpenChange, title, description, children, footer, class
                 : <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>}
             </div>
             <DialogPrimitive.Close
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
               aria-label={t("common.close", { defaultValue: "Chiudi" })}
             >
               <FiX className="h-4 w-4" aria-hidden="true" />

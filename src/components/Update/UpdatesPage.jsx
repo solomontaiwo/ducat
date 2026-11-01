@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { InlineSegmented } from "../Profile/SettingsList";
 import { APP_VERSION } from "../../utils/appVersion";
 import { readUpdaterSettings, writeUpdaterSettings } from "../../utils/updaterSettings";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 
 const RELEASES_API = "https://api.github.com/repos/solomontaiwo/soldi-sotto/releases?per_page=8";
 

@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useCallback,
 } from "react";
@@ -61,6 +62,16 @@ const AccountTransactionWrapper = ({ children }) => {
   const { currentUser } = useAuth();
   const { transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals, getFirstTransactionDate } = useTransactions();
   const [isProcessing, setIsProcessing] = useState(false);
+  // Several writes can overlap: only the last one finishing turns the flag off.
+  const processingRef = useRef(0);
+  const beginProcessing = useCallback(() => {
+    processingRef.current += 1;
+    setIsProcessing(true);
+  }, []);
+  const endProcessing = useCallback(() => {
+    processingRef.current = Math.max(0, processingRef.current - 1);
+    if (processingRef.current === 0) setIsProcessing(false);
+  }, []);
   const notification = useNotification();
   const { t } = useTranslation();
 
@@ -68,7 +79,7 @@ const AccountTransactionWrapper = ({ children }) => {
   const addTransaction = useCallback(async (transactionData, { silent = false } = {}) => {
     if (!currentUser) return false;
     
-    setIsProcessing(true);
+    beginProcessing();
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
       const { clientRequestId, ...payload } = transactionData;
@@ -85,15 +96,15 @@ const AccountTransactionWrapper = ({ children }) => {
       }
       return false;
     } finally {
-      setIsProcessing(false);
+      endProcessing();
     }
-  }, [currentUser, notification, t]);
+  }, [currentUser, notification, t, beginProcessing, endProcessing]);
 
   // Updates a transaction
   const updateTransaction = useCallback(async (transactionId, updatedData) => {
     if (!currentUser) return false;
     
-    setIsProcessing(true);
+    beginProcessing();
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
       await TransactionService.update(transactionId, updatedData);
@@ -104,15 +115,15 @@ const AccountTransactionWrapper = ({ children }) => {
       notification.error(t('notifications.updateError'));
       return false;
     } finally {
-      setIsProcessing(false);
+      endProcessing();
     }
-  }, [currentUser, notification, t]);
+  }, [currentUser, notification, t, beginProcessing, endProcessing]);
 
   // Deletes a transaction; `silent` lets the caller show its own (undo) toast.
   const deleteTransaction = useCallback(async (transactionId, { silent = false } = {}) => {
     if (!currentUser) return false;
     
-    setIsProcessing(true);
+    beginProcessing();
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
       await TransactionService.delete(transactionId);
@@ -123,9 +134,9 @@ const AccountTransactionWrapper = ({ children }) => {
       notification.error(t('notifications.deleteError'));
       return false;
     } finally {
-      setIsProcessing(false);
+      endProcessing();
     }
-  }, [currentUser, notification, t]);
+  }, [currentUser, notification, t, beginProcessing, endProcessing]);
 
   // Totals over the realtime stream only (the most recent transactions);
   // range-accurate figures come from fetchAllTransactions.
@@ -181,6 +192,7 @@ const AccountTransactionWrapper = ({ children }) => {
 const DemoTransactionWrapper = ({ children, startDemo, seedDemo, stopDemo }) => {
   const {
     transactions,
+    revision,
     loading,
     addTransaction,
     updateTransaction,
@@ -223,7 +235,7 @@ const DemoTransactionWrapper = ({ children, startDemo, seedDemo, stopDemo }) => 
     fetchAllTransactions,
     fetchTransactionPage,
     getTotalTransactionCount,
-    recentRevision: transactions.length,
+    recentRevision: revision,
     canAddMoreTransactions,
     maxTransactions: MAX_DEMO_TRANSACTIONS,
     getStats: getDemoStats,
@@ -232,7 +244,7 @@ const DemoTransactionWrapper = ({ children, startDemo, seedDemo, stopDemo }) => 
     startDemo,
     stopDemo,
   }), [
-    transactions, loading, addTransaction, updateTransaction, deleteTransaction,
+    transactions, revision, loading, addTransaction, updateTransaction, deleteTransaction,
     generateSampleTransactions, clearTransactions, fetchAllTransactions, fetchTransactionPage,
     getTotalTransactionCount, canAddMoreTransactions, getDemoStats, seedDemo, startDemo, stopDemo,
   ]);

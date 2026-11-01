@@ -1,4 +1,4 @@
-import { addDays, endOfDay, format, parse, startOfDay } from "date-fns";
+import { format, parse } from "date-fns";
 
 export const DATE_KEY_FORMAT = "yyyy-MM-dd";
 
@@ -49,6 +49,3 @@ export const dateToDateKey = (input) => {
 
 export const coerceDateKey = (value) => isDateKey(value) ? value : dateToDateKey(value);
 export const todayDateKey = () => format(new Date(), DATE_KEY_FORMAT);
-export const startOfDateKey = (value) => startOfDay(dateKeyToDate(coerceDateKey(value)));
-export const endOfDateKey = (value) => endOfDay(dateKeyToDate(coerceDateKey(value)));
-export const nextDateKeyUtcDate = (value) => addDays(dateKeyToUtcDate(coerceDateKey(value)), 1);

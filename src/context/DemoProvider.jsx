@@ -49,6 +49,7 @@ const normalizeDemoTransaction = (transaction) => {
 
 export const DemoProvider = ({ children, seedOnMount = false }) => {
   const [demoTransactions, setDemoTransactions] = useState([]);
+  const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const hasSeededRef = useRef(false);
   // Latest list, so several adds in a row (recurring catch-up) don't overwrite each other.
@@ -78,15 +79,10 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
     }
   }, []);
 
-  // Save demo transactions to localStorage
+  // Save demo transactions to localStorage. Returns false when storage is full
+  // or unavailable so callers can report the failure instead of losing data.
   const saveDemoTransactions = useCallback((transactions) => {
-    try {
-      if (!writeLocalValue(DEMO_STORAGE_KEY, JSON.stringify(transactions))) {
-        throw new Error("Demo storage unavailable");
-      }
-    } catch (error) {
-      console.error("Error saving demo transactions:", error);
-    }
+    return writeLocalValue(DEMO_STORAGE_KEY, JSON.stringify(transactions));
   }, []);
 
   // Adds a new demo transaction
@@ -137,6 +133,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
       if (!writeLocalBatch(entries)) throw new Error("Demo storage unavailable");
       latestRef.current = updatedTransactions;
       setDemoTransactions(updatedTransactions);
+      setRevision((value) => value + 1);
       if (nextRules !== rules) emitLocalChange("demo-recurring");
       if (!silent) notification.success(t('demo.transactionAdded'));
       return true;
@@ -149,36 +146,65 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
 
   // Updates an existing demo transaction
   const updateDemoTransaction = useCallback(async (transactionId, updatedData) => {
-    const updatedTransactions = demoTransactions.map(transaction =>
-      transaction.id === transactionId
-        ? normalizeDemoTransaction({ ...transaction, ...updatedData })
-        : transaction
-    );
-    latestRef.current = updatedTransactions;
-    setDemoTransactions(updatedTransactions);
-    saveDemoTransactions(updatedTransactions);
-    notification.success(t('demo.transactionUpdated'));
-    return true;
-  }, [demoTransactions, saveDemoTransactions, notification, t]);
+    const current = latestRef.current;
+    const existing = current.find(transaction => transaction.id === transactionId);
+    if (!existing) {
+      notification.error(t('notifications.updateError'));
+      return false;
+    }
+    try {
+      const updatedTransactions = current.map(transaction =>
+        transaction.id === transactionId
+          ? normalizeDemoTransaction({ ...transaction, ...updatedData })
+          : transaction
+      );
+      if (!saveDemoTransactions(updatedTransactions)) throw new Error("Demo storage unavailable");
+      latestRef.current = updatedTransactions;
+      setDemoTransactions(updatedTransactions);
+      setRevision((value) => value + 1);
+      notification.success(t('demo.transactionUpdated'));
+      return true;
+    } catch (error) {
+      console.error("Unable to update demo transaction", error);
+      notification.error(t('notifications.updateError'));
+      return false;
+    }
+  }, [saveDemoTransactions, notification, t]);
 
   // Deletes a demo transaction; `silent` lets the caller show its own (undo) toast.
   const deleteDemoTransaction = useCallback(async (transactionId, { silent = false } = {}) => {
-    const updatedTransactions = demoTransactions.filter(
-      transaction => transaction.id !== transactionId
-    );
-    latestRef.current = updatedTransactions;
-    setDemoTransactions(updatedTransactions);
-    saveDemoTransactions(updatedTransactions);
-    if (!silent) notification.success(t('demo.transactionDeleted'));
-    return true;
-  }, [demoTransactions, saveDemoTransactions, notification, t]);
+    const current = latestRef.current;
+    // Already gone (double action or another tab): treat as success.
+    if (!current.some(transaction => transaction.id === transactionId)) return true;
+    try {
+      const updatedTransactions = current.filter(
+        transaction => transaction.id !== transactionId
+      );
+      if (!saveDemoTransactions(updatedTransactions)) throw new Error("Demo storage unavailable");
+      latestRef.current = updatedTransactions;
+      setDemoTransactions(updatedTransactions);
+      setRevision((value) => value + 1);
+      if (!silent) notification.success(t('demo.transactionDeleted'));
+      return true;
+    } catch (error) {
+      console.error("Unable to delete demo transaction", error);
+      notification.error(t('demo.deleteError'));
+      return false;
+    }
+  }, [saveDemoTransactions, notification, t]);
 
   // Clears all demo transactions
   const clearDemoTransactions = useCallback(() => {
+    const cleared = removeLocalValue(DEMO_STORAGE_KEY);
+    if (!cleared) {
+      notification.error(t('demo.deleteError'));
+      return false;
+    }
     latestRef.current = [];
     setDemoTransactions([]);
-    removeLocalValue(DEMO_STORAGE_KEY);
+    setRevision((value) => value + 1);
     notification.success(t('demo.allTransactionsCleared'));
+    return true;
   }, [notification, t]);
 
   // Checks if user can add more transactions (excluding samples)
@@ -253,10 +279,15 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
     ];
 
     const normalizedSamples = sampleTransactions.map(normalizeDemoTransaction);
+    if (!saveDemoTransactions(normalizedSamples)) {
+      notification.error(t('demo.deleteError'));
+      return false;
+    }
     latestRef.current = normalizedSamples;
     setDemoTransactions(normalizedSamples);
-    saveDemoTransactions(normalizedSamples);
+    setRevision((value) => value + 1);
     notification.info(t('demo.sampleTransactionsAdded'));
+    return true;
   }, [saveDemoTransactions, notification, t]);
 
   useEffect(() => {
@@ -275,6 +306,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
 
   const value = useMemo(() => ({
     transactions: demoTransactions,
+    revision,
     loading,
     addTransaction: addDemoTransaction,
     updateTransaction: updateDemoTransaction,
@@ -286,7 +318,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
     getDemoStats,
     isDemo: true,
   }), [
-    demoTransactions, loading, addDemoTransaction, updateDemoTransaction, deleteDemoTransaction,
+    demoTransactions, revision, loading, addDemoTransaction, updateDemoTransaction, deleteDemoTransaction,
     clearDemoTransactions, generateSampleTransactions, canAddMoreTransactions, getDemoStats,
   ]);
 

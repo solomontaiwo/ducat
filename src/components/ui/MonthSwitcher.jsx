@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 import { formatMonthLabel } from "../../utils/monthLabel";
 
 /** "‹ Ottobre 2026 ›" control shared by the overview and the transaction list. */

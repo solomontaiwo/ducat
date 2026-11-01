@@ -4,7 +4,7 @@ import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
 import i18n from "./i18n.jsx";
-import formatCurrency from "./formatCurrency.jsx";
+import formatCurrency, { moneyLocale } from "./formatCurrency.jsx";
 import { generateExportFileName, getCurrentProfileName } from "./downloadUtils.jsx";
 import { buildReportModel } from "./reportModel.js";
 
@@ -28,6 +28,7 @@ const getPdfStrings = (lang = "it") => ({
   description: i18n.t("pdf.description", { lng: lang }),
   category: i18n.t("pdf.category", { lng: lang }),
   amount: i18n.t("pdf.amount", { lng: lang }),
+  average: i18n.t("pdf.average", { lng: lang }),
   income: i18n.t("pdf.income", { lng: lang }),
   expense: i18n.t("pdf.expense", { lng: lang }),
 });
@@ -47,6 +48,7 @@ const addFooter = (doc) => {
 export const createPDFReport = ({ transactions, startDate, endDate, periodLabel, lang = "it" }) => {
   const strings = getPdfStrings(lang);
   const locale = lang?.startsWith("en") ? enUS : it;
+  const currencyLocale = moneyLocale(lang);
   const model = buildReportModel(transactions, startDate, endDate);
   const doc = new JsPDF();
 
@@ -62,7 +64,7 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
   autoTable(doc, {
     startY: 48,
     head: [[strings.totalIncome, strings.totalExpense, strings.balance, strings.avgDailyIncome, strings.avgDailyExpense]],
-    body: [[model.totalIncome, model.totalExpense, model.balance, model.avgDailyIncome, model.avgDailyExpense].map((value) => formatCurrency(value))],
+    body: [[model.totalIncome, model.totalExpense, model.balance, model.avgDailyIncome, model.avgDailyExpense].map((value) => formatCurrency(value, currencyLocale))],
     styles: { fontSize: 8 },
   });
 
@@ -75,12 +77,12 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
   doc.text(strings.expenseDistribution, 14, doc.lastAutoTable.finalY + 10);
   autoTable(doc, {
     startY: doc.lastAutoTable.finalY + 14,
-    head: [[strings.category, "%", strings.amount, "Media"]],
+    head: [[strings.category, "%", strings.amount, strings.average]],
     body: model.categoryBreakdown.map((entry) => [
       categoryLabel(entry.category, lang),
       `${entry.percentage.toFixed(2)}%`,
-      formatCurrency(entry.amount),
-      formatCurrency(entry.average),
+      formatCurrency(entry.amount, currencyLocale),
+      formatCurrency(entry.average, currencyLocale),
     ]),
   });
 
@@ -88,7 +90,7 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
     format(transaction.date, "dd/MM/yyyy", { locale }),
     transaction.description,
     categoryLabel(transaction.category, lang),
-    formatCurrency(transaction.amount),
+    formatCurrency(transaction.amount, currencyLocale),
   ]);
 
   doc.text(strings.topExpenses, 14, doc.lastAutoTable.finalY + 10);
@@ -115,7 +117,7 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
       transaction.type === "income" ? strings.income : strings.expense,
       transaction.description,
       categoryLabel(transaction.category, lang),
-      formatCurrency(transaction.amount),
+      formatCurrency(transaction.amount, currencyLocale),
     ]),
     showHead: "everyPage",
   });

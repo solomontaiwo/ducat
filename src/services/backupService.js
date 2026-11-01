@@ -2,7 +2,7 @@ import { supabase, unwrap } from "../utils/supabaseClient.js";
 import { buildAccountExport, parseAccountBackup } from "../utils/accountExport.js";
 import { TransactionService } from "./transactionService.jsx";
 import { fromRecurringRow } from "./planningService.js";
-import { DEFAULT_PREFERENCES, budgetLimitsSchema, preferencesSchema } from "../schemas/planning.js";
+import { budgetLimitsSchema, normalizePreferences } from "../schemas/planning.js";
 import { emitLocalChange } from "./changeEvents.js";
 
 const assertVerified = (user) => {
@@ -13,12 +13,14 @@ export const BackupService = {
   fetch: async (user, profileName) => {
     assertVerified(user);
     const snapshot = unwrap(await supabase.rpc("read_account_backup"));
+    // Legacy or partially invalid settings must not make the whole backup fail.
+    const storedBudgets = budgetLimitsSchema.safeParse(snapshot.budgets);
     const payload = buildAccountExport({
       user, profileName,
       transactions: snapshot.transactions.map(TransactionService.normalizeRow),
       recurring: snapshot.recurring.map(fromRecurringRow),
-      budgets: budgetLimitsSchema.parse(snapshot.budgets),
-      preferences: preferencesSchema.parse({ ...DEFAULT_PREFERENCES, ...snapshot.preferences }),
+      budgets: storedBudgets.success ? storedBudgets.data : {},
+      preferences: normalizePreferences(snapshot.preferences),
     });
     parseAccountBackup(payload, user.uid);
     return payload;

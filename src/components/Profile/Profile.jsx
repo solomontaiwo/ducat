@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { differenceInCalendarDays, differenceInCalendarMonths, format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
@@ -29,17 +29,15 @@ import { calculateStats } from "../../utils/statsUtils.jsx";
 import { budgetRows } from "../../utils/budgets.js";
 import { monthlyEquivalentMinor } from "../../utils/recurrence.js";
 import { cycleMonthFor, cycleRange } from "../../utils/monthCycle.js";
-import formatCurrency, { formatSignedAmount } from "../../utils/formatCurrency.jsx";
+import { formatCompactCurrency, formatSignedCompact } from "../../utils/formatCurrency.jsx";
 import { minorToMajor } from "../../utils/money.js";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 import { APP_VERSION } from "../../utils/appVersion";
 
 // Enable only after deploying the database migration that enforces reauthentication.
 const ACCOUNT_DELETION_ENABLED = import.meta.env.VITE_ENABLE_ACCOUNT_DELETION === "true";
 const RestoreBackupSheet = lazy(() => import("./RestoreBackupSheet.jsx"));
 const BACKUP_REMINDER_DAYS = 30;
-
-const compactCurrency = (value) => formatCurrency(value).replace(/,00(?=\s|$)/, "");
 
 /** Movements, months tracked and average monthly saving across the whole history. */
 const useAccountSummary = () => {
@@ -266,7 +264,7 @@ const Profile = () => {
                 { label: t("profilePage.months"), value: summary ? summary.months : "–" },
                 {
                   label: t("profilePage.averageSaving"),
-                  value: summary ? formatSignedAmount(Math.abs(summary.averageSaving), summary.averageSaving >= 0 ? "income" : "expense").replace(/,\d\d(?=\s|$)/, "") : "–",
+                  value: summary ? formatSignedCompact(Math.abs(summary.averageSaving), summary.averageSaving >= 0 ? "income" : "expense", i18n.language) : "–",
                   tone: summary && summary.averageSaving >= 0 ? "text-income" : "",
                 },
               ].map((item, index) => (
@@ -284,7 +282,7 @@ const Profile = () => {
               tone="blue"
               title={t("recurring.title")}
               subtitle={activeRecurring.length
-                ? t("profilePage.recurringSummary", { count: activeRecurring.length, amount: compactCurrency(fixedExpenses) })
+                ? t("profilePage.recurringSummary", { count: activeRecurring.length, amount: formatCompactCurrency(fixedExpenses, i18n.language) })
                 : t("profilePage.recurringEmpty")}
               to="/recurring"
             />
@@ -420,4 +418,4 @@ const Profile = () => {
   );
 };
 
-export default React.memo(Profile);
+export default Profile;

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import { Link } from "../../router/RouterProvider";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 
 /**
  * Mobile-only shortcut to profile and settings, sitting at the right end of a

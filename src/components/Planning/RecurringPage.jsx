@@ -10,7 +10,7 @@ import formatCurrency, { formatSignedAmount } from "../../utils/formatCurrency.j
 import { minorToMajor } from "../../utils/money.js";
 import { todayDateKey } from "../../utils/dateUtils.js";
 import { firstIndexFrom, monthlyEquivalentMinor, nextOccurrence, upcomingOccurrences } from "../../utils/recurrence.js";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 import UpcomingList from "./UpcomingList.jsx";
 import BackButton from "./BackButton.jsx";
 import { shortDate } from "./planningFormat.js";
@@ -20,6 +20,8 @@ const RecurringPage = () => {
   const { recurring, ready, updateRecurring, deleteRecurring, skipOccurrence } = usePlanning();
   const { openAddTransaction, canAdd } = useAddTransaction();
   const [selected, setSelected] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [busy, setBusy] = useState(false);
 
   const today = todayDateKey();
   const upcoming = useMemo(() => upcomingOccurrences(recurring, today), [recurring, today]);
@@ -33,8 +35,27 @@ const RecurringPage = () => {
   }, { income: 0, expense: 0 }), [recurring]);
 
   const run = async (action) => {
-    const ok = await action();
-    if (ok) setSelected(null);
+    if (busy) return;
+    setBusy(true);
+    try {
+      const ok = await action();
+      if (ok) setSelected(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmRuleDelete = async () => {
+    if (!confirmDelete || busy) return;
+    setBusy(true);
+    try {
+      if (await deleteRecurring(confirmDelete.id)) {
+        setConfirmDelete(null);
+        setSelected(null);
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -118,32 +139,45 @@ const RecurringPage = () => {
           {selected && (
             <div className="grid gap-2 pt-2">
               {!selected.paused && (
-                <Button variant="outline" className="h-12 justify-start" disabled={!ready} onClick={() => run(() => skipOccurrence(selected))}>
+                <Button variant="outline" className="h-12 justify-start" disabled={!ready || busy} onClick={() => run(() => skipOccurrence(selected))}>
                   <FiSkipForward aria-hidden="true" />
                   {t("recurring.skip")} ({shortDate(nextOccurrence(selected).dateKey, i18n.language)})
                 </Button>
               )}
               <Button
                 variant="outline"
-                className="h-12 justify-start" disabled={!ready}
+                className="h-12 justify-start" disabled={!ready || busy}
                 onClick={() => run(() => updateRecurring(selected.id, { mode: selected.mode === "auto" ? "confirm" : "auto" }))}
               >
                 <FiZap aria-hidden="true" />
                 {selected.mode === "auto" ? t("recurring.switchToConfirm") : t("recurring.switchToAuto")}
               </Button>
-              <Button variant="outline" className="h-12 justify-start" disabled={!ready} onClick={() => run(() => updateRecurring(selected.id, selected.paused
+              <Button variant="outline" className="h-12 justify-start" disabled={!ready || busy} onClick={() => run(() => updateRecurring(selected.id, selected.paused
                 ? { paused: false, nextIndex: firstIndexFrom(selected, todayDateKey()) }
                 : { paused: true }))}>
                 {selected.paused ? <FiPlay aria-hidden="true" /> : <FiPause aria-hidden="true" />}
                 {selected.paused ? t("recurring.resume") : t("recurring.pause")}
               </Button>
-              <Button variant="outline" className="h-12 justify-start text-destructive hover:text-destructive" disabled={!ready} onClick={() => run(() => deleteRecurring(selected.id))}>
+              <Button variant="outline" className="h-12 justify-start text-destructive hover:text-destructive" disabled={!ready || busy} onClick={() => setConfirmDelete(selected)}>
                 <FiTrash2 aria-hidden="true" />
                 {t("recurring.delete")}
               </Button>
               <p className="px-1 text-xs text-muted-foreground">{t("recurring.deleteHint")}</p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && !busy && setConfirmDelete(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("recurring.deleteConfirmTitle")}</DialogTitle>
+            <DialogDescription>{t("recurring.deleteConfirmDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setConfirmDelete(null)} disabled={busy}>{t("cancel")}</Button>
+            <Button variant="destructive" onClick={confirmRuleDelete} disabled={busy}>{t("recurring.delete")}</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

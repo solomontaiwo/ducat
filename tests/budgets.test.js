@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { endOfDay } from "date-fns";
 import { averageByCategory, averageRange, budgetRows, suggestLimitMinor } from "../src/utils/budgets.js";
 
 describe("budgets", () => {
@@ -9,6 +10,12 @@ describe("budgets", () => {
     const tx = (month, category, minor, type = "expense") => ({ type, category, amountMinor: minor, amount: minor / 100, date: new Date(2026, month, 5) });
     const data = [tx(6, "supermercato", 30000), tx(7, "supermercato", 30000), tx(8, "supermercato", 30100), tx(9, "supermercato", 99999), tx(8, "stipendio", 100000, "income")];
     expect(averageByCategory(data, range)).toEqual({ supermercato: 30033 });
+  });
+
+  it("follows the payday cycle when one is configured", () => {
+    const range = averageRange(new Date(2026, 9, 15), 3, 27);
+    expect(range.startDate).toEqual(new Date(2026, 5, 27));
+    expect(range.endDate).toEqual(endOfDay(new Date(2026, 8, 26)));
   });
 
   it("suggests round limits", () => {

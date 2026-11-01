@@ -1,3 +1,8 @@
+> **Documento storico — non aggiornato.**
+> Descrive l'audit della versione 4.0.0, basata su Firebase. L'app oggi usa Supabase:
+> per lo stato corrente vedi `README.md`, `SUPABASE.md` e `UPDATER.md`.
+> Conservato per tracciabilità delle decisioni.
+
 # Audit completo di SoldiSotto
 
 > Documento operativo per implementazione e test assistiti da LLM

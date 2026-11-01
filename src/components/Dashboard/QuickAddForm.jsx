@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useCategories } from "../../utils/categories.jsx";
@@ -27,6 +27,14 @@ const QuickAddForm = () => {
   const [categoryTouched, setCategoryTouched] = useState(false);
   const categories = type === "expense" ? expenseCategories : incomeCategories;
   const disabled = isDemo && !canAddMoreTransactions;
+
+  // Preferences (hidden categories, order) can finish loading after mount, so
+  // keep the selected category valid instead of submitting a stale value.
+  useEffect(() => {
+    if (!categories.some((item) => item.value === category)) {
+      setCategory(categories[0]?.value || "");
+    }
+  }, [categories, category]);
 
   const changeType = (nextType) => {
     setType(nextType);

@@ -3,7 +3,7 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import { FiBarChart2, FiHome, FiList, FiPlus } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 
 export const BOTTOM_NAV_HEIGHT_PX = 76;
 

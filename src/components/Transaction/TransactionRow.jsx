@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 import { getCategoryIcon } from "../../utils/categoryIcons.jsx";
 import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 

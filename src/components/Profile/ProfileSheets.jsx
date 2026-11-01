@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { Reorder, useDragControls } from "framer-motion";
@@ -8,7 +8,8 @@ import Sheet from "../ui/sheet";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
+import { handleRadioKeyDown } from "../../utils/radioGroup.js";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
@@ -22,7 +23,13 @@ import { requestEmailChange, requestPasswordReset } from "../../services/account
 import { DEFAULT_QUICK_AMOUNTS } from "../../schemas/planning.js";
 
 const SegmentedField = ({ label, options, value, onChange }) => (
-  <div role="radiogroup" aria-label={label} className="segmented" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+  <div
+    role="radiogroup"
+    aria-label={label}
+    className="segmented"
+    style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    onKeyDown={(event) => handleRadioKeyDown(event, options.map((option) => option.value), value, onChange)}
+  >
     {options.map((option) => (
       <button key={option.value} type="button" role="radio" aria-checked={value === option.value} onClick={() => onChange(option.value)}>
         {option.label}
@@ -513,13 +520,17 @@ export const ExportSheet = ({ open, onClose, firstDate }) => {
   const { isDemo, transactions, fetchAllTransactions } = useUnifiedTransactions();
   const notification = useNotification();
   const thisYear = new Date().getFullYear();
-  const firstYear = Math.max(thisYear - 4, firstDate ? firstDate.getFullYear() : thisYear);
+  // `Math.min`: the oldest year available must not be capped to the last five.
+  const firstYear = Math.min(thisYear - 4, firstDate ? firstDate.getFullYear() : thisYear);
   const years = [];
   for (let year = firstYear; year <= thisYear; year += 1) years.push(String(year));
   const [period, setPeriod] = useState(String(thisYear));
   const [format, setFormat] = useState("csv");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [previewError, setPreviewError] = useState("");
+  const [previewRevision, setPreviewRevision] = useState(0);
+  const previewKeyRef = useRef("");
 
   const range = useMemo(() => {
     if (period === "all") return { startDate: firstDate || new Date(2000, 0, 1), endDate: endOfDay(new Date()) };
@@ -527,10 +538,17 @@ export const ExportSheet = ({ open, onClose, firstDate }) => {
     return { startDate: new Date(year, 0, 1), endDate: new Date(year, 11, 31, 23, 59, 59) };
   }, [period, firstDate]);
 
+  const previewKey = `${open}:${period}`;
   useEffect(() => {
     if (!open) return undefined;
+    // Reset the count only when the sheet opens or the period changes: a realtime
+    // refresh must not flash "…" or lose the current preview.
+    if (previewKeyRef.current !== previewKey) {
+      previewKeyRef.current = previewKey;
+      setPreview(null);
+    }
     let cancelled = false;
-    setPreview(null);
+    setPreviewError("");
     const load = async () => {
       try {
         const data = isDemo
@@ -538,22 +556,27 @@ export const ExportSheet = ({ open, onClose, firstDate }) => {
           : await fetchAllTransactions(period === "all" ? {} : range);
         if (!cancelled) setPreview(data);
       } catch {
-        if (!cancelled) setPreview([]);
+        if (!cancelled) {
+          setPreview([]);
+          setPreviewError(t("profilePage.export.loadError"));
+        }
       }
     };
     load();
     return () => { cancelled = true; };
-  }, [open, period, range, isDemo, transactions, fetchAllTransactions]);
+  }, [open, period, previewKey, range, isDemo, transactions, fetchAllTransactions, previewRevision, t]);
 
   const label = period === "all" ? t("profilePage.export.all") : period;
   const download = async () => {
     if (!preview?.length) return;
     setBusy(true);
     try {
-      const options = { transactions: preview, currentUser, startDate: range.startDate, endDate: range.endDate };
+      const options = { transactions: preview, currentUser, startDate: range.startDate, endDate: range.endDate, periodLabel: label };
+      const headers = [t("pdf.date"), t("pdf.type"), t("pdf.description"), t("pdf.category"), t("pdf.amount")];
+      const typeLabels = { income: t("pdf.income"), expense: t("pdf.expense") };
       let saved;
       if (format === "csv") {
-        saved = await exportAnalyticsCsv({ ...options, period: label });
+        saved = await exportAnalyticsCsv({ ...options, period: label, headers, typeLabels });
       } else {
         saved = await exportAnalyticsPdf({
           ...options,
@@ -586,13 +609,16 @@ export const ExportSheet = ({ open, onClose, firstDate }) => {
       )}
     >
       <div className="space-y-2">
-        <p className="text-sm font-bold">{t("profilePage.export.period")}</p>
-        <SegmentedField
-          label={t("profilePage.export.period")}
+        <Label htmlFor="export-period">{t("profilePage.export.period")}</Label>
+        <select
+          id="export-period"
           value={period}
-          onChange={setPeriod}
-          options={[...years.slice(-2).map((year) => ({ value: year, label: year })), { value: "all", label: t("profilePage.export.all") }]}
-        />
+          onChange={(event) => setPeriod(event.target.value)}
+          className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base md:text-sm"
+        >
+          {years.map((year) => <option key={year} value={year}>{year}</option>)}
+          <option value="all">{t("profilePage.export.all")}</option>
+        </select>
       </div>
       <div className="space-y-2">
         <p className="text-sm font-bold">{t("profilePage.export.format")}</p>
@@ -621,6 +647,14 @@ export const ExportSheet = ({ open, onClose, firstDate }) => {
           {preview === null ? "…" : t("profilePage.export.count", { count: preview.length })}
         </strong>
       </div>
+      {previewError && (
+        <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
+          {previewError}
+          <button type="button" className="font-semibold underline" onClick={() => setPreviewRevision((value) => value + 1)}>
+            {t("common.retry")}
+          </button>
+        </p>
+      )}
     </Sheet>
   );
 };

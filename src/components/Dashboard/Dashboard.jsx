@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import React from "react";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
@@ -245,4 +244,4 @@ const Dashboard = () => {
   );
 };
 
-export default React.memo(Dashboard);
+export default Dashboard;

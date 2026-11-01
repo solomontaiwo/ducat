@@ -1,7 +1,8 @@
 import PropTypes from "prop-types";
 import { FiChevronRight } from "react-icons/fi";
 import { Link } from "../../router/RouterProvider";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
+import { handleRadioKeyDown } from "../../utils/radioGroup.js";
 
 /** Grouped settings list, iOS-style: a caption and a card of rows. */
 export const SettingsGroup = ({ title, children, className }) => (
@@ -72,7 +73,12 @@ SettingsRow.propTypes = {
 
 /** Compact segmented control for inline choices (theme, language, …). */
 export const InlineSegmented = ({ label, options, value, onChange }) => (
-  <div role="radiogroup" aria-label={label} className="flex shrink-0 gap-0.5 rounded-xl bg-muted p-0.5">
+  <div
+    role="radiogroup"
+    aria-label={label}
+    className="flex shrink-0 gap-0.5 rounded-xl bg-muted p-0.5"
+    onKeyDown={(event) => handleRadioKeyDown(event, options.map((option) => option.value), value, onChange)}
+  >
     {options.map((option) => (
       <button
         key={option.value}

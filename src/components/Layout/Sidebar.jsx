@@ -5,7 +5,7 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import { FiBarChart2, FiHome, FiList, FiLogOut, FiPlus, FiRefreshCw } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 import { isDesktopRuntime } from "../../services/updaterService";
 
 const logo = `${import.meta.env.BASE_URL}icon-192.png`;

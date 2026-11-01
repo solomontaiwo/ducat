@@ -4,18 +4,16 @@ import { differenceInCalendarDays, endOfMonth } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { Link } from "../../router/RouterProvider";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
-import formatCurrency from "../../utils/formatCurrency.jsx";
+import { formatCompactCurrency } from "../../utils/formatCurrency.jsx";
 import { minorToMajor } from "../../utils/money.js";
 import { budgetRows } from "../../utils/budgets.js";
-import { cn } from "../../lib/utils";
-
-const compact = (minor) => formatCurrency(minorToMajor(minor)).replace(/,00(?=\s|$)/, "");
+import { cn } from "../../lib/utils.js";
 
 const BAR_TONE = { ok: "bg-primary", near: "bg-warning", over: "bg-warning-strong" };
 
 /** Month budgets on the overview; renders nothing until a budget exists. */
 const BudgetCard = ({ breakdown, isCurrentMonth, endDate }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { budgets } = usePlanning();
   const rows = useMemo(
     () => budgetRows(budgets, breakdown, (category) => t(`categories.${category}`, { defaultValue: category })),
@@ -37,8 +35,8 @@ const BudgetCard = ({ breakdown, isCurrentMonth, endDate }) => {
               <span className="truncate font-semibold">{row.label}</span>
               <span className={cn("shrink-0 tabular-nums", row.status === "over" ? "font-bold text-warning-strong" : "text-muted-foreground")}>
                 {row.status === "over"
-                  ? t("budgets.over", { amount: compact(row.spentMinor - row.limitMinor) })
-                  : t("budgets.of", { spent: compact(row.spentMinor), limit: compact(row.limitMinor) })}
+                  ? t("budgets.over", { amount: formatCompactCurrency(minorToMajor(row.spentMinor - row.limitMinor), i18n.language) })
+                  : t("budgets.of", { spent: formatCompactCurrency(minorToMajor(row.spentMinor), i18n.language), limit: formatCompactCurrency(minorToMajor(row.limitMinor), i18n.language) })}
               </span>
             </div>
             <div
@@ -48,6 +46,9 @@ const BudgetCard = ({ breakdown, isCurrentMonth, endDate }) => {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.min(100, Math.round(row.ratio * 100))}
+              aria-valuetext={row.status === "over"
+                ? t("budgets.over", { amount: formatCompactCurrency(minorToMajor(row.spentMinor - row.limitMinor), i18n.language) })
+                : t("budgets.of", { spent: formatCompactCurrency(minorToMajor(row.spentMinor), i18n.language), limit: formatCompactCurrency(minorToMajor(row.limitMinor), i18n.language) })}
             >
               <div className={cn("h-full rounded-full", BAR_TONE[row.status])} style={{ width: `${Math.max(2, Math.min(100, row.ratio * 100))}%` }} />
             </div>

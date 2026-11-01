@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
 import { dateKeyToDate } from "../../utils/dateUtils.js";
 
-export const dateLocale = (language) => (language === "en" ? enUS : it);
+const dateLocale = (language) => (language === "en" ? enUS : it);
 
 /** "9 nov" / "Nov 9". */
 export const shortDate = (dateKey, language) =>

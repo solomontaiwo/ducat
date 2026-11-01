@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo, u
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { FiAlertCircle, FiAlertTriangle, FiCheck, FiInfo, FiX } from "react-icons/fi";
-import { cn } from "../lib/utils";
+import { cn } from "../lib/utils.js";
 
 const NotificationContext = createContext();
 

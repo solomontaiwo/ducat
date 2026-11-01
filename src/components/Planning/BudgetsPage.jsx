@@ -10,7 +10,7 @@ import { CategoryBadge } from "../Transaction/TransactionRow.jsx";
 import { Button } from "../ui/button";
 import formatCurrency from "../../utils/formatCurrency.jsx";
 import { minorToMajor, parseMoneyToMinor } from "../../utils/money.js";
-import { averageByCategory, averageRange, suggestLimitMinor } from "../../utils/budgets.js";
+import { AVERAGE_MONTHS, averageByCategory, averageRange, suggestLimitMinor } from "../../utils/budgets.js";
 import BackButton from "./BackButton.jsx";
 
 const toInput = (minor) => (minor ? String(minorToMajor(minor)).replace(".", ",") : "");
@@ -19,8 +19,9 @@ const BudgetsPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { isDemo, transactions, fetchAllTransactions } = useUnifiedTransactions();
-  const { budgets, ready, saveBudgets } = usePlanning();
+  const { budgets, ready, saveBudgets, preferences } = usePlanning();
   const { expenseCategories } = useCategories();
+  const startDay = preferences.monthStartDay || 1;
   const notification = useNotification();
   const navigate = useNavigate();
   const [values, setValues] = useState({});
@@ -34,7 +35,7 @@ const BudgetsPage = () => {
 
   useEffect(() => {
     let cancelled = false;
-    const range = averageRange();
+    const range = averageRange(new Date(), AVERAGE_MONTHS, startDay);
     const load = async () => {
       try {
         const data = isDemo ? transactions : currentUser ? await fetchAllTransactions(range) : [];
@@ -45,7 +46,7 @@ const BudgetsPage = () => {
     };
     load();
     return () => { cancelled = true; };
-  }, [isDemo, transactions, currentUser, fetchAllTransactions]);
+  }, [isDemo, transactions, currentUser, fetchAllTransactions, startDay]);
 
   const categories = useMemo(() => expenseCategories.filter((category) => category.value !== "altro"), [expenseCategories]);
 

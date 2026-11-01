@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import PropTypes from "prop-types";
 import { getCurrentProfileName } from "../utils/downloadUtils.jsx";
 import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/storage.js";
+import { AUTH_STORAGE_KEY } from "../utils/authStorageKey.js";
 import i18n from "../utils/i18n.jsx";
 import { toEmailLanguage } from "../utils/emailLanguage.js";
 
@@ -26,10 +27,22 @@ const sameUser = (left, right) => Boolean(left && right)
   && left.displayName === right.displayName
   && left.language === right.language;
 
+/** Removes OAuth/recovery tokens from the address bar once the session exists. */
+const clearAuthHash = () => {
+  if (!window.location.hash) return;
+  if (!/(access_token|refresh_token|error_description|type=recovery)/.test(window.location.hash)) return;
+  window.history.replaceState(
+    window.history.state,
+    "",
+    `${window.location.pathname}${window.location.search}`
+  );
+};
+
 export const AuthProvider = ({ children }) => {
   const [sessionUser, setSessionUser] = useState(null);
   const [pendingEmail, setPendingEmail] = useState(() => readLocalValue(PENDING_KEY) || null);
   const [loading, setLoading] = useState(true);
+  const [authStalled, setAuthStalled] = useState(false);
   const [profileName, setProfileName] = useState(null);
   const [profileNameLoading, setProfileNameLoading] = useState(true);
   const sessionUserRef = useRef(null);
@@ -97,18 +110,24 @@ export const AuthProvider = ({ children }) => {
     let unsubscribe = () => {};
     let cancelled = false;
     // Safety timeout: if the auth client never answers (e.g. bad config),
-    // resolve loading after 5 s so the app doesn't stay on a blank page forever.
+    // stop the spinner and show a recoverable "server unreachable" screen
+    // instead of flashing the public landing page to a signed-in user.
     const timeout = setTimeout(() => {
       setLoading(false);
       setProfileNameLoading(false);
-    }, 5000);
+      // A stored session means a signed-in user is waiting: avoid the landing
+      // page flash. Otherwise the app is simply offline and can still demo.
+      if (readLocalValue(AUTH_STORAGE_KEY)) setAuthStalled(true);
+    }, 10000);
 
     import("../services/authService.js")
       .then(({ onAuthChange }) => {
         if (cancelled) return;
         unsubscribe = onAuthChange((user) => {
           clearTimeout(timeout);
+          setAuthStalled(false);
           const current = applySessionUser(user);
+          if (current) clearAuthHash();
           setLoading(false);
           // Supabase calls this inside its auth lock: further requests must
           // run after it returns.
@@ -127,6 +146,7 @@ export const AuthProvider = ({ children }) => {
         clearTimeout(timeout);
         setLoading(false);
         setProfileNameLoading(false);
+        if (readLocalValue(AUTH_STORAGE_KEY)) setAuthStalled(true);
       });
 
     return () => {
@@ -157,9 +177,9 @@ export const AuthProvider = ({ children }) => {
 
   const value = useMemo(
     () => ({
-      currentUser, loading, logout, profileName, profileNameLoading, refreshProfileName, refreshCurrentUser, markPendingVerification,
+      currentUser, loading, authStalled, logout, profileName, profileNameLoading, refreshProfileName, refreshCurrentUser, markPendingVerification,
     }),
-    [currentUser, loading, logout, profileName, profileNameLoading, refreshProfileName, refreshCurrentUser, markPendingVerification]
+    [currentUser, loading, authStalled, logout, profileName, profileNameLoading, refreshProfileName, refreshCurrentUser, markPendingVerification]
   );
 
   return (

@@ -76,6 +76,7 @@ describe("Login", () => {
     mocks.signIn.mockRejectedValue(Object.assign(new Error("Email not confirmed"), { code: "auth/email-not-verified" }));
     render(<Login />);
     fill("email", "ada@example.com");
+    fill("password", "secret-pass");
     submit();
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/verify-email", { replace: true }));
     expect(mocks.markPendingVerification).toHaveBeenCalledWith("ada@example.com");
@@ -88,9 +89,19 @@ describe("Login", () => {
   ])("shows a translated message for %s without navigating", async (code, expected) => {
     mocks.signIn.mockRejectedValue(Object.assign(new Error("raw"), { code }));
     render(<Login />);
+    fill("email", "ada@example.com");
+    fill("password", "secret-pass");
     submit();
     expect(await screen.findByText(expected)).toBeInTheDocument();
     expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("asks for both fields before contacting the server", async () => {
+    render(<Login />);
+    fill("email", "ada@example.com");
+    submit();
+    expect(await screen.findByText("errors.missingCredentials")).toBeInTheDocument();
+    expect(mocks.signIn).not.toHaveBeenCalled();
   });
 
   it("toggles password visibility with an accessible label", () => {

@@ -6,9 +6,10 @@ import { useCategories } from "../../utils/categories.jsx";
 import { useNotification } from "../../utils/notificationUtils.jsx";
 import { minorToMajor, parseMoneyToMinor } from "../../utils/money";
 import { coerceDateKey, dateKeyToDate, DATE_KEY_FORMAT, todayDateKey } from "../../utils/dateUtils";
-import formatCurrency from "../../utils/formatCurrency.jsx";
+import formatCurrency, { formatCompactCurrency } from "../../utils/formatCurrency.jsx";
 import { readLocalValue, writeLocalValue } from "../../utils/storage.js";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
+import { handleRadioKeyDown } from "../../utils/radioGroup.js";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { suggestCategory } from "../../utils/categorySuggest.js";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
@@ -190,6 +191,15 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
 
   const setField = (field, value) => setFormData((previous) => ({ ...previous, [field]: value }));
 
+  const chooseDate = (choice) => {
+    if (choice === "other") {
+      setShowDatePicker(true);
+      return;
+    }
+    setShowDatePicker(false);
+    setField("date", choice === "today" ? today : yesterday);
+  };
+
   const submitLabel = isEdit
     ? t("transactionModal.saveChanges")
     : parsedAmount
@@ -199,7 +209,12 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
   return (
     <form onSubmit={handleSubmit} className={cn("flex min-h-0 flex-1 flex-col", className)} noValidate>
       <div className="flex-1 space-y-6 overflow-y-auto px-5 pb-6 pt-1">
-        <div role="radiogroup" aria-label={t("transactionModal.type")} className="segmented grid-cols-2">
+        <div
+          role="radiogroup"
+          aria-label={t("transactionModal.type")}
+          className="segmented grid-cols-2"
+          onKeyDown={(event) => handleRadioKeyDown(event, ["expense", "income"], formData.type, (next) => setField("type", next))}
+        >
           {["expense", "income"].map((type) => (
             <button
               key={type}
@@ -241,7 +256,7 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
           <div className="flex max-w-full gap-2 overflow-x-auto scrollbar-none" data-swipe-ignore="true">
             {(preferences?.quickAmounts || [5, 10, 20, 50, 100]).map((value) => (
               <button key={value} type="button" className="chip h-9 px-3.5 text-[13px]" onClick={() => setField("amount", String(value))}>
-                {formatCurrency(value).replace(",00", "")}
+                {formatCompactCurrency(value, i18n.language)}
               </button>
             ))}
           </div>
@@ -277,7 +292,17 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
               </span>
             </p>
           )}
-          <div role="radiogroup" aria-label={t("transactionModal.category")} className="flex flex-wrap gap-2">
+          <div
+            role="radiogroup"
+            aria-label={t("transactionModal.category")}
+            className="flex flex-wrap gap-2"
+            onKeyDown={(event) => handleRadioKeyDown(
+              event,
+              categories.map((category) => category.value),
+              formData.category,
+              (next) => { setCategoryTouched(true); setField("category", next); }
+            )}
+          >
             {categories.map((category) => (
               <button
                 key={category.value}
@@ -295,14 +320,19 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
 
         <fieldset className="space-y-3">
           <legend className="mb-3 text-sm font-bold">{t("transactionModal.date")}</legend>
-          <div role="radiogroup" aria-label={t("transactionModal.date")} className="flex flex-wrap gap-2">
-            <button type="button" role="radio" aria-checked={dateChoice === "today"} className="chip" onClick={() => { setShowDatePicker(false); setField("date", today); }}>
+          <div
+            role="radiogroup"
+            aria-label={t("transactionModal.date")}
+            className="flex flex-wrap gap-2"
+            onKeyDown={(event) => handleRadioKeyDown(event, ["today", "yesterday", "other"], dateChoice, chooseDate)}
+          >
+            <button type="button" role="radio" aria-checked={dateChoice === "today"} className="chip" onClick={() => chooseDate("today")}>
               {t("transactions.today")}
             </button>
-            <button type="button" role="radio" aria-checked={dateChoice === "yesterday"} className="chip" onClick={() => { setShowDatePicker(false); setField("date", yesterday); }}>
+            <button type="button" role="radio" aria-checked={dateChoice === "yesterday"} className="chip" onClick={() => chooseDate("yesterday")}>
               {t("transactions.yesterday")}
             </button>
-            <button type="button" role="radio" aria-checked={dateChoice === "other"} className="chip" onClick={() => setShowDatePicker(true)}>
+            <button type="button" role="radio" aria-checked={dateChoice === "other"} className="chip" onClick={() => chooseDate("other")}>
               {t("transactionModal.otherDate")}
             </button>
           </div>
@@ -350,7 +380,12 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
             </div>
             {repeat.enabled && (
               <>
-                <div role="radiogroup" aria-label={t("recurring.frequencyLabel")} className="segmented grid-cols-3">
+                <div
+                  role="radiogroup"
+                  aria-label={t("recurring.frequencyLabel")}
+                  className="segmented grid-cols-3"
+                  onKeyDown={(event) => handleRadioKeyDown(event, FREQUENCIES, repeat.frequency, (frequency) => setRepeat((current) => ({ ...current, frequency })))}
+                >
                   {FREQUENCIES.map((frequency) => (
                     <button
                       key={frequency}
@@ -363,7 +398,12 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
                     </button>
                   ))}
                 </div>
-                <div role="radiogroup" aria-label={t("recurring.modeLabel")} className="segmented grid-cols-2">
+                <div
+                  role="radiogroup"
+                  aria-label={t("recurring.modeLabel")}
+                  className="segmented grid-cols-2"
+                  onKeyDown={(event) => handleRadioKeyDown(event, ["auto", "confirm"], repeat.mode, (mode) => setRepeat((current) => ({ ...current, mode })))}
+                >
                   {["auto", "confirm"].map((mode) => (
                     <button
                       key={mode}

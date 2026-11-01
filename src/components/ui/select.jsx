@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
-import { ChevronDown } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { FiChevronDown } from "react-icons/fi";
+import { cn } from "../../lib/utils.js";
 
 export function Select({ className, children, ...props }) {
   return (
@@ -11,7 +11,7 @@ export function Select({ className, children, ...props }) {
       >
         {children}
       </select>
-      <ChevronDown
+      <FiChevronDown
         aria-hidden="true"
         className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
       />

@@ -1,14 +1,12 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { FiX } from "react-icons/fi";
 import PropTypes from "prop-types";
-import i18n from "i18next";
-import { cn } from "../../lib/utils";
+import { useTranslation } from "react-i18next";
+import { cn } from "../../lib/utils.js";
 
 const Dialog = DialogPrimitive.Root;
-const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
-const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
@@ -28,7 +26,9 @@ DialogOverlay.propTypes = { className: PropTypes.string };
  *   - "default"  – centered modal (existing behaviour)
  *   - "sheet"    – full-screen on mobile (fixed inset-0), centered modal on sm+
  */
-const DialogContent = React.forwardRef(({ className, children, variant = "default", ...props }, ref) => (
+const DialogContent = React.forwardRef(({ className, children, variant = "default", ...props }, ref) => {
+  const { t } = useTranslation();
+  return (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -59,12 +59,13 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
     >
       {children}
       <DialogPrimitive.Close className={cn("absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted", variant === "sheet" && "[margin-top:env(safe-area-inset-top)] sm:mt-0")}>
-        <X className="h-5 w-5" />
-        <span className="sr-only">{i18n.t("common.close", { defaultValue: "Close" })}</span>
+        <FiX className="h-5 w-5" aria-hidden="true" />
+        <span className="sr-only">{t("common.close", { defaultValue: "Chiudi" })}</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
-));
+  );
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 DialogContent.propTypes = {
   className: PropTypes.string,
@@ -106,11 +107,9 @@ DialogDescription.propTypes = { className: PropTypes.string };
 
 export {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogFooter,
   DialogTitle,
   DialogDescription,
-  DialogClose,
 };

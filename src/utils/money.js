@@ -16,11 +16,22 @@ export const MAX_AMOUNT_MINOR = 100_000_000;
 
 export const parseMoneyToMinor = (value, { allowZero = false } = {}) => {
   if (typeof value === "string") {
-    const normalized = value.trim().replace(",", ".");
-    if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
+    // Accept both "1.234,56" and "1,234.56": the rightmost separator is the
+    // decimal one, the other groups are thousands.
+    const normalized = value.trim().replace(/[€\s\u00a0\u202f]/g, "");
+    let cleaned;
+    if (/^\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?$/.test(normalized)) {
+      const decimals = normalized.match(/[.,](\d{1,2})$/);
+      const digits = normalized.replace(/[.,]/g, "");
+      cleaned = decimals
+        ? `${digits.slice(0, -decimals[1].length)}.${decimals[1]}`
+        : digits;
+    } else if (/^\d+(?:[.,]\d{1,2})?$/.test(normalized)) {
+      cleaned = normalized.replace(",", ".");
+    } else {
       throw new MoneyError("money.decimals", "Amount must have at most two decimal places");
     }
-    value = Number(normalized);
+    value = Number(cleaned);
   }
 
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -46,6 +57,3 @@ export const getTransactionAmountMinor = (transaction) => {
   if (Number.isSafeInteger(transaction?.amountMinor)) return transaction.amountMinor;
   return parseMoneyToMinor(transaction?.amount, { allowZero: true });
 };
-
-export const sumTransactionsMinor = (transactions) =>
-  transactions.reduce((total, transaction) => total + getTransactionAmountMinor(transaction), 0);

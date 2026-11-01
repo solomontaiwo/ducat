@@ -135,7 +135,7 @@ describe("Profile", () => {
     render(<Profile />);
     fireEvent.click(screen.getByRole("button", { name: /profilePage.export.title/ }));
     const sheet = await screen.findByRole("dialog");
-    fireEvent.click(within(sheet).getByRole("radio", { name: "profilePage.export.all" }));
+    fireEvent.change(within(sheet).getByLabelText("profilePage.export.period"), { target: { value: "all" } });
     await waitFor(() => expect(within(sheet).getByTestId("export-count")).toHaveTextContent('"count":4'));
   });
 

@@ -74,6 +74,7 @@ const RestoreBackupSheet = ({ onClose }) => {
         {reading && <p role="status">{t("backupRestore.reading")}</p>}
         {backup && <>
           <p role="status" className="text-sm">{t("backupRestore.summary", { transactions: backup.transactions.length, recurring: backup.recurring.length })}</p>
+          <p className="text-[13px] text-muted-foreground">{t("backupRestore.onlyAdds")}</p>
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" checked={restoreSettings} onChange={(event) => setRestoreSettings(event.target.checked)} disabled={busy} className="mt-1" />
             <span>{t("backupRestore.settings")}<span className="mt-1 block text-muted-foreground">{t("backupRestore.settingsHint")}</span></span>

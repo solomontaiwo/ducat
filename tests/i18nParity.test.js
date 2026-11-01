@@ -25,7 +25,7 @@ describe("translations", () => {
 
 describe("money errors", () => {
   it.each([
-    ["1.234", "money.decimals"],
+    ["1.2345", "money.decimals"],
     [Number.NaN, "money.notFinite"],
     ["0", "money.notPositive"],
     [2_000_000, "money.tooLarge"],

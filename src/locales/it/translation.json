@@ -126,18 +126,6 @@
     "other": "Altro",
     "remainingCategories": "Altre categorie",
     "noExpenses": "Nessuna uscita in questo mese",
-    "motivationalQuotes": [
-      "Ogni euro risparmiato è un euro guadagnato.",
-      "Il miglior investimento sei tu.",
-      "Piccoli passi, grandi risultati.",
-      "Gestire le tue finanze è il primo passo verso la libertà.",
-      "Non contare i centesimi, falli contare!",
-      "La ricchezza si costruisce un giorno alla volta.",
-      "Il futuro appartiene a chi lo pianifica.",
-      "Risparmiare oggi per vivere meglio domani.",
-      "Non è quanto guadagni, ma quanto risparmi che conta.",
-      "La disciplina finanziaria è la chiave del successo."
-    ],
     "summary": "Riepilogo del mese",
     "leftThisMonth": "Ti restano questo mese",
     "monthBalance": "Saldo di {{month}}",
@@ -246,13 +234,6 @@
       "privacy": "Privacy",
       "terms": "Termini d’uso"
     }
-  },
-  "financialOverview": {
-    "title": "Panoramica Finanziaria",
-    "totalIncome": "Entrate Totali",
-    "totalExpense": "Uscite Totali",
-    "balance": "Bilancio",
-    "totalTransactions": "Movimenti totali"
   },
   "analytics": {
     "title": "Analisi",
@@ -417,7 +398,8 @@
     "income": "Entrata",
     "expense": "Uscita",
     "customPeriod": "Periodo personalizzato",
-    "unspecifiedPeriod": "Periodo non specificato"
+    "unspecifiedPeriod": "Periodo non specificato",
+    "average": "Media"
   },
   "categories": {
     "alimentazione": "Ristoranti e bar",
@@ -451,7 +433,8 @@
     "sampleSalary": "Stipendio",
     "sampleGroceries": "Spesa alimentare",
     "sampleFuel": "Benzina",
-    "sampleTransactionsAdded": "Sono stati aggiunti alcuni movimenti di esempio!"
+    "sampleTransactionsAdded": "Sono stati aggiunti alcuni movimenti di esempio!",
+    "deleteError": "Impossibile salvare le modifiche. Controlla lo spazio disponibile."
   },
   "notifications": {
     "addSuccess": "Movimento aggiunto con successo!",
@@ -479,7 +462,8 @@
     "loginButton": "Accedi",
     "noAccount": "Non hai un account?",
     "registerNow": "Registrati ora",
-    "backToHome": "Torna alla Home"
+    "backToHome": "Torna alla Home",
+    "success": "Accesso effettuato"
   },
   "register": {
     "title": "Crea Account",
@@ -512,21 +496,11 @@
     "emailAlreadyInUse": "Email già in uso",
     "weakPassword": "Password troppo debole",
     "operationNotAllowed": "Operazione non consentita",
-    "accountCreatedSuccess": "Account creato con successo!"
+    "accountCreatedSuccess": "Account creato con successo!",
+    "generic": "Qualcosa è andato storto. Riprova tra poco.",
+    "missingCredentials": "Inserisci email e password."
   },
   "of": "di",
-  "periods": {
-    "daily": "Giornaliero",
-    "weekly": "Settimanale",
-    "monthly": "Mensile",
-    "month": "Questo mese",
-    "lastMonth": "Mese scorso",
-    "last3Months": "Ultimi 3 mesi",
-    "annually": "Annuale",
-    "year": "Quest'anno",
-    "all": "Tutto",
-    "custom": "Periodo personalizzato"
-  },
   "common": {
     "close": "Chiudi",
     "retry": "Riprova",
@@ -584,6 +558,10 @@
       "samePassword": "La nuova password deve essere diversa da quella attuale.",
       "invalidLink": "Il link non è valido o è scaduto. Chiedine uno nuovo.",
       "requestNew": "Richiedi un nuovo link"
+    },
+    "unavailable": {
+      "title": "Impossibile contattare il server",
+      "description": "Controlla la connessione e riprova."
     }
   },
   "validation": {
@@ -657,7 +635,9 @@
     "saveError": "Impossibile salvare il movimento ricorrente",
     "autoRegistered_one": "Registrato 1 movimento ricorrente",
     "autoRegistered_other": "Registrati {{count}} movimenti ricorrenti",
-    "back": "Indietro"
+    "back": "Indietro",
+    "deleteConfirmTitle": "Eliminare questa ricorrenza?",
+    "deleteConfirmDescription": "La regola verrà rimossa. I movimenti già registrati restano nei tuoi dati."
   },
   "budgets": {
     "title": "Budget mensili",
@@ -763,7 +743,8 @@
       "count_one": "1 movimento",
       "count_other": "{{count}} movimenti",
       "download": "Scarica {{format}}",
-      "error": "Esportazione non riuscita"
+      "error": "Esportazione non riuscita",
+      "loadError": "Impossibile caricare i movimenti da esportare."
     },
     "backup": {
       "title": "Backup completo",
@@ -800,7 +781,8 @@
     "wrongAccount": "Questo backup appartiene a un altro account.",
     "invalid": "Backup non valido o versione non supportata. Nessun dato è stato modificato.",
     "failed": "Ripristino non confermato. Puoi riprovare senza duplicare i dati.",
-    "success": "Ripristino completato: {{transactions}} movimenti e {{recurring}} ricorrenze aggiunti."
+    "success": "Ripristino completato: {{transactions}} movimenti e {{recurring}} ricorrenze aggiunti.",
+    "onlyAdds": "Il ripristino aggiunge solo i movimenti mancanti: quelli già presenti non vengono modificati."
   },
   "planning": {
     "loadError": "Budget, ricorrenze o preferenze non disponibili. Riprova prima di modificarli.",

@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import { setMoneyLanguage } from './formatCurrency.jsx';
 
 import translationEN from '../locales/en/translation.json';
 import translationIT from '../locales/it/translation.json';
@@ -29,6 +30,7 @@ i18n
 
 const syncDocumentLanguage = (language) => {
   document.documentElement.lang = language?.startsWith('it') ? 'it' : 'en';
+  setMoneyLanguage(language);
 };
 
 syncDocumentLanguage(i18n.resolvedLanguage || i18n.language);

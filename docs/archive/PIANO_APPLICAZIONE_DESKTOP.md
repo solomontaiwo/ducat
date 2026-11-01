@@ -1,3 +1,8 @@
+> **Documento storico — non aggiornato.**
+> Descrive l'audit della versione 4.0.0, basata su Firebase. L'app oggi usa Supabase:
+> per lo stato corrente vedi `README.md`, `SUPABASE.md` e `UPDATER.md`.
+> Conservato per tracciabilità delle decisioni.
+
 # Piano di realizzazione dell'applicazione desktop Soldi Sotto
 
 Data dell'analisi: 31 ottobre 2026. Stato: **piano di lavoro, non implementazione**.

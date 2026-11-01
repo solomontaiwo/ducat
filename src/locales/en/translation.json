@@ -126,18 +126,6 @@
     "other": "Other",
     "remainingCategories": "Other categories",
     "noExpenses": "No expenses this month",
-    "motivationalQuotes": [
-      "Every euro saved is a euro earned.",
-      "The best investment is you.",
-      "Small steps, big results.",
-      "Managing your finances is the first step to freedom.",
-      "Don't count the cents, make them count!",
-      "Wealth is built one day at a time.",
-      "The future belongs to those who plan it.",
-      "Save today to live better tomorrow.",
-      "It's not how much you earn, but how much you save that counts.",
-      "Financial discipline is the key to success."
-    ],
     "summary": "Month summary",
     "leftThisMonth": "Left this month",
     "monthBalance": "Balance for {{month}}",
@@ -246,13 +234,6 @@
       "privacy": "Privacy",
       "terms": "Terms of use"
     }
-  },
-  "financialOverview": {
-    "title": "Financial Overview",
-    "totalIncome": "Total Income",
-    "totalExpense": "Total Expense",
-    "balance": "Balance",
-    "totalTransactions": "Total transactions"
   },
   "analytics": {
     "title": "Insights",
@@ -417,7 +398,8 @@
     "income": "Income",
     "expense": "Expense",
     "customPeriod": "Custom Period",
-    "unspecifiedPeriod": "Unspecified Period"
+    "unspecifiedPeriod": "Unspecified Period",
+    "average": "Average"
   },
   "categories": {
     "alimentazione": "Eating out",
@@ -451,7 +433,8 @@
     "sampleSalary": "Salary",
     "sampleGroceries": "Groceries",
     "sampleFuel": "Fuel",
-    "sampleTransactionsAdded": "Sample transactions have been added!"
+    "sampleTransactionsAdded": "Sample transactions have been added!",
+    "deleteError": "Unable to save your changes. Check the available storage."
   },
   "notifications": {
     "addSuccess": "Transaction added successfully!",
@@ -479,7 +462,8 @@
     "loginButton": "Login",
     "noAccount": "Don't have an account?",
     "registerNow": "Register now",
-    "backToHome": "Back to Home"
+    "backToHome": "Back to Home",
+    "success": "Signed in"
   },
   "register": {
     "title": "Create Account",
@@ -512,21 +496,11 @@
     "emailAlreadyInUse": "Email already in use",
     "weakPassword": "Password too weak",
     "operationNotAllowed": "Operation not allowed",
-    "accountCreatedSuccess": "Account created successfully!"
+    "accountCreatedSuccess": "Account created successfully!",
+    "generic": "Something went wrong. Please try again.",
+    "missingCredentials": "Enter your email and password."
   },
   "of": "of",
-  "periods": {
-    "daily": "Daily",
-    "weekly": "Weekly",
-    "monthly": "Monthly",
-    "annually": "Annually",
-    "all": "All time",
-    "month": "This month",
-    "custom": "Custom period",
-    "lastMonth": "Last month",
-    "last3Months": "Last 3 months",
-    "year": "This year"
-  },
   "common": {
     "close": "Close",
     "retry": "Retry",
@@ -584,6 +558,10 @@
       "samePassword": "The new password must be different from the current one.",
       "invalidLink": "The link is invalid or has expired. Request a new one.",
       "requestNew": "Request a new link"
+    },
+    "unavailable": {
+      "title": "Unable to reach the server",
+      "description": "Check your connection and try again."
     }
   },
   "validation": {
@@ -657,7 +635,9 @@
     "saveError": "Unable to save the recurring movement",
     "autoRegistered_one": "Recorded 1 recurring movement",
     "autoRegistered_other": "Recorded {{count}} recurring movements",
-    "back": "Back"
+    "back": "Back",
+    "deleteConfirmTitle": "Delete this recurring rule?",
+    "deleteConfirmDescription": "The rule will be removed. Transactions already recorded stay in your data."
   },
   "budgets": {
     "title": "Monthly budgets",
@@ -763,7 +743,8 @@
       "count_one": "1 movement",
       "count_other": "{{count}} movements",
       "download": "Download {{format}}",
-      "error": "Export failed"
+      "error": "Export failed",
+      "loadError": "Unable to load the movements to export."
     },
     "backup": {
       "title": "Full backup",
@@ -800,7 +781,8 @@
     "wrongAccount": "This backup belongs to another account.",
     "invalid": "Invalid backup or unsupported version. No data has been changed.",
     "failed": "Restore could not be confirmed. You can retry without duplicating records.",
-    "success": "Restore complete: {{transactions}} transactions and {{recurring}} recurring rules added."
+    "success": "Restore complete: {{transactions}} transactions and {{recurring}} recurring rules added.",
+    "onlyAdds": "Restoring only adds missing transactions: existing ones are left untouched."
   },
   "planning": {
     "loadError": "Budgets, recurring rules or preferences are unavailable. Retry before editing them.",

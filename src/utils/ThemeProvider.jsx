@@ -28,6 +28,10 @@ export const ThemeProvider = ({ children }) => {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   }, []);
 
+  // Keep the effective theme in state so charts/skeletons re-render when the
+  // operating system switches between light and dark while "system" is selected.
+  const [systemDark, setSystemDark] = useState(getSystemPreference);
+
   const applyTheme = useCallback((themeMode) => {
     let isDark;
 
@@ -48,7 +52,7 @@ export const ThemeProvider = ({ children }) => {
   }, [applyTheme]);
 
   const currentEffectiveTheme = theme === "system"
-    ? (getSystemPreference() ? "dark" : "light")
+    ? (systemDark ? "dark" : "light")
     : theme;
 
   const value = useMemo(() => ({
@@ -65,6 +69,7 @@ export const ThemeProvider = ({ children }) => {
     // Ascolta i cambiamenti delle preferenze di sistema
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleSystemThemeChange = () => {
+      setSystemDark(mediaQuery.matches);
       if (theme === "system") {
         applyTheme("system");
       }

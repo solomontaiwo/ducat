@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthProvider";
 import { useUnifiedTransactions } from "../context/UnifiedTransactionProvider";
 import AppLayout from "../components/Layout/AppLayout";
+import { Button } from "../components/ui/button";
 import { Navigate, useLocation } from "./RouterProvider";
 import { resolveRouteAccess } from "./accessPolicy";
 
@@ -45,6 +46,20 @@ const ScrollToTop = () => {
   return null;
 };
 
+/** Shown when the auth client cannot be reached, instead of a public-page flash. */
+const AuthUnavailable = () => {
+  const { t } = useTranslation();
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div role="alert" className="max-w-md space-y-3 text-center">
+        <h1 className="text-xl font-bold">{t("auth.unavailable.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("auth.unavailable.description")}</p>
+        <Button onClick={() => window.location.reload()}>{t("common.retry")}</Button>
+      </div>
+    </main>
+  );
+};
+
 const routeDefinitions = [
   { path: "/", page: "home", access: "public" },
   { path: "/landing", page: "landing", access: "public-only" },
@@ -65,7 +80,7 @@ const routeDefinitions = [
 ];
 
 const AppRouter = () => {
-  const { currentUser, loading: authLoading } = useAuth();
+  const { currentUser, loading: authLoading, authStalled } = useAuth();
   const { isDemo, loading: transactionLoading } = useUnifiedTransactions();
   const location = useLocation();
 
@@ -93,6 +108,7 @@ const AppRouter = () => {
     return () => window.clearTimeout(timeoutId);
   }, [currentUser]);
 
+  if (authStalled && !currentUser) return <AuthUnavailable />;
   if (authLoading || transactionLoading) return <PageLoader />;
 
   const route = routeDefinitions.find((candidate) => candidate.path === location.pathname);

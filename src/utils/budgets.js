@@ -1,15 +1,22 @@
-import { endOfMonth, isWithinInterval, startOfMonth, subMonths } from "date-fns";
+import { addDays, endOfDay, isWithinInterval, subMonths } from "date-fns";
 import { getTransactionAmountMinor } from "./money.js";
+import { cycleMonthFor, cycleRange } from "./monthCycle.js";
 
 /** Share of the limit at which a budget turns amber. */
 export const NEAR_LIMIT_RATIO = 0.8;
 export const AVERAGE_MONTHS = 3;
 
-/** The last full months before `now`, used for the suggested limits. */
-export const averageRange = (now = new Date(), months = AVERAGE_MONTHS) => ({
-  startDate: startOfMonth(subMonths(now, months)),
-  endDate: endOfMonth(subMonths(now, 1)),
-});
+/**
+ * The last full cycles before `now`, used for the suggested limits. Cycles
+ * follow the user's payday (`startDay`), like the dashboard and the profile.
+ */
+export const averageRange = (now = new Date(), months = AVERAGE_MONTHS, startDay = 1) => {
+  const currentCycle = cycleMonthFor(now, startDay);
+  const firstCycle = subMonths(currentCycle, months);
+  const { startDate } = cycleRange(firstCycle, startDay);
+  const { startDate: currentStart } = cycleRange(currentCycle, startDay);
+  return { startDate, endDate: endOfDay(addDays(currentStart, -1)) };
+};
 
 /** Average monthly expense per category over the range, in cents. */
 export const averageByCategory = (transactions, range, months = AVERAGE_MONTHS) => {

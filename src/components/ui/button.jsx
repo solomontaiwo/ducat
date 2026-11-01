@@ -1,4 +1,4 @@
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.js";
 import { cva } from "class-variance-authority";
 import PropTypes from "prop-types";
 
@@ -27,10 +27,10 @@ const buttonVariants = cva(
   }
 );
 
-export function Button({ className, variant, size, asChild = false, ...props }) {
-  const Comp = asChild ? "span" : "button";
+export function Button({ className, variant, size, type = "button", ...props }) {
   return (
-    <Comp
+    <button
+      type={type}
       className={cn(buttonVariants({ variant, size }), className)}
       {...props}
     />
@@ -41,5 +41,5 @@ Button.propTypes = {
   className: PropTypes.string,
   variant: PropTypes.oneOf(["default", "secondary", "ghost", "outline", "destructive"]),
   size: PropTypes.oneOf(["default", "sm", "lg", "icon"]),
-  asChild: PropTypes.bool,
+  type: PropTypes.oneOf(["button", "submit", "reset"]),
 };
