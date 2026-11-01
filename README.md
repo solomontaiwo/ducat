@@ -1,6 +1,10 @@
 # Ducat
 
-Ducat is a personal finance app for the **web, desktop** (macOS, Windows, Linux) **and iPhone**. It is built with React and Vite, packaged with Tauri 2 on the desktop and Capacitor on iOS, and uses Supabase (PostgreSQL, Auth and Realtime) as the backend.
+Ducat is a personal finance app for the **web, desktop** (macOS, Windows, Linux) **and iPhone/iPad**. It is built with React and Vite, packaged with Tauri 2 on the desktop and Capacitor on iOS, and uses Supabase (PostgreSQL, Auth and Realtime) as the backend.
+
+**Web app:** [ducatapp.com](https://ducatapp.com) — the GitHub Pages URL
+(`solomontaiwo.github.io/ducat/`) redirects there once the domain is active.
+**Source:** [solomontaiwo/ducat](https://github.com/solomontaiwo/ducat).
 
 ## Features
 
@@ -34,7 +38,7 @@ cp .env.example .env   # fill in VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE
 npm run dev
 ```
 
-The app is served at `http://localhost:5173/ducat/`. Demo mode works without any backend.
+The app is served at `http://localhost:5173/`. Demo mode works without any backend.
 
 The database schema, row level security policies and helper functions live in `supabase/migrations/`. The publishable key is meant to be public: access to data is enforced by the policies, not by the key.
 
@@ -147,14 +151,18 @@ Every push to `main` builds and publishes the web app through `.github/workflows
 
 Optional repository variable: `VITE_ENABLE_ACCOUNT_DELETION=false` hides account deletion in the profile. It is shown by default, because the App Store requires in-app deletion for any app that lets people create an account.
 
-The base path is derived from the repository name (`/ducat/`), so the site keeps
-working if the repository is renamed. A custom domain sets the repository
-variable `VITE_BASE_PATH=/` and the `CNAME` file in `public/`.
+**Custom domain.** Set the repository variable `SITE_DOMAIN` (for example
+`ducatapp.com`) and the next deploy writes the `CNAME` file, builds with
+`VITE_BASE_PATH=/` and points the authentication links at
+`https://<domain>/`. GitHub Pages then serves the site on the domain and
+redirects the `github.io/<repository>/` URL to it. Nothing is committed in
+advance, so the current URL keeps working until DNS is ready.
+
+Without `SITE_DOMAIN` the base path is derived from the repository name
+(`/ducat/`), so renaming the repository never breaks the deployment.
 
 `VITE_RELEASES_REPO` (default `solomontaiwo/ducat`) points the Updates page at
-the GitHub repository that publishes the desktop releases, and
-`VITE_DESKTOP_WEB_URL` is the public web address used in authentication emails
-for the desktop and iOS builds.
+the GitHub repository that publishes the desktop releases.
 
 ## Quality checks
 

@@ -87,16 +87,42 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
+      - name: Resolve the public URL
+        env:
+          SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
+        run: |
+          set -euo pipefail
+          repo_path="${GITHUB_REPOSITORY#*/}"
+          if [ -n "${SITE_DOMAIN:-}" ]; then
+            base="/"
+            site="https://${SITE_DOMAIN}/"
+          else
+            base="/${repo_path}/"
+            site="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_path}/"
+          fi
+          {
+            echo "VITE_BASE_PATH=${base}"
+            echo "VITE_DESKTOP_WEB_URL=${site}"
+          } >> "$GITHUB_ENV"
+          echo "Public URL: ${site}"
+
       - name: Build production artifact
         run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION || 'true' }}
-          # Project site → /<repository>/; a custom domain sets VITE_BASE_PATH=/.
-          VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || format('/{0}/', github.event.repository.name) }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           AASA_REQUIRE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' && '1' || '0' }}
+
+      - name: Add the custom domain
+        if: ${{ vars.SITE_DOMAIN != '' }}
+        env:
+          SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
+        run: |
+          set -euo pipefail
+          echo "$SITE_DOMAIN" > dist/CNAME
+          cat dist/CNAME
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

@@ -3,7 +3,7 @@
   "private": true,
   "version": "4.0.23",
   "type": "module",
-  "homepage": "https://solomontaiwo.github.io/ducat",
+  "homepage": "https://ducatapp.com",
   "license": "MIT",
   "scripts": {
     "dev": "vite",

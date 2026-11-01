@@ -159,32 +159,47 @@ Non coperte:
 
 ## 8. Dominio e hosting
 
-**Raccomandazione: comprare `ducat.app` e servire il web da lì.** Non è
-branding fine a sé stesso: senza un dominio tuo alcune cose non funzionano.
+**Raccomandazione: comprare `ducatapp.com` e servirlo da lì.** `ducat.app` è
+già registrato (parcheggiato su Namecheap), `ducatapp.com` risulta libero.
 
-| Serve per | GitHub Pages (`*.github.io`) | Dominio + Cloudflare Pages |
+Non è branding fine a sé stesso: senza un dominio tuo alcune cose non
+funzionano.
+
+| Serve per | GitHub Pages (`*.github.io`) | Dominio |
 |---|---|---|
-| Universal Links (AASA) | il file `.well-known` viene servito come `application/octet-stream`: Apple si aspetta `application/json` | header impostabili con `public/_headers` |
-| URL privacy e supporto in App Store Connect | `solomontaiwo.github.io/ducat/privacy` | `ducat.app/privacy` |
-| Email di conferma e reset | dominio Supabase | `noreply@ducat.app`, migliore deliverability |
+| Universal Links (AASA) | il file `.well-known` viene servito come `application/octet-stream`: Apple si aspetta `application/json` | header impostabili con `public/_headers` (Cloudflare Pages, Netlify) |
+| URL privacy e supporto in App Store Connect | `solomontaiwo.github.io/ducat/privacy` | `ducatapp.com/privacy` |
+| Email di conferma e reset | dominio Supabase | `noreply@ducatapp.com`, migliore deliverability |
 | Fiducia del revisore | repo personale | prodotto |
-| Costo | 0 € | ~12 €/anno di dominio + hosting gratuito |
+| Costo | 0 € | ~12 €/anno + hosting gratuito |
 
-Passi, una volta comprato il dominio:
+### Attivare il dominio (una variabile)
 
-1. In `public/` aggiungi `CNAME` con dentro `ducat.app` (serve solo a GitHub
-   Pages) e configura i DNS verso l'hosting scelto.
-2. Repository variable `VITE_BASE_PATH=/` (senza, il sito resta su `/ducat/`).
-3. Repository variable `VITE_DESKTOP_WEB_URL=https://ducat.app/`.
+1. Compra il dominio e configura i DNS verso l'hosting (GitHub Pages: record
+   `A`/`CNAME`; Cloudflare Pages: nameserver Cloudflare).
+2. Su GitHub → **Settings → Secrets and variables → Actions → Variables** crea
+   `SITE_DOMAIN=ducatapp.com`.
+3. Al push successivo il deploy:
+   - scrive `dist/CNAME`,
+   - costruisce con `VITE_BASE_PATH=/`,
+   - imposta `VITE_DESKTOP_WEB_URL=https://ducatapp.com/` per i link nelle
+     email,
+   - GitHub Pages reindirizza `solomontaiwo.github.io/ducat/` al dominio.
+
+Nessun `CNAME` è committato: finché `SITE_DOMAIN` non esiste, il sito resta
+raggiungibile all'URL attuale.
+
+### Dopo l'attivazione
+
 4. Secret `APPLE_TEAM_ID=<Team ID>`: `scripts/generate-aasa.mjs` scrive
-   `https://ducat.app/.well-known/apple-app-site-association`.
-5. In Supabase → Authentication → URL Configuration aggiorna Site URL e
-   Redirect URLs a `https://ducat.app/**`.
-6. In Xcode l'entitlement è già `applinks:ducat.app`; se scegli un altro
-   dominio aggiorna `ios/App/App/App.entitlements`.
-7. Verifica con `https://ducat.app/.well-known/apple-app-site-association`:
+   `.well-known/apple-app-site-association` nel sito.
+5. Supabase → Authentication → URL Configuration: Site URL e Redirect URLs a
+   `https://ducatapp.com/**`.
+6. In Xcode l'entitlement è già `applinks:ducatapp.com` (e `www`); se compri un
+   altro dominio aggiorna `ios/App/App/App.entitlements`.
+7. Verifica `https://ducatapp.com/.well-known/apple-app-site-association`:
    deve rispondere `application/json`, senza redirect.
 
-Se invece resti su GitHub Pages, tieni `VITE_BASE_PATH` vuoto: l'app funziona
-e i link email puntano al sito, ma i Universal Links non sono affidabili e il
-flusso di conferma torna a passare dal browser.
+Se resti su GitHub Pages senza dominio, l'app funziona e i link email puntano
+al sito, ma i Universal Links non sono affidabili e la conferma torna a passare
+dal browser.
