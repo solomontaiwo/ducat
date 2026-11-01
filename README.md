@@ -1,23 +1,27 @@
 # SoldiSotto
 
-SoldiSotto is a web application developed in React, designed to manage personal finances. This project was created with the aim of exploring and learning the features of the React framework, with Supabase (PostgreSQL, Auth and Realtime) as the backend.
+SoldiSotto is a personal finance app for the **web and desktop** (macOS, Windows, Linux). It is built with React and Vite, packaged as a desktop app with Tauri 2, and uses Supabase (PostgreSQL, Auth and Realtime) as the backend.
 
 ## Features
 
-- **Registration and Login**: Users can create an account or log in with existing credentials.
-- **Add Transactions**: Easily and quickly record your income and expenses.
-- **Chronological View**: View all your transactions in chronological order.
-- **Statistics**: View financial statistics by day, week, month, or year.
-- **PDF Generation**: Generate a PDF containing all transactions for a selected period (day, week, month, year) along with relevant statistics.
+- **Accounts and login** — email/password accounts with password reset and email change, plus a local demo mode that needs no backend.
+- **Income and expenses** — add, edit and delete transactions with categories, search and a chronological view.
+- **Budgets and recurring expenses** — monthly limits per category and recurring rules.
+- **Analytics and insights** — KPI tiles, monthly income/expense trend, spending by category and comparisons with the previous period.
+- **Backups and exports** — JSON backup/restore plus CSV and PDF reports.
+- **Desktop auto-updates** — the desktop app checks for updates, shows the changelog and installs signed updates.
+- **Cross-platform** — macOS (Apple Silicon and Intel), Windows (x64 and ARM64), and Linux `.deb`, `.rpm` and Arch packages.
+- **Themes and languages** — light/dark/system theme and Italian/English.
 
-## Technologies Used
+## Technologies
 
-- **React**: JavaScript framework used to build the user interface.
-- **Supabase**: authentication, PostgreSQL database protected by row level security, Realtime sync between devices.
+- **React + Vite** — user interface.
+- **Tauri 2 (Rust)** — desktop shell, installers and signed auto-updates.
+- **Supabase** — Auth, PostgreSQL protected by row level security, Realtime sync between devices.
 
-## Getting Started
+## Getting started (web)
 
-Requirements: Node.js 24 and a Supabase project (see [SUPABASE.md](SUPABASE.md) for the full setup and the move from Firebase).
+Requirements: Node.js 24 and a Supabase project (see [SUPABASE.md](SUPABASE.md) for the full setup).
 
 ```bash
 git clone https://github.com/solomontaiwo/soldi-sotto.git
@@ -31,9 +35,47 @@ The app is served at `http://localhost:5173/soldi-sotto/`. Demo mode works witho
 
 The database schema, row level security policies and helper functions live in `supabase/migrations/`. The publishable key is meant to be public: access to data is enforced by the policies, not by the key.
 
+## Desktop app
+
+Download the installer for your platform from the [latest release](https://github.com/solomontaiwo/soldi-sotto/releases/latest):
+
+| Platform | Installer |
+|---|---|
+| macOS Apple Silicon / Intel | `.dmg` |
+| Windows x64 / ARM64 | `-setup.exe` |
+| Ubuntu x64 | `.deb` |
+| Fedora x64 | `.rpm` |
+| Arch Linux x64 | `.pkg.tar.zst` |
+
+On Linux, install the matching artifact with the system package manager:
+
+```bash
+sudo apt install ./soldi-sotto.deb        # Ubuntu; substitute the downloaded filename
+sudo dnf install ./soldi-sotto.rpm        # Fedora; substitute the downloaded filename
+sudo pacman -U ./soldi-sotto.pkg.tar.zst  # Arch; substitute the downloaded filename
+```
+
+The desktop app checks for updates on launch and from the update icon in the sidebar; it shows the changelog and installs updates only after they are verified with the signing key. The macOS and Windows installers are **not signed or notarized**, so macOS Gatekeeper or Windows SmartScreen may warn or block the first launch.
+
+To build it locally (install the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) first, including Rust and the system WebView):
+
+```bash
+npm ci
+npm run tauri -- dev     # development
+npm run tauri -- build   # installers
+```
+
+Desktop email confirmation, password reset and email-change links use the deployed web app. After confirming an address, return to the desktop app and sign in; the browser and desktop sessions are separate. To point to a different web deployment, set the optional `VITE_DESKTOP_WEB_URL` build variable to its HTTPS base URL ending in `/`, and configure the matching Supabase Auth redirect allowlist. All `VITE_*` variables are embedded in the app and must not contain secrets.
+
+## Releases and auto-updates
+
+Every push to `main` bumps the patch version and runs `.github/workflows/desktop.yml`, which builds every desktop package and publishes a GitHub Release with the installers, the signed update bundles, their `.sig` signatures and a `latest.json` manifest. The updater reads `latest.json` from the latest release, verifies the minisign signature with the public key in `src-tauri/tauri.conf.json` and only then installs the new version. Builds from the default branch and tags are full releases; builds from other branches are prereleases.
+
+The Ubuntu package is built in an Ubuntu 22.04 container on an Ubuntu 24.04 runner. Windows ARM64 installers run through x86 emulation, and each Windows job verifies the executable architecture and installs the package before uploading it. Signing and macOS notarization require separately configured certificates and credentials. Linux packages and WebView behavior must be verified on the target distribution; the Arch package is a downloadable pacman package, not an AUR publication. The app still needs Internet access for Supabase account data and synchronization.
+
 ## Deployment on GitHub Pages
 
-Every push to `main` builds and publishes the app through `.github/workflows/deploy.yml`. Add these repository secrets under **Settings → Secrets and variables → Actions**:
+Every push to `main` builds and publishes the web app through `.github/workflows/deploy.yml`. Add these repository secrets under **Settings → Secrets and variables → Actions**:
 
 | Secret | Value |
 |---|---|
@@ -56,40 +98,12 @@ npm run test:e2e
 
 ## Contributions
 
-Since this is one of my first projects in React, any suggestions or contributions are welcome! If you'd like to contribute, feel free to open a pull request or report any issues via the issues tab.
+Suggestions, bug reports and pull requests are welcome — open an issue or a pull request.
+
+## License
+
+Released under the [MIT License](LICENSE).
 
 ## Contact
 
-For questions or suggestions, you can contact me via email: [solomon.taiwo@studenti.polito.it](mailto:solomon.taiwo@studenti.polito.it).
-
----
-
-## Desktop application
-
-The same React frontend can also be packaged with Tauri 2 for macOS, Windows and Linux. Install the platform prerequisites, including Rust and the system WebView, from the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/). Configure the public Supabase values described above before building.
-
-```bash
-npm ci
-npm run tauri -- dev
-npm run tauri -- build
-```
-
-Desktop email confirmation, password reset and email-change links use the deployed web application. After confirming an address, return to the desktop app and sign in; the browser and desktop sessions are separate. For a different web deployment, set the optional `VITE_DESKTOP_WEB_URL` build variable to its HTTPS base URL ending in `/`, and configure the matching Supabase Auth redirect allowlist. This value and all `VITE_*` variables are included in the app and must not contain secrets.
-
-The `Desktop builds` GitHub Actions workflow runs on every push, including tag pushes, and on manual dispatch. It builds macOS Apple Silicon and Intel DMGs, Windows x64 and ARM64 NSIS installers, and Linux x64 `.deb`, `.rpm` and Arch `.pkg.tar.zst` packages. Once every build succeeds, it publishes a GitHub release with each installer as a separate downloadable asset. Builds from the default branch and tags are releases; builds from other branches are prereleases. Each run creates a distinct release tag containing the package version, run ID and attempt; manually pushed tags do not become the release tag. The workflow run also retains its artifacts for 30 days. Since this repository is private, downloads require repository access. The build requires the repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; optional repository variables are `VITE_ENABLE_ACCOUNT_DELETION` and `VITE_DESKTOP_WEB_URL`. Runner availability and minutes depend on the repository's GitHub plan, especially for Windows ARM.
-
-The Ubuntu package is built in an Ubuntu 22.04 container on a supported Ubuntu 24.04 GitHub runner, so it does not depend on the retiring Ubuntu 22.04 runner image while retaining the older build environment.
-
-For Windows ARM64, the installed application is built for ARM64; the NSIS installer itself runs through Windows x86 emulation. Each Windows job checks the executable architecture and installs its package silently before uploading it.
-
-These CI packages are not signed or notarized. macOS Gatekeeper and Windows SmartScreen can therefore warn or block installation. Signing and macOS notarization require separately configured certificates and credentials. The packages do not update automatically. Linux packages and WebView behavior must be verified on the target distribution; the Arch package is a downloadable pacman package, not an AUR publication. The app still requires Internet access for Supabase account data and synchronization.
-
-For local installation of the matching Linux x86_64 artifact, use the system package manager:
-
-```bash
-sudo apt install ./soldi-sotto.deb        # Ubuntu; substitute the downloaded filename
-sudo dnf install ./soldi-sotto.rpm         # Fedora; substitute the downloaded filename
-sudo pacman -U ./soldi-sotto.pkg.tar.zst  # Arch; substitute the downloaded filename
-```
-
-On Arch the workflow compiles against Arch libraries and creates the pacman package with `packaging/arch/PKGBUILD`; on Fedora it compiles against Fedora libraries. Package availability on other distributions or older releases is not guaranteed. Use an account and data intended for testing when checking email flows, synchronization or backup restoration.
+For questions or suggestions: [solomon.taiwo@studenti.polito.it](mailto:solomon.taiwo@studenti.polito.it).
