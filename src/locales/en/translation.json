@@ -822,5 +822,22 @@
     "restart": "Restart now",
     "error": "Update failed",
     "retry": "Retry"
+  },
+  "updates": {
+    "desktopOnly": "Automatic updates are only available in the desktop app.",
+    "subtitle": "Check and manage app updates.",
+    "currentVersion": "Installed version",
+    "currentVersionLabel": "You have version {{version}}.",
+    "check": "Check for updates",
+    "settingsTitle": "Automatic updates",
+    "autoCheck": "Check automatically",
+    "autoCheckHint": "Look for new versions in the background when the app starts.",
+    "frequency": "Frequency",
+    "frequencyLaunch": "Every launch",
+    "frequencyDaily": "Daily",
+    "frequencyWeekly": "Weekly",
+    "historyTitle": "Update history",
+    "historyError": "Unable to load the update history.",
+    "historyEmpty": "No updates published yet."
   }
 }

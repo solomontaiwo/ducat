@@ -822,5 +822,22 @@
     "restart": "Riavvia ora",
     "error": "Aggiornamento non riuscito",
     "retry": "Riprova"
+  },
+  "updates": {
+    "desktopOnly": "Gli aggiornamenti automatici sono disponibili solo nell'app desktop.",
+    "subtitle": "Verifica e gestisci gli aggiornamenti dell'app.",
+    "currentVersion": "Versione installata",
+    "currentVersionLabel": "Hai la versione {{version}}.",
+    "check": "Verifica aggiornamenti",
+    "settingsTitle": "Aggiornamenti automatici",
+    "autoCheck": "Controlla automaticamente",
+    "autoCheckHint": "Cerca nuove versioni in background all'avvio dell'app.",
+    "frequency": "Frequenza",
+    "frequencyLaunch": "Ogni avvio",
+    "frequencyDaily": "Ogni giorno",
+    "frequencyWeekly": "Ogni settimana",
+    "historyTitle": "Storico aggiornamenti",
+    "historyError": "Impossibile caricare lo storico degli aggiornamenti.",
+    "historyEmpty": "Nessun aggiornamento pubblicato."
   }
 }

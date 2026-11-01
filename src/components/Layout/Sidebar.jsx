@@ -2,11 +2,11 @@ import PropTypes from "prop-types";
 import { Link, useLocation, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
-import { FiBarChart2, FiHome, FiList, FiLogOut, FiPlus } from "react-icons/fi";
+import { FiBarChart2, FiHome, FiList, FiLogOut, FiPlus, FiRefreshCw } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils";
-import UpdateButton from "../Update/UpdateButton";
+import { isDesktopRuntime } from "../../services/updaterService";
 
 const logo = `${import.meta.env.BASE_URL}icon-192.png`;
 
@@ -74,6 +74,22 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
 
       <div className="flex-1" />
 
+      {isDesktopRuntime() && (
+        <Link
+          to="/updates"
+          aria-current={location.pathname === "/updates" ? "page" : undefined}
+          className={cn(
+            "flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold transition-colors",
+            location.pathname === "/updates"
+              ? "glass-active text-accent-foreground"
+              : "text-foreground/80 hover:bg-foreground/5 hover:text-foreground"
+          )}
+        >
+          <FiRefreshCw className="h-[18px] w-[18px]" aria-hidden="true" />
+          {t("updater.title")}
+        </Link>
+      )}
+
       {isDemo && !currentUser && (
         <div className="space-y-3 rounded-2xl bg-foreground/5 p-4">
           <p className="text-sm font-semibold">
@@ -102,7 +118,6 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
               <span className="truncate text-xs font-medium text-muted-foreground">{t("navbar.profileAndSettings")}</span>
             </span>
           </Link>
-          <UpdateButton />
           <button
             type="button"
             onClick={handleLogout}
