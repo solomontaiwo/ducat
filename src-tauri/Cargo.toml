@@ -1,6 +1,6 @@
 [package]
 name = "soldi-sotto"
-version = "4.0.11"
+version = "4.0.12"
 description = "Gestione personale delle finanze"
 authors = ["Soldi Sotto"]
 license = "MIT"
