@@ -13,8 +13,8 @@ jobs:
   bump:
     name: Bump patch version
     runs-on: ubuntu-latest
-    # Skip when the triggering commit is the bot's own release commit, so this
-    # workflow never loops on itself.
+    # Skip when the triggering commit is an already-created release commit, so
+    # this workflow never loops on itself.
     if: ${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'chore(release):') }}
     steps:
       - name: Checkout
@@ -47,8 +47,10 @@ jobs:
             fi
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Author the release commit as the repository owner (not the Actions
+          # bot) so automated releases do not add to a separate bot contributor.
+          git config user.name "Solomon Taiwo"
+          git config user.email "95451488+solomontaiwo@users.noreply.github.com"
 
           if [ -n "$manual" ]; then
             echo "Version manually changed to ${manual}; committing release marker."
