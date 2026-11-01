@@ -1,10 +1,10 @@
 # Packages the executable compiled on Arch Linux.
-pkgname=soldi-sotto-bin
-pkgver=${SOLDI_SOTTO_VERSION:?Set SOLDI_SOTTO_VERSION}
+pkgname=ducat-bin
+pkgver=${DUCAT_VERSION:?Set DUCAT_VERSION}
 pkgrel=1
 pkgdesc='Personal finance application'
 arch=('x86_64')
-url='https://github.com/solomontaiwo/soldi-sotto'
+url='https://github.com/solomontaiwo/ducat'
 depends=('webkit2gtk-4.1' 'gtk3' 'libappindicator' 'xdotool' 'hicolor-icon-theme')
 source=('root.tar')
 sha256sums=('SKIP')

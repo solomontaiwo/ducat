@@ -7,6 +7,7 @@ import i18n from "./i18n.jsx";
 import formatCurrency, { moneyLocale } from "./formatCurrency.jsx";
 import { generateExportFileName, getCurrentProfileName } from "./downloadUtils.jsx";
 import { buildReportModel } from "./reportModel.js";
+import { APP_NAME } from "./brand.js";
 
 const getPdfStrings = (lang = "it") => ({
   reportTitle: i18n.t("pdf.reportTitle", { lng: lang }),
@@ -41,7 +42,7 @@ const addFooter = (doc) => {
     doc.setPage(page);
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
-    doc.text(`SoldiSotto · ${page}/${pages}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: "center" });
+    doc.text(`${APP_NAME} · ${page}/${pages}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: "center" });
   }
 };
 

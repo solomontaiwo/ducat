@@ -1,4 +1,4 @@
--- Soldi Sotto: schema, row level security and helper functions.
+-- Ducat: schema, row level security and helper functions.
 -- Every table belongs to one user and is reachable only by that user.
 -- Replay-safe bootstrap for projects initialized manually in the SQL Editor.
 -- Existing tables must already match this schema; later changes need new migrations.

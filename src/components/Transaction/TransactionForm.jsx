@@ -18,7 +18,7 @@ import { enUS, it as itLocale } from "date-fns/locale";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
-const QUICK_ADD_PREF_KEY = "soldi-sotto-quick-add-preferences";
+const QUICK_ADD_PREF_KEY = "ducat-quick-add-preferences";
 
 const DEFAULT_REPEAT = Object.freeze({ enabled: false, frequency: "monthly", mode: "auto" });
 

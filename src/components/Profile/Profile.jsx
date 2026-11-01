@@ -12,6 +12,7 @@ import { usePlanning } from "../../context/PlanningProvider.jsx";
 import { useTheme } from "../../utils/ThemeProvider";
 import { useNotification } from "../../utils/notificationUtils";
 import { Link, useNavigate } from "../../router/RouterProvider";
+import { APP_NAME } from "../../utils/brand.js";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -177,7 +178,7 @@ const Profile = () => {
     try {
       const { BackupService } = await import("../../services/backupService.js");
       const payload = await BackupService.fetch(currentUser, displayName);
-      const saved = await downloadJson(payload, `soldi-sotto-backup-${new Date().toISOString().slice(0, 10)}.json`);
+      const saved = await downloadJson(payload, `ducat-backup-${new Date().toISOString().slice(0, 10)}.json`);
       if (!saved) return;
       await savePreferences({ lastBackupAt: Date.now() });
       notification.success(t("profile.exportSuccess"));
@@ -215,7 +216,7 @@ const Profile = () => {
     setDeleting(true);
     try {
       await deleteCurrentAccount(deletePassword);
-      removeLocalValue("soldi-sotto-demo-enabled");
+      removeLocalValue("ducat-demo-enabled");
       navigate("/", { replace: true });
     } catch (error) {
       console.error("Unable to delete account", error);
@@ -390,7 +391,7 @@ const Profile = () => {
             <Link to="/terms" className="hover:underline">{t("profilePage.terms")}</Link>
           </p>
           <p className="text-center text-xs text-muted-foreground/60" data-testid="app-version">
-            Soldi Sotto · v{APP_VERSION}
+            {APP_NAME} · v{APP_VERSION}
           </p>
         </div>
       </div>

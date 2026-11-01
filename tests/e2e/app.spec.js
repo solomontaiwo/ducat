@@ -18,7 +18,7 @@ test("landing supports demo navigation without serious accessibility violations"
     }
   });
   await page.goto(".");
-  await expect(page).toHaveTitle(/Soldi Sotto/i);
+  await expect(page).toHaveTitle(/Ducat/i);
   const demo = page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first();
   await expect(demo).toBeVisible();
   await page.locator(".animate-page-in").evaluateAll((elements) =>
@@ -29,7 +29,7 @@ test("landing supports demo navigation without serious accessibility violations"
   expect(results.violations.filter((violation) => ["critical", "serious"].includes(violation.impact))).toEqual([]);
 
   await demo.click();
-  await expect(page).toHaveURL(/\/soldi-sotto\/transactions$/);
+  await expect(page).toHaveURL(/\/transactions$/);
   expect(pageErrors).toEqual([]);
   expect(consoleErrors).toEqual([]);
   expect(firstPartyFailures).toEqual([]);
@@ -38,7 +38,7 @@ test("landing supports demo navigation without serious accessibility violations"
 
 test("unsafe deep links fall back to home", async ({ page }) => {
   await page.goto("does-not-exist");
-  await expect(page).toHaveURL(/\/soldi-sotto\/$/);
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test("auth pages load the account client without errors", async ({ page }) => {
@@ -53,7 +53,7 @@ test("auth pages load the account client without errors", async ({ page }) => {
   await expect(page.getByText(/link (non è valido|is invalid)/i)).toBeVisible();
   await expect(page.getByRole("link", { name: /nuovo link|new link/i })).toBeVisible();
   // Waiting for the email confirmation: the app shows the verification page.
-  await page.evaluate(() => localStorage.setItem("soldi-sotto-pending-verification", "ada@example.com"));
+  await page.evaluate(() => localStorage.setItem("ducat-pending-verification", "ada@example.com"));
   await page.goto("dashboard");
   await expect(page).toHaveURL(/\/verify-email$/);
   await expect(page.getByText("ada@example.com")).toBeVisible();
@@ -138,7 +138,7 @@ for (const colorScheme of ["light", "dark"]) {
     await expect(page).toHaveURL(/\/transactions$/);
     for (const path of ["dashboard", "transactions", "analytics", "recurring", "budgets"]) {
       await page.evaluate((target) => {
-        window.history.pushState({}, "", `/soldi-sotto/${target}`);
+        window.history.pushState({}, "", `/${target}`);
         window.dispatchEvent(new PopStateEvent("popstate"));
       }, path);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -161,7 +161,7 @@ test("pages never scroll horizontally on mobile, even with long descriptions", a
   await expect(dialog).toBeHidden();
   for (const path of ["dashboard", "transactions", "analytics", "recurring", "budgets"]) {
     await page.evaluate((target) => {
-      window.history.pushState({}, "", `/soldi-sotto/${target}`);
+      window.history.pushState({}, "", `/${target}`);
       window.dispatchEvent(new PopStateEvent("popstate"));
     }, path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -188,7 +188,7 @@ test("a horizontal swipe does not change page on mobile", async ({ page, isMobil
 
 const iso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const goTo = (page, path) => page.evaluate((target) => {
-  window.history.pushState({}, "", `/soldi-sotto/${target}`);
+  window.history.pushState({}, "", `/${target}`);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }, path);
 
@@ -268,7 +268,7 @@ test("mobile header keeps the profile shortcut clear of other controls", async (
 
 test("a payday month start moves the overview period", async ({ page }) => {
   await page.goto(".");
-  await page.evaluate(() => localStorage.setItem("soldi-sotto-demo-preferences", JSON.stringify({ monthStartDay: 27 })));
+  await page.evaluate(() => localStorage.setItem("ducat-demo-preferences", JSON.stringify({ monthStartDay: 27 })));
   await page.getByRole("button", { name: /prova (la )?demo/i }).first().click();
   await expect(page).toHaveURL(/\/transactions$/);
   await goTo(page, "dashboard");
@@ -278,7 +278,7 @@ test("a payday month start moves the overview period", async ({ page }) => {
 test('starting demo again preserves saved user transactions', async ({ page }) => {
   await page.goto('.');
   await page.evaluate(() => {
-    localStorage.setItem('soldi-sotto-demo-transactions', JSON.stringify([{
+    localStorage.setItem('ducat-demo-transactions', JSON.stringify([{
       id: 'saved-restart', type: 'expense', amountMinor: 1250, currency: 'EUR', description: 'Movimento conservato',
       category: 'altro', dateKey: '2026-01-01', isSample: false,
     }]));
@@ -286,7 +286,7 @@ test('starting demo again preserves saved user transactions', async ({ page }) =
   await page.getByRole('button', { name: /try (the )?demo|prova (la )?demo/i }).first().click();
   await page.getByRole('searchbox').fill('Movimento conservato');
   await expect(page.getByRole('button', { name: /Movimento conservato/ })).toBeVisible();
-  const ids = await page.evaluate(() => JSON.parse(localStorage.getItem('soldi-sotto-demo-transactions')).map(item => item.id));
+  const ids = await page.evaluate(() => JSON.parse(localStorage.getItem('ducat-demo-transactions')).map(item => item.id));
   expect(ids).toEqual(['saved-restart']);
   await page.reload();
   await page.getByRole('searchbox').fill('Movimento conservato');

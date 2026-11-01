@@ -19,12 +19,12 @@ import { recurringDraftSchema, recurringInputSchema } from "../schemas/planning.
 import { occurrenceDateKey, occurrenceRequestId } from "../utils/recurrence.js";
 import { emitLocalChange } from "../services/changeEvents.js";
 
-const DEMO_RECURRING_KEY = "soldi-sotto-demo-recurring";
+const DEMO_RECURRING_KEY = "ducat-demo-recurring";
 const DemoContext = createContext();
 
 export const useDemo = () => useContext(DemoContext);
 
-const DEMO_STORAGE_KEY = "soldi-sotto-demo-transactions";
+const DEMO_STORAGE_KEY = "ducat-demo-transactions";
 export const MAX_DEMO_TRANSACTIONS = 10;
 
 const normalizeDemoTransaction = (transaction) => {

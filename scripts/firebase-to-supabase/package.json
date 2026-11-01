@@ -1,5 +1,5 @@
 {
-  "name": "soldi-sotto-firebase-to-supabase",
+  "name": "ducat-firebase-to-supabase",
   "private": true,
   "type": "module",
   "description": "One-off copy of the Firebase accounts and data into Supabase.",

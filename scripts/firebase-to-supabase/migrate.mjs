@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Copies Soldi Sotto from Firebase to Supabase: accounts (with their
+ * Copies Ducat from Firebase to Supabase: accounts (with their
  * passwords), profiles, transactions, recurring rules, budgets, preferences.
  *
  * Safe to run more than once: accounts are matched by email and rows are

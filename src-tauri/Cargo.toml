@@ -1,8 +1,8 @@
 [package]
-name = "soldi-sotto"
+name = "ducat"
 version = "4.0.23"
 description = "Gestione personale delle finanze"
-authors = ["Soldi Sotto"]
+authors = ["Ducat"]
 license = "MIT"
 repository = ""
 edition = "2024"

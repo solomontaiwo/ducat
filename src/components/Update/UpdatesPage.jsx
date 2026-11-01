@@ -9,8 +9,9 @@ import { readUpdaterSettings, writeUpdaterSettings } from "../../utils/updaterSe
 import { openExternal } from "../../utils/openExternal.js";
 import { cn } from "../../lib/utils.js";
 
-const RELEASES_API = "https://api.github.com/repos/solomontaiwo/soldi-sotto/releases?per_page=8";
-const RELEASES_URL = "https://github.com/solomontaiwo/soldi-sotto/releases/latest";
+const RELEASES_REPO = import.meta.env.VITE_RELEASES_REPO || "solomontaiwo/ducat";
+const RELEASES_API = `https://api.github.com/repos/${RELEASES_REPO}/releases?per_page=8`;
+const RELEASES_URL = `https://github.com/${RELEASES_REPO}/releases/latest`;
 
 const formatDate = (value, language) => {
   if (!value) return "";

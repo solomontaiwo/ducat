@@ -16,7 +16,7 @@
  *   node scripts/rename-app.mjs --dry-run --name "Gruzzolo" --id app.gruzzolo
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), "..");
@@ -79,10 +79,25 @@ const editJson = (relativePath, transform) => {
   });
 };
 
+const slugify = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+/** Replaces the previous product name, in both its spaced and joined forms. */
+const renameInText = (relativePath, previousName) => {
+  const variants = [...new Set([previousName, previousName.replace(/\s+/g, "")])];
+  editFile(relativePath, (text) => variants.reduce(
+    (result, variant) => result.split(variant).join(name),
+    text
+  ));
+};
+
 const escapeHtml = (value) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+const previousName = JSON.parse(readFileSync(join(ROOT, "src-tauri", "tauri.conf.json"), "utf8")).productName;
+const previousScheme = JSON.parse(readFileSync(join(ROOT, "capacitor.config.json"), "utf8")).ios?.scheme;
+
 if (name) {
+  const scheme = name.replace(/[^A-Za-z0-9]+/g, "");
   editJson("src-tauri/tauri.conf.json", (data) => {
     data.productName = name;
     for (const window of data.app?.windows ?? []) window.title = name;
@@ -90,6 +105,7 @@ if (name) {
   });
   editJson("capacitor.config.json", (data) => {
     data.appName = name;
+    if (data.ios) data.ios.scheme = scheme;
     if (bundleId) data.appId = bundleId;
   });
   editJson("public/manifest.json", (data) => {
@@ -97,19 +113,58 @@ if (name) {
     data.short_name = name;
   });
   editJson("package.json", (data) => {
-    data.name = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    data.name = slugify(name);
   });
-  editFile("index.html", (text) => text.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(name)}</title>`));
+  editFile("index.html", (text) =>
+    text
+      .replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(name)}</title>`)
+      .replace(/(name="apple-mobile-web-app-title" content=")[^"]*(")/, `$1${escapeHtml(name)}$2`)
+  );
   editFile("src-tauri/Cargo.toml", (text) => text.replace(/^authors = \[.*\]$/m, `authors = ["${name}"]`));
+  editFile("src/utils/brand.js", (text) =>
+    text
+      .replace(/(export const APP_NAME = ")[^"]*(")/, `$1${name}$2`)
+      .replace(/(export const APP_SLUG = ")[^"]*(")/, `$1${slugify(name)}$2`)
+  );
   for (const locale of ["it", "en"]) {
     editJson(`src/locales/${locale}/translation.json`, (data) => {
       data.appName = name;
     });
+    editFile(`src/locales/${locale}/translation.json`, (text) => text.split(previousName).join(name));
   }
-  editFile("ios/App/App/Info.plist", (text) =>
-    text.replace(/(<key>CFBundleDisplayName<\/key>\s*<string>)[^<]*(<\/string>)/, `$1${escapeHtml(name)}$2`)
-  );
+  editFile("ios/App/App/Info.plist", (text) => {
+    let result = previousScheme ? text.split(previousScheme).join(scheme) : text;
+    const identifier = bundleId ?? JSON.parse(readFileSync(join(ROOT, "src-tauri", "tauri.conf.json"), "utf8")).identifier;
+    result = result.replace(
+      /(<key>CFBundleURLName<\/key>\s*<string>)[^<]*(<\/string>)/,
+      `$1${identifier}$2`
+    );
+    return result.replace(
+      /(<key>CFBundleDisplayName<\/key>\s*<string>)[^<]*(<\/string>)/,
+      `$1${escapeHtml(name)}$2`
+    );
+  });
   editFile("tests/e2e/app.spec.js", (text) => text.replace(/toHaveTitle\(\/[^/]*\/i\)/, `toHaveTitle(/${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/i)`));
+
+  // Prose and templates that mention the product name.
+  if (previousName && previousName !== name) {
+    for (const path of [
+      "README.md",
+      "SUPABASE.md",
+      "docs/APP_STORE_RELEASE.md",
+      "docs/adr/0001-ios-shell.md",
+      "scripts/firebase-to-supabase/migrate.mjs",
+    ]) {
+      if (existsSync(join(ROOT, path))) renameInText(path, previousName);
+    }
+    for (const directory of ["supabase/templates", "supabase/migrations"]) {
+      const absolute = join(ROOT, directory);
+      if (!existsSync(absolute)) continue;
+      for (const entry of readdirSync(absolute)) {
+        renameInText(join(directory, entry), previousName);
+      }
+    }
+  }
 }
 
 if (bundleId) {

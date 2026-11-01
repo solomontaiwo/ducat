@@ -55,7 +55,7 @@ const INERT_VALUE = Object.freeze({
 const UnifiedTransactionContext = createContext({ ...INERT_VALUE, loading: true });
 
 export const useUnifiedTransactions = () => useContext(UnifiedTransactionContext);
-const DEMO_FLAG_KEY = "soldi-sotto-demo-enabled";
+const DEMO_FLAG_KEY = "ducat-demo-enabled";
 
 // Wrapper for the signed-in (Supabase) provider
 const AccountTransactionWrapper = ({ children }) => {

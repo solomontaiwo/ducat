@@ -1,9 +1,9 @@
 {
-  "appId": "io.github.solomontaiwo.soldisotto",
-  "appName": "Soldi Sotto",
+  "appId": "app.ducat",
+  "appName": "Ducat",
   "webDir": "dist",
   "ios": {
-    "scheme": "SoldiSotto",
+    "scheme": "Ducat",
     "contentInset": "never",
     "preferredContentMode": "mobile",
     "backgroundColor": "#f5f6f8"

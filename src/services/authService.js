@@ -2,7 +2,7 @@ import { supabase } from "../utils/supabaseClient.js";
 import { toEmailLanguage } from "../utils/emailLanguage.js";
 import { isDesktop, isMobile } from "../platform/index.js";
 
-const PUBLIC_WEB_URL = "https://solomontaiwo.github.io/soldi-sotto/";
+const PUBLIC_WEB_URL = "https://solomontaiwo.github.io/ducat/";
 
 /**
  * Absolute URL of an app route, used for the links in auth emails.

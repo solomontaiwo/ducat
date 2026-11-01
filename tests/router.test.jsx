@@ -10,12 +10,12 @@ const Probe = () => {
 
 describe("internal router", () => {
   it("handles basename navigation without a page reload", () => {
-    window.history.replaceState({}, "", "/soldi-sotto/login");
-    render(<RouterProvider basename="/soldi-sotto"><Probe /></RouterProvider>);
+    window.history.replaceState({}, "", "/ducat/login");
+    render(<RouterProvider basename="/ducat"><Probe /></RouterProvider>);
     expect(screen.getByTestId("path")).toHaveTextContent("/login");
     fireEvent.click(screen.getByRole("link", { name: "Dashboard" }));
     expect(screen.getByTestId("path")).toHaveTextContent("/dashboard");
-    expect(window.location.pathname).toBe("/soldi-sotto/dashboard");
+    expect(window.location.pathname).toBe("/ducat/dashboard");
   });
 
   it.each(["https://evil.example", "//evil.example", "/\\evil"])("rejects unsafe path %s", (path) => {

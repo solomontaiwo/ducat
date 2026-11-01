@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Soldi Sotto",
+  "productName": "Ducat",
   "version": "../package.json",
-  "identifier": "io.github.solomontaiwo.soldisotto",
+  "identifier": "app.ducat",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Soldi Sotto",
+        "title": "Ducat",
         "width": 1200,
         "height": 800,
         "resizable": true,
@@ -59,7 +59,7 @@
       "requireSignedVersion": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhENEQwN0RGMzhBNDBCNjEKUldSaEM2UTQzd2ROaldWUDdkdGlxanF0U1hEbk5wOW5POTdwSll6aVdodzlNT0hFMTRaak5Ec0gK",
       "endpoints": [
-        "https://github.com/solomontaiwo/soldi-sotto/releases/latest/download/latest.json"
+        "https://github.com/solomontaiwo/ducat/releases/latest/download/latest.json"
       ]
     }
   }

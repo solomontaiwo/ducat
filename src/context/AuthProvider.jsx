@@ -7,7 +7,7 @@ import i18n from "../utils/i18n.jsx";
 import { toEmailLanguage } from "../utils/emailLanguage.js";
 
 const AuthContext = createContext();
-const PENDING_KEY = "soldi-sotto-pending-verification";
+const PENDING_KEY = "ducat-pending-verification";
 
 export const useAuth = () => useContext(AuthContext);
 

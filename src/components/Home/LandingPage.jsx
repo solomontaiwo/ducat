@@ -100,7 +100,7 @@ const LandingPage = () => {
       <header className="glass sticky top-[calc(env(safe-area-inset-top)+0.625rem)] z-30 mx-2.5 mt-[calc(env(safe-area-inset-top)+0.625rem)] flex items-center gap-6 rounded-full py-2 pl-4 pr-2 sm:mx-auto sm:w-[min(70rem,calc(100%-2.5rem))]">
         <span className="flex flex-1 items-center gap-2.5">
           <img src={logo} alt="" width="30" height="30" className="h-[30px] w-[30px] rounded-[10px]" />
-          <span className="font-display text-lg font-extrabold tracking-tight">Soldi Sotto</span>
+          <span className="font-display text-lg font-extrabold tracking-tight">{t("appName")}</span>
         </span>
         <nav className="hidden items-center gap-6 text-[15px] font-semibold text-foreground/75 md:flex" aria-label={t("landing.sections")}>
           <button type="button" onClick={() => scrollTo("how")} className="hover:text-foreground">{t("landing.how.title")}</button>
@@ -206,7 +206,7 @@ const LandingPage = () => {
       </main>
 
       <footer className="mx-auto flex w-full max-w-6xl flex-wrap justify-between gap-4 border-t border-border/70 px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-6 text-sm text-muted-foreground">
-        <span>© Soldi Sotto</span>
+        <span>© {t("appName")}</span>
         <span className="flex gap-6">
           <Link to="/privacy" className="hover:text-foreground">{t("landing.footer.privacy")}</Link>
           <Link to="/terms" className="hover:text-foreground">{t("landing.footer.terms")}</Link>

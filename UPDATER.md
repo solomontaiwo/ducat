@@ -17,7 +17,7 @@ endpoint configurati, scarica l'aggiornamento firmato e si reinstalla, poi chied
 
 ### Endpoint e manifest
 
-- Endpoint: `https://github.com/solomontaiwo/soldi-sotto/releases/latest/download/latest.json`
+- Endpoint: `https://github.com/solomontaiwo/ducat/releases/latest/download/latest.json`
 - `latest.json` è il manifest statico generato da `scripts/build-update-manifest.mjs` durante
   la CI e caricato come asset della release. Contiene per ogni piattaforma `url` + `signature`
   (il contenuto del file `.sig`).
@@ -63,7 +63,7 @@ Gli aggiornamenti sono firmati con una coppia di chiavi minisign:
 
 - **Chiave pubblica** — in `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`). È pubblica,
   va committata.
-- **Chiave privata** — in `~/.tauri/soldi-sotto.key` (NON committata). Senza di essa non è più
+- **Chiave privata** — in `~/.tauri/ducat.key` (NON committata). Senza di essa non è più
   possibile pubblicare aggiornamenti per le installazioni esistenti: va custodita con cura.
 
 `plugins.updater.requireSignedVersion: true` impone che la versione firmata nel `.sig`
@@ -74,14 +74,14 @@ corrisponda a quella annunciata dal manifest.
 ### 1. Aggiungere il secret CI
 
 Creare il secret GitHub `TAURI_SIGNING_PRIVATE_KEY` con **l'intero contenuto** del file
-`~/.tauri/soldi-sotto.key` (il valore base64 su una riga). Esempio:
+`~/.tauri/ducat.key` (il valore base64 su una riga). Esempio:
 
 ```bash
-gh secret set TAURI_SIGNING_PRIVATE_KEY --body "$(cat ~/.tauri/soldi-sotto.key)"
+gh secret set TAURI_SIGNING_PRIVATE_KEY --body "$(cat ~/.tauri/ducat.key)"
 ```
 
 > Senza questo secret la build CI fallisce (non può firmare gli aggiornamenti). Il file
-> `~/.tauri/soldi-sotto.key` va salvato anche fuori dal repository (password manager o vault).
+> `~/.tauri/ducat.key` va salvato anche fuori dal repository (password manager o vault).
 
 ### 2. Aggiungere un PAT per il bump automatico
 
@@ -125,9 +125,9 @@ patch con una gestione manuale/tag.
 ## Rigenerare le chiavi (solo se necessario)
 
 ```bash
-npm run tauri signer generate -- -w ~/.tauri/soldi-sotto.key --ci
+npm run tauri signer generate -- -w ~/.tauri/ducat.key --ci
 ```
 
 Poi sostituire il `pubkey` in `tauri.conf.json` con il contenuto di
-`~/.tauri/soldi-sotto.key.pub` e aggiornare il secret CI. Le installazioni firmate con la
+`~/.tauri/ducat.key.pub` e aggiornare il secret CI. Le installazioni firmate con la
 vecchia chiave non accetteranno più gli aggiornamenti firmati con la nuova.

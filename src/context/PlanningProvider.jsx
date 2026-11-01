@@ -11,9 +11,9 @@ import { dueOccurrences, nextOccurrence, occurrenceRequestId } from "../utils/re
 import { DEFAULT_PREFERENCES, budgetLimitsSchema, normalizePreferences, preferencesSchema, recurringInputSchema } from "../schemas/planning.js";
 import { onLocalChange } from "../services/changeEvents.js";
 
-const DEMO_RECURRING_KEY = "soldi-sotto-demo-recurring";
-const DEMO_BUDGETS_KEY = "soldi-sotto-demo-budgets";
-const DEMO_PREFERENCES_KEY = "soldi-sotto-demo-preferences";
+const DEMO_RECURRING_KEY = "ducat-demo-recurring";
+const DEMO_BUDGETS_KEY = "ducat-demo-budgets";
+const DEMO_PREFERENCES_KEY = "ducat-demo-preferences";
 
 const INERT = Object.freeze({
   recurring: [],

@@ -30,7 +30,7 @@ fn updater_runtime_info(app: tauri::AppHandle) -> UpdaterRuntimeInfo {
         .and_then(std::path::Path::parent)
         .map(|dir| {
             tempfile::Builder::new()
-                .prefix(".soldi-sotto-write-probe")
+                .prefix(".ducat-write-probe")
                 .tempfile_in(dir)
                 .is_ok()
         })

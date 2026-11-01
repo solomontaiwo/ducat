@@ -82,7 +82,7 @@ jobs:
         env:
           TARGET_TRIPLE: ${{ matrix.target }}
         run: |
-          $path = "src-tauri/target/$env:TARGET_TRIPLE/release/soldi-sotto.exe"
+          $path = "src-tauri/target/$env:TARGET_TRIPLE/release/ducat.exe"
           $reader = [System.IO.BinaryReader]::new([System.IO.File]::OpenRead($path))
           try {
             if ($reader.ReadUInt16() -ne 0x5a4d) { throw "Invalid DOS header" }
@@ -107,11 +107,11 @@ jobs:
           $bundle = "src-tauri/target/$env:TARGET_TRIPLE/release/bundle/nsis"
           $installers = @(Get-ChildItem -Path $bundle -Filter '*-setup.exe' -File)
           if ($installers.Count -ne 1) { throw "Expected exactly one Windows installer, found $($installers.Count)" }
-          $installDir = Join-Path $env:RUNNER_TEMP 'soldi-sotto-install-check'
+          $installDir = Join-Path $env:RUNNER_TEMP 'ducat-install-check'
           $installer = Start-Process -FilePath $installers[0].FullName -ArgumentList "/S /D=$installDir" -Wait -PassThru
           if ($installer.ExitCode -ne 0) { throw "Windows installer failed with exit code $($installer.ExitCode)" }
-          $built = "src-tauri/target/$env:TARGET_TRIPLE/release/soldi-sotto.exe"
-          $installed = Join-Path $installDir 'soldi-sotto.exe'
+          $built = "src-tauri/target/$env:TARGET_TRIPLE/release/ducat.exe"
+          $installed = Join-Path $installDir 'ducat.exe'
           if (-not (Test-Path -LiteralPath $installed -PathType Leaf)) { throw "Installed executable not found: $installed" }
           # Tauri patches the first bundle-type marker for NSIS, then restores the original build.
           $expectedBytes = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $built).Path)
@@ -129,7 +129,7 @@ jobs:
       - name: Upload packages
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: soldi-sotto-${{ matrix.artifact }}-${{ github.sha }}
+          name: ducat-${{ matrix.artifact }}-${{ github.sha }}
           path: |
             ${{ matrix.files }}
             ${{ matrix.updater-files }}
@@ -186,14 +186,14 @@ jobs:
         run: |
           set -euo pipefail
           apt-get install -y ./src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
-          ldd /usr/bin/soldi-sotto > /tmp/soldi-sotto-ldd.txt
-          if grep -q 'not found' /tmp/soldi-sotto-ldd.txt; then cat /tmp/soldi-sotto-ldd.txt; exit 1; fi
-          dpkg-query -W soldi-sotto
+          ldd /usr/bin/ducat > /tmp/ducat-ldd.txt
+          if grep -q 'not found' /tmp/ducat-ldd.txt; then cat /tmp/ducat-ldd.txt; exit 1; fi
+          dpkg-query -W ducat
 
       - name: Upload Ubuntu package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: soldi-sotto-linux-x64-${{ github.sha }}
+          name: ducat-linux-x64-${{ github.sha }}
           path: |
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
           if-no-files-found: error
@@ -239,14 +239,14 @@ jobs:
         run: |
           set -eu
           dnf install -y ./src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
-          ldd /usr/bin/soldi-sotto > /tmp/soldi-sotto-ldd.txt
-          if grep -q 'not found' /tmp/soldi-sotto-ldd.txt; then cat /tmp/soldi-sotto-ldd.txt; exit 1; fi
-          rpm -q soldi-sotto
+          ldd /usr/bin/ducat > /tmp/ducat-ldd.txt
+          if grep -q 'not found' /tmp/ducat-ldd.txt; then cat /tmp/ducat-ldd.txt; exit 1; fi
+          rpm -q ducat
 
       - name: Upload Fedora package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: soldi-sotto-fedora-x64-${{ github.sha }}
+          name: ducat-fedora-x64-${{ github.sha }}
           path: src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
           if-no-files-found: error
           retention-days: 30
@@ -291,18 +291,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          stage="$RUNNER_TEMP/soldi-sotto-arch"
+          stage="$RUNNER_TEMP/ducat-arch"
           install -d "$stage/root/usr/bin" "$stage/root/usr/share/applications" "$stage/root/usr/share/icons/hicolor/512x512/apps"
-          install -m755 src-tauri/target/x86_64-unknown-linux-gnu/release/soldi-sotto "$stage/root/usr/bin/soldi-sotto"
-          install -m644 packaging/arch/soldi-sotto.desktop "$stage/root/usr/share/applications/soldi-sotto.desktop"
-          install -m644 public/icon-512.png "$stage/root/usr/share/icons/hicolor/512x512/apps/soldi-sotto.png"
+          install -m755 src-tauri/target/x86_64-unknown-linux-gnu/release/ducat "$stage/root/usr/bin/ducat"
+          install -m644 packaging/arch/ducat.desktop "$stage/root/usr/share/applications/ducat.desktop"
+          install -m644 public/icon-512.png "$stage/root/usr/share/icons/hicolor/512x512/apps/ducat.png"
           tar -C "$stage/root" -cf "$stage/root.tar" usr
           cp packaging/arch/PKGBUILD "$stage/PKGBUILD"
           version=$(jq -er '.version | gsub("[-+]"; ".")' package.json)
           useradd -m packager
           chown -R packager:packager "$stage"
           cd "$stage"
-          runuser -u packager -- env SOLDI_SOTTO_VERSION="$version" makepkg --noconfirm --nodeps
+          runuser -u packager -- env DUCAT_VERSION="$version" makepkg --noconfirm --nodeps
           mkdir -p "$GITHUB_WORKSPACE/arch-artifact"
           cp ./*.pkg.tar.zst "$GITHUB_WORKSPACE/arch-artifact/"
 
@@ -311,14 +311,14 @@ jobs:
         run: |
           set -euo pipefail
           pacman -U --noconfirm arch-artifact/*.pkg.tar.zst
-          ldd /usr/bin/soldi-sotto > /tmp/soldi-sotto-ldd.txt
-          if grep -q 'not found' /tmp/soldi-sotto-ldd.txt; then cat /tmp/soldi-sotto-ldd.txt; exit 1; fi
-          pacman -Q soldi-sotto-bin
+          ldd /usr/bin/ducat > /tmp/ducat-ldd.txt
+          if grep -q 'not found' /tmp/ducat-ldd.txt; then cat /tmp/ducat-ldd.txt; exit 1; fi
+          pacman -Q ducat-bin
 
       - name: Upload Arch package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: soldi-sotto-arch-x64-${{ github.sha }}
+          name: ducat-arch-x64-${{ github.sha }}
           path: arch-artifact/*.pkg.tar.zst
           if-no-files-found: error
           retention-days: 30
@@ -378,7 +378,7 @@ jobs:
       - name: Upload AppImage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: soldi-sotto-linux-appimage-${{ github.sha }}
+          name: ducat-linux-appimage-${{ github.sha }}
           path: |
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage.sig
@@ -406,7 +406,7 @@ jobs:
       - name: Download desktop packages
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          pattern: soldi-sotto-*-${{ github.sha }}
+          pattern: ducat-*-${{ github.sha }}
           path: downloaded
 
       - name: Prepare release assets
@@ -425,12 +425,12 @@ jobs:
           copy_one() {
             local artifact="$1" pattern="$2" output="$3"
             local matches=()
-            while IFS= read -r -d '' file; do matches+=("$file"); done < <(find "downloaded/soldi-sotto-$artifact-$COMMIT_SHA" -type f -name "$pattern" -print0 2>/dev/null)
+            while IFS= read -r -d '' file; do matches+=("$file"); done < <(find "downloaded/ducat-$artifact-$COMMIT_SHA" -type f -name "$pattern" -print0 2>/dev/null)
             if (( ${#matches[@]} != 1 )); then
               echo "Expected exactly one $artifact package (pattern $pattern), found ${#matches[@]}" >&2
               exit 1
             fi
-            cp -- "${matches[0]}" "release-assets/Soldi-Sotto-${version}-${output}"
+            cp -- "${matches[0]}" "release-assets/Ducat-${version}-${output}"
           }
           copy_one macos-arm64 '*.dmg' macos-arm64.dmg
           copy_one macos-x64 '*.dmg' macos-x64.dmg
@@ -440,13 +440,13 @@ jobs:
           copy_one fedora-x64 '*.rpm' fedora-x64.rpm
           copy_one arch-x64 '*.pkg.tar.zst' arch-x64.pkg.tar.zst
           copy_one linux-appimage '*.AppImage' linux-x86_64.AppImage
-          printf '%s\n' "$version" > "$RUNNER_TEMP/soldi-sotto-release-version"
+          printf '%s\n' "$version" > "$RUNNER_TEMP/ducat-release-version"
 
       - name: Build update manifest
         shell: bash
         run: |
           set -euo pipefail
-          version=$(cat "$RUNNER_TEMP/soldi-sotto-release-version")
+          version=$(cat "$RUNNER_TEMP/ducat-release-version")
           tag="v${version}"
           # Changelog: conventional-commit subjects since the previous release bump.
           prev_bump=$(git log --format='%H' --grep='^chore(release):' --skip=1 -n 1 2>/dev/null || true)
@@ -454,8 +454,8 @@ jobs:
             | grep -v '^chore(release):' \
             | sed -E 's/^feat(\([^)]*\))?: ?/New: /; s/^fix(\([^)]*\))?: ?/Fix: /' \
             | head -12)
-          if [ -z "$notes" ]; then notes="Update to Soldi Sotto ${version}."; fi
-          printf '%s\n' "$notes" > "$RUNNER_TEMP/soldi-sotto-changelog"
+          if [ -z "$notes" ]; then notes="Update to Ducat ${version}."; fi
+          printf '%s\n' "$notes" > "$RUNNER_TEMP/ducat-changelog"
           node scripts/build-update-manifest.mjs \
             --downloaded downloaded \
             --repo "$GITHUB_REPOSITORY" \
@@ -474,12 +474,12 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          version=$(cat "$RUNNER_TEMP/soldi-sotto-release-version")
+          version=$(cat "$RUNNER_TEMP/ducat-release-version")
           tag="v${version}"
-          notes="$RUNNER_TEMP/soldi-sotto-release-notes.md"
+          notes="$RUNNER_TEMP/ducat-release-notes.md"
           {
             printf '## Changelog\n\n'
-            sed 's/^/- /' "$RUNNER_TEMP/soldi-sotto-changelog"
+            sed 's/^/- /' "$RUNNER_TEMP/ducat-changelog"
             printf '\n---\n\n'
             printf 'Desktop build for version `%s` · commit `%s`.\n\n' "$version" "$COMMIT_SHA"
             printf 'Choose the installer for your operating system and architecture. '
@@ -493,6 +493,6 @@ jobs:
           # Replace any existing release with the same version (e.g. a re-run).
           gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
           gh release create "$tag" release-assets/* \
-            --target "$COMMIT_SHA" --title "Soldi Sotto ${version}" \
+            --target "$COMMIT_SHA" --title "Ducat ${version}" \
             --notes-file "$notes" "${options[@]}"
           gh release edit "$tag" --draft=false

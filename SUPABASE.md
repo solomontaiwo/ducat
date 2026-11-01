@@ -1,4 +1,4 @@
-# Soldi Sotto su Supabase
+# Ducat su Supabase
 
 Guida per configurare il progetto Supabase, spostare account e dati da Firebase e mettere in produzione la nuova versione.
 
@@ -57,10 +57,10 @@ npx supabase migration list
 
 **Authentication → URL Configuration**
 
-- Site URL: `https://solomontaiwo.github.io/soldi-sotto/`
+- Site URL: `https://solomontaiwo.github.io/ducat/`
 - Redirect URLs:
-  - `https://solomontaiwo.github.io/soldi-sotto/**`
-  - `http://localhost:5173/soldi-sotto/**` (sviluppo locale)
+  - `https://solomontaiwo.github.io/ducat/**`
+  - `http://localhost:5173/ducat/**` (sviluppo locale)
 
 **Authentication → Emails → SMTP Settings**
 
@@ -107,7 +107,7 @@ Da fare subito prima del passaggio in produzione. Le password restano valide: Su
 1. **Parametri dell'hash**: Firebase Console → Authentication → Users → menu ⋮ → **Password hash parameters**. Annota `base64_signer_key`, `base64_salt_separator`, `rounds`, `mem_cost`.
 2. **Esporta gli utenti**:
    ```bash
-   npx firebase-tools auth:export scripts/firebase-to-supabase/users.json --format=json --project soldi-sotto
+   npx firebase-tools auth:export scripts/firebase-to-supabase/users.json --format=json --project ducat
    ```
 3. **Chiave di servizio Firebase**: Project settings → Service accounts → **Generate new private key**, salvala come `scripts/firebase-to-supabase/service-account.json` (i `.json` di quella cartella sono esclusi da git).
 4. **Esegui**:
@@ -138,7 +138,7 @@ Lo script si può rilanciare: aggiunge solo ciò che manca (account per email, m
    git merge --ff-only dev
    git push origin main
    ```
-3. Attendi il workflow "Quality and deploy" e apri `https://solomontaiwo.github.io/soldi-sotto/`: accesso, movimenti, email di recupero password.
+3. Attendi il workflow "Quality and deploy" e apri `https://solomontaiwo.github.io/ducat/`: accesso, movimenti, email di recupero password.
 
 ## 8. Dopo il passaggio
 

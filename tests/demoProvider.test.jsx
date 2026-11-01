@@ -10,11 +10,11 @@ const wrapper = ({ children }) => <DemoProvider seedOnMount>{children}</DemoProv
 beforeEach(() => { localStorage.clear(); vi.clearAllMocks(); vi.spyOn(console, 'error').mockImplementation(() => {}); });
 afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); });
 it('preserves saved transactions when starting demo again', async () => {
-  localStorage.setItem('soldi-sotto-demo-transactions', JSON.stringify([{ ...transaction, id: 'saved', isSample: false }]));
+  localStorage.setItem('ducat-demo-transactions', JSON.stringify([{ ...transaction, id: 'saved', isSample: false }]));
   const { result } = renderHook(() => useDemo(), { wrapper });
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.transactions.map(item => item.id)).toEqual(['saved']);
-  expect(localStorage.getItem('soldi-sotto-demo-transactions')).toContain('Saved user movement');
+  expect(localStorage.getItem('ducat-demo-transactions')).toContain('Saved user movement');
 });
 it('seeds only an empty demo and keeps retry IDs stable', async () => {
   const { result } = renderHook(() => useDemo(), { wrapper });
@@ -37,26 +37,26 @@ it('persists an initial movement with its rule and consumes each occurrence once
   });
   expect(result.current.transactions).toHaveLength(2);
   expect(result.current.transactions[0]).toMatchObject({ dateKey: '2026-02-28', amountMinor: 1000 });
-  expect(JSON.parse(localStorage.getItem('soldi-sotto-demo-recurring'))).toEqual([expect.objectContaining({ id: ruleId, nextIndex: 2 })]);
+  expect(JSON.parse(localStorage.getItem('ducat-demo-recurring'))).toEqual([expect.objectContaining({ id: ruleId, nextIndex: 2 })]);
 });
 it('rolls back the movement when storing its recurring rule fails', async () => {
   const { result } = renderHook(() => useDemo(), { wrapper: DemoProvider });
   await waitFor(() => expect(result.current.loading).toBe(false));
   const original = Storage.prototype.setItem;
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
-    if (key === 'soldi-sotto-demo-recurring') throw new Error('quota');
+    if (key === 'ducat-demo-recurring') throw new Error('quota');
     return original.call(this, key, value);
   });
   await act(async () => expect(await result.current.addTransaction({ ...transaction, recurring: { id: ruleId, frequency: 'monthly', mode: 'auto' } })).toBe(false));
   expect(result.current.transactions).toEqual([]);
-  expect(localStorage.getItem('soldi-sotto-demo-transactions')).toBeNull();
-  expect(localStorage.getItem('soldi-sotto-demo-recurring')).toBeNull();
+  expect(localStorage.getItem('ducat-demo-transactions')).toBeNull();
+  expect(localStorage.getItem('ducat-demo-recurring')).toBeNull();
 });
 it('keeps ordinary additions available even if recurring storage is malformed', async () => {
-  localStorage.setItem('soldi-sotto-demo-recurring', '{broken');
+  localStorage.setItem('ducat-demo-recurring', '{broken');
   const { result } = renderHook(() => useDemo(), { wrapper: DemoProvider });
   await waitFor(() => expect(result.current.loading).toBe(false));
   await act(async () => expect(await result.current.addTransaction(transaction)).toBe(true));
   expect(result.current.transactions).toHaveLength(1);
-  expect(localStorage.getItem('soldi-sotto-demo-recurring')).toBe('{broken');
+  expect(localStorage.getItem('ducat-demo-recurring')).toBe('{broken');
 });

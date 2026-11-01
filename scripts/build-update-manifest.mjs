@@ -13,7 +13,7 @@
  * Usage (run from the repo root):
  *   node scripts/build-update-manifest.mjs \
  *     --downloaded ./downloaded \
- *     --repo solomontaiwo/soldi-sotto \
+ *     --repo solomontaiwo/ducat \
  *     --tag desktop-v4.0.0-run123-1 \
  *     --version 4.0.0 \
  *     --notes "Release notes (optional)" \
@@ -51,28 +51,28 @@ const PLATFORMS = [
     artifact: "macos-arm64",
     bundleGlob: "**/*.app.tar.gz",
     sigGlob: "**/*.app.tar.gz.sig",
-    assetName: (v) => `Soldi-Sotto-${v}-darwin-aarch64.app.tar.gz`,
+    assetName: (v) => `Ducat-${v}-darwin-aarch64.app.tar.gz`,
   },
   {
     key: "darwin-x86_64",
     artifact: "macos-x64",
     bundleGlob: "**/*.app.tar.gz",
     sigGlob: "**/*.app.tar.gz.sig",
-    assetName: (v) => `Soldi-Sotto-${v}-darwin-x86_64.app.tar.gz`,
+    assetName: (v) => `Ducat-${v}-darwin-x86_64.app.tar.gz`,
   },
   {
     key: "windows-x86_64",
     artifact: "windows-x64",
     bundleGlob: "**/*-setup.exe",
     sigGlob: "**/*-setup.exe.sig",
-    assetName: (v) => `Soldi-Sotto-${v}-windows-x86_64-setup.exe`,
+    assetName: (v) => `Ducat-${v}-windows-x86_64-setup.exe`,
   },
   {
     key: "windows-aarch64",
     artifact: "windows-arm64",
     bundleGlob: "**/*-setup.exe",
     sigGlob: "**/*-setup.exe.sig",
-    assetName: (v) => `Soldi-Sotto-${v}-windows-aarch64-setup.exe`,
+    assetName: (v) => `Ducat-${v}-windows-aarch64-setup.exe`,
   },
   {
     key: "linux-x86_64",
@@ -81,13 +81,13 @@ const PLATFORMS = [
     artifact: "linux-appimage",
     bundleGlob: "**/*.AppImage",
     sigGlob: "**/*.AppImage.sig",
-    assetName: (v) => `Soldi-Sotto-${v}-linux-x86_64.AppImage`,
+    assetName: (v) => `Ducat-${v}-linux-x86_64.AppImage`,
   },
 ];
 
 async function findOne(base, pattern, artifact) {
   const matches = [];
-  for await (const entry of glob(path.join(base, `soldi-sotto-${artifact}-*`, pattern))) {
+  for await (const entry of glob(path.join(base, `ducat-${artifact}-*`, pattern))) {
     matches.push(entry);
   }
   if (matches.length !== 1) {

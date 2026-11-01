@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { dateToDateKey } from "./dateUtils.js";
+import { APP_SLUG } from "./brand.js";
 
 export const sanitizeFilename = (value) => {
   if (!value) return "user";
@@ -18,5 +19,5 @@ export const generateExportFileName = (periodText, startDate, endDate, user, ext
     ? `${dateToDateKey(startDate)}_${dateToDateKey(endDate)}`
     : "snapshot";
   const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
-  return `report-soldisotto-${userName}-${period}-${range}-${timestamp}.${sanitizeFilename(extension)}`;
+  return `report-${APP_SLUG}-${userName}-${period}-${range}-${timestamp}.${sanitizeFilename(extension)}`;
 };
