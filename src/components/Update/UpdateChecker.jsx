@@ -17,7 +17,11 @@ const UpdateChecker = () => {
       icon={FiRefreshCw}
       tone="blue"
       title={t("updater.title")}
-      subtitle={updater.supported ? t("updater.rowSummary") : t("updater.managedByPackageManagerShort")}
+      subtitle={updater.supported
+        ? t("updater.rowSummary")
+        : updater.blockReason === "system-package"
+          ? t("updater.managedByPackageManagerShort")
+          : t("updater.manualUpdateShort")}
       to="/updates"
       testId="row-update-check"
     />

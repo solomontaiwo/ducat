@@ -4,7 +4,7 @@ import {
   checkForUpdates,
   downloadAndInstall,
   isDesktopRuntime,
-  readBundleType,
+  readUpdateRuntime,
   relaunch,
 } from "../services/updaterService";
 
@@ -24,7 +24,7 @@ export function useUpdater() {
   const [notes, setNotes] = useState(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
-  const [bundleType, setBundleType] = useState(null);
+  const [runtime, setRuntime] = useState(null);
   const [supported, setSupported] = useState(false);
   const [detectingSupport, setDetectingSupport] = useState(desktop);
   const updateRef = useRef(null);
@@ -36,11 +36,11 @@ export function useUpdater() {
       setDetectingSupport(false);
       return undefined;
     }
-    readBundleType()
-      .then((type) => {
+    readUpdateRuntime()
+      .then((info) => {
         if (cancelled) return;
-        setBundleType(type);
-        setSupported(canSelfUpdate(type));
+        setRuntime(info);
+        setSupported(canSelfUpdate(info));
       })
       .finally(() => {
         if (!cancelled) setDetectingSupport(false);
@@ -108,10 +108,21 @@ export function useUpdater() {
     setError(null);
   }, []);
 
+  // Why self-updates are unavailable, so the page can explain it precisely.
+  const blockReason = !desktop || supported
+    ? null
+    : !runtime
+      ? "unsupported"
+      : runtime.bundleType === "appimage"
+        ? (runtime.appImage ? "read-only" : "not-appimage")
+        : "system-package";
+
   return {
     desktop,
-    bundleType,
+    runtime,
+    bundleType: runtime?.bundleType ?? null,
     supported,
+    blockReason,
     detectingSupport,
     status,
     version,

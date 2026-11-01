@@ -34,11 +34,24 @@ Su Linux l'updater Tauri funziona **solo con l'AppImage**: il processo sostituis
 AppImage da cui l'app è in esecuzione. I pacchetti `.deb`, `.rpm` e pacman sono di proprietà
 del gestore pacchetti e non possono essere aggiornati dall'app.
 
-Il client rileva il tipo di bundle con `getBundleType()` e:
+Il client rileva il tipo di bundle con `getBundleType()` e interroga il comando Rust
+`updater_runtime_info`, che riporta se l'app è stata avviata da un'AppImage (variabile
+`APPIMAGE`) e se la cartella che la contiene è scrivibile. L'updater è abilitato solo se
+**tutte** le condizioni valgono:
 
-- con AppImage abilita controllo e installazione automatica;
-- con `.deb`, `.rpm` o pacchetto pacman **disabilita l'updater** e nella pagina Aggiornamenti
-  spiega di scaricare il nuovo pacchetto dalla release (con pulsante che apre la pagina).
+- AppImage avviata come tale (non estratta, non pacchetto di sistema);
+- cartella dell'AppImage scrivibile (il nuovo file viene rinominato lì).
+
+Altrimenti la pagina Aggiornamenti spiega il motivo:
+
+- `.deb`, `.rpm`, pacman → aggiorna con il gestore pacchetti o scarica il nuovo pacchetto;
+- AppImage avviata da estrazione/pacchetto → avvia direttamente il file `.AppImage`;
+- cartella non scrivibile → sposta l'AppImage in una cartella personale (es. `~/Applications`).
+
+Questo evita l'errore `temp directory is not on the same mount point as the app`: l'updater
+crea i file temporanei in `/tmp` o nella cache, ma per sostituire l'AppImage deve fare un
+rename sullo stesso filesystem, quindi usa la cartella dell'AppImage. Se quella cartella non
+è scrivibile (o l'app non è un'AppImage) l'operazione non può riuscire.
 
 Per questo `latest.json` non deve mai puntare a `.deb`/`.rpm`: la CI costruisce una AppImage
 dedicata e `scripts/build-update-manifest.mjs` usa solo l'AppImage (e la sua firma

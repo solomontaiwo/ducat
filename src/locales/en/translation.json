@@ -807,7 +807,8 @@
     "restart": "Restart now",
     "error": "Update failed",
     "retry": "Retry",
-    "managedByPackageManagerShort": "Update with your package manager"
+    "managedByPackageManagerShort": "Update with your package manager",
+    "manualUpdateShort": "Manual update"
   },
   "updates": {
     "desktopOnly": "Automatic updates are only available in the desktop app.",
@@ -828,6 +829,10 @@
     "managedTitle": "Updates managed by your system",
     "managedByPackageManager": "This installation (.deb, .rpm or pacman package) cannot update itself: download the new version and install it with your package manager.",
     "appImageHint": "If you prefer automatic updates, use the AppImage build.",
-    "openReleases": "Open the releases page"
+    "openReleases": "Open the releases page",
+    "manualUpdateTitle": "Manual update",
+    "runFromAppImage": "The app is not running from the AppImage file (extracted launch or system package). To use automatic updates, start the .AppImage file directly.",
+    "appImageReadOnly": "The AppImage folder is not writable: move it to a personal folder (e.g. ~/Applications) and restart the app.",
+    "unsupportedInstall": "This installation does not support automatic updates: download the new version from the releases page."
   }
 }

@@ -73,6 +73,12 @@ const UpdatesPage = () => {
   // deb/rpm/pacman installs are updated by the system package manager: the
   // Tauri updater only works for AppImage on Linux and must not be offered.
   if (!updater.supported) {
+    const reasonMessage = {
+      "not-appimage": t("updates.runFromAppImage"),
+      "read-only": t("updates.appImageReadOnly"),
+      "system-package": t("updates.managedByPackageManager"),
+      unsupported: t("updates.unsupportedInstall"),
+    }[updater.blockReason] || t("updates.managedByPackageManager");
     return (
       <div className="page-shell">
         <header className="mobile-glass-header flex flex-wrap items-center justify-between gap-2">
@@ -83,9 +89,13 @@ const UpdatesPage = () => {
           {versionBadge}
         </header>
         <section className="surface space-y-3 p-5 sm:p-6">
-          <h2 className="text-lg font-bold">{t("updates.managedTitle")}</h2>
-          <p className="text-sm text-muted-foreground">{t("updates.managedByPackageManager")}</p>
-          <p className="text-sm text-muted-foreground">{t("updates.appImageHint")}</p>
+          <h2 className="text-lg font-bold">
+            {updater.blockReason === "system-package" ? t("updates.managedTitle") : t("updates.manualUpdateTitle")}
+          </h2>
+          <p className="text-sm text-muted-foreground">{reasonMessage}</p>
+          {updater.blockReason === "system-package" && (
+            <p className="text-sm text-muted-foreground">{t("updates.appImageHint")}</p>
+          )}
           <Button onClick={() => openExternal(RELEASES_URL)}>
             <FiDownload className="h-4 w-4" aria-hidden="true" /> {t("updates.openReleases")}
           </Button>

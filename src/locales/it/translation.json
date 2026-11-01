@@ -807,7 +807,8 @@
     "restart": "Riavvia ora",
     "error": "Aggiornamento non riuscito",
     "retry": "Riprova",
-    "managedByPackageManagerShort": "Aggiorna con il gestore pacchetti"
+    "managedByPackageManagerShort": "Aggiorna con il gestore pacchetti",
+    "manualUpdateShort": "Aggiornamento manuale"
   },
   "updates": {
     "desktopOnly": "Gli aggiornamenti automatici sono disponibili solo nell'app desktop.",
@@ -828,6 +829,10 @@
     "managedTitle": "Aggiornamenti gestiti dal sistema",
     "managedByPackageManager": "Questa installazione (pacchetto .deb, .rpm o pacman) non può aggiornarsi da sola: scarica la nuova versione e installala con il gestore pacchetti.",
     "appImageHint": "Se preferisci gli aggiornamenti automatici, usa la versione AppImage.",
-    "openReleases": "Apri la pagina delle release"
+    "openReleases": "Apri la pagina delle release",
+    "manualUpdateTitle": "Aggiornamento manuale",
+    "runFromAppImage": "L'app non è in esecuzione dal file AppImage (avvio estratto o pacchetto di sistema). Per gli aggiornamenti automatici avvia direttamente il file .AppImage.",
+    "appImageReadOnly": "La cartella dell'AppImage non è scrivibile: spostala in una cartella personale (es. ~/Applications) e riavvia l'app.",
+    "unsupportedInstall": "Questa installazione non supporta gli aggiornamenti automatici: scarica la nuova versione dalla pagina delle release."
   }
 }

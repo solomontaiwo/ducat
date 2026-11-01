@@ -57,7 +57,7 @@ sudo dnf install ./soldi-sotto.rpm        # Fedora; substitute the downloaded fi
 sudo pacman -U ./soldi-sotto.pkg.tar.zst  # Arch; substitute the downloaded filename
 ```
 
-The desktop app checks for updates on launch and from the update icon in the sidebar; it shows the changelog and installs updates only after they are verified with the signing key. On Linux only the **AppImage** can update itself: `.deb`, `.rpm` and pacman installs show a notice and must be updated with the package manager (or by downloading the new package). The macOS and Windows installers are **not signed or notarized**, so macOS Gatekeeper or Windows SmartScreen may warn or block the first launch.
+The desktop app checks for updates on launch and from the update icon in the sidebar; it shows the changelog and installs updates only after they are verified with the signing key. On Linux only the **AppImage** can update itself: keep it in a writable folder (for example `~/Applications`) because the update replaces that file, and install `fuse2` if the system lacks FUSE. `.deb`, `.rpm` and pacman installs show a notice and must be updated with the package manager (or by downloading the new package). The macOS and Windows installers are **not signed or notarized**, so macOS Gatekeeper or Windows SmartScreen may warn or block the first launch.
 
 To build it locally (install the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) first, including Rust and the system WebView):
 

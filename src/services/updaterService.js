@@ -16,8 +16,6 @@ export const isDesktopRuntime = () => import.meta.env.MODE === "desktop";
  */
 const SELF_UPDATE_BUNDLES = new Set(["appimage", "app", "nsis"]);
 
-export const canSelfUpdate = (bundleType) => SELF_UPDATE_BUNDLES.has(bundleType);
-
 /** The bundle type reported by the running desktop app (null in the web app). */
 export const readBundleType = async () => {
   if (!isDesktopRuntime()) return null;
@@ -28,6 +26,44 @@ export const readBundleType = async () => {
     // Older runtimes without the command are treated as not self-updatable.
     return null;
   }
+};
+
+/**
+ * Everything needed to decide whether this installation can update itself:
+ * bundle type, whether it was launched from an AppImage, and whether the
+ * directory holding it is writable (the Linux updater renames the new file
+ * into place, so the temp file must live on the same writable mount).
+ */
+export const readUpdateRuntime = async () => {
+  if (!isDesktopRuntime()) return null;
+  try {
+    const [{ invoke }, bundleType] = await Promise.all([
+      import("@tauri-apps/api/core"),
+      readBundleType(),
+    ]);
+    const info = await invoke("updater_runtime_info");
+    return {
+      bundleType,
+      appImage: Boolean(info.appImage),
+      installPath: info.installPath ?? null,
+      installDirWritable: Boolean(info.installDirWritable),
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const canSelfUpdateBundle = (bundleType) => SELF_UPDATE_BUNDLES.has(bundleType);
+
+/**
+ * Self-updates are enabled for macOS `.app`, Windows NSIS and Linux AppImage.
+ * The AppImage must have been started as such (APPIMAGE set) and live in a
+ * writable directory, otherwise the updater cannot replace it.
+ */
+export const canSelfUpdate = (runtime) => {
+  if (!runtime || !canSelfUpdateBundle(runtime.bundleType)) return false;
+  if (runtime.bundleType !== "appimage") return true;
+  return Boolean(runtime.appImage && runtime.installDirWritable);
 };
 
 /**
