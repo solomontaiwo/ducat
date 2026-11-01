@@ -1,0 +1,21 @@
+{
+  "appId": "io.github.solomontaiwo.soldisotto",
+  "appName": "Soldi Sotto",
+  "webDir": "dist",
+  "ios": {
+    "scheme": "SoldiSotto",
+    "contentInset": "never",
+    "preferredContentMode": "mobile",
+    "backgroundColor": "#f5f6f8"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#f5f6f8",
+      "showSpinner": false
+    },
+    "Keyboard": {
+      "resize": "native"
+    }
+  }
+}
