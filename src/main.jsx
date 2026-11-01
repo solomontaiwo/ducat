@@ -9,7 +9,7 @@ import { NotificationProvider } from "./utils/notificationUtils";
 import { AuthProvider } from "./context/AuthProvider";
 import UnifiedTransactionProvider from "./context/UnifiedTransactionProvider";
 import PlanningProvider from "./context/PlanningProvider";
-import './utils/i18n';
+import { ensureLanguage } from "./utils/i18n.jsx";
 import './utils/installPrompt';
 import ErrorBoundary from "./components/ErrorBoundary";
 import { installGlobalErrorReporting } from "./utils/errorReporting";
@@ -24,22 +24,24 @@ if (import.meta.env.PROD && import.meta.env.MODE !== "desktop" && "serviceWorker
   });
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <ErrorBoundary>
-    <ThemeProvider>
-      <NotificationProvider>
-        {/* The router sits above the data providers: switching between demo and
-            account mode remounts them, and must not reset the current route. */}
-        <RouterProvider basename={import.meta.env.BASE_URL}>
-          <AuthProvider>
-            <UnifiedTransactionProvider>
-              <PlanningProvider>
-                <App />
-              </PlanningProvider>
-            </UnifiedTransactionProvider>
-          </AuthProvider>
-        </RouterProvider>
-      </NotificationProvider>
-    </ThemeProvider>
-  </ErrorBoundary>
-);
+ensureLanguage().finally(() => {
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <ErrorBoundary>
+      <ThemeProvider>
+        <NotificationProvider>
+          {/* The router sits above the data providers: switching between demo and
+              account mode remounts them, and must not reset the current route. */}
+          <RouterProvider basename={import.meta.env.BASE_URL}>
+            <AuthProvider>
+              <UnifiedTransactionProvider>
+                <PlanningProvider>
+                  <App />
+                </PlanningProvider>
+              </UnifiedTransactionProvider>
+            </AuthProvider>
+          </RouterProvider>
+        </NotificationProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
+  );
+});

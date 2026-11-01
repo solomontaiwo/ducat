@@ -22,7 +22,8 @@ import { CategoriesSheet, EmailSheet, ExportSheet, InstallSheet, MonthStartSheet
 import UpdateChecker from "../Update/UpdateChecker";
 import { downloadJson } from "../../utils/accountExport.js";
 import { deleteCurrentAccount } from "../../services/accountService.js";
-import { removeLocalValue, writeLocalValue } from "../../utils/storage.js";
+import { removeLocalValue } from "../../utils/storage.js";
+import { loadEnglish } from "../../utils/loadEnglish.js";
 import { useInstallPrompt } from "../../utils/installPrompt.js";
 import { useCategories } from "../../utils/categories.jsx";
 import { calculateStats } from "../../utils/statsUtils.jsx";
@@ -193,9 +194,10 @@ const Profile = () => {
     else setSheet("install");
   };
 
-  const changeLanguage = (language) => {
-    i18n.changeLanguage(language);
-    writeLocalValue("appLanguage", language);
+  const changeLanguage = async (language) => {
+    // English is a separate chunk: load it before switching (i18n persists it).
+    if (String(language).toLowerCase().startsWith("en")) await loadEnglish(i18n);
+    await i18n.changeLanguage(language);
   };
 
   const handleLogout = async () => {

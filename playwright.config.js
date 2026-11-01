@@ -9,6 +9,9 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:4173/soldi-sotto/",
     trace: "on-first-retry",
     reducedMotion: "reduce",
+    // The suite asserts the Italian copy and formatting: pin the browser locale
+    // instead of depending on the runner's system language.
+    locale: "it-IT",
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },

@@ -23,8 +23,9 @@ DialogOverlay.propTypes = { className: PropTypes.string };
 
 /**
  * DialogContent supports an optional `variant` prop:
- *   - "default"  – centered modal (existing behaviour)
+ *   - "default" – centered modal (existing behaviour)
  *   - "sheet"    – full-screen on mobile (fixed inset-0), centered modal on sm+
+ *   - "bottom"   – bottom sheet on mobile, centered modal on sm+
  */
 const DialogContent = React.forwardRef(({ className, children, variant = "default", ...props }, ref) => {
   const { t } = useTranslation();
@@ -34,12 +35,19 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
+        "text-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-150 motion-reduce:animate-none",
+        // ── bottom sheet variant ───────────────────────────────────────────
+        variant === "bottom" && [
+          "glass-thick fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-[30px] border-0 outline-none",
+          "pb-[env(safe-area-inset-bottom)]",
+          "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-[92vw] sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:pb-0",
+        ],
         // ── sheet variant ──────────────────────────────────────────────────
         variant === "sheet" && [
           // Mobile: full-screen modal covering the entire viewport; pad top for iOS notch/status bar
-          "fixed inset-0 z-50 w-full rounded-none border-0",
+          "fixed inset-0 z-50 w-full rounded-none border-0 outline-none",
           "[padding-top:env(safe-area-inset-top)] sm:pt-0",
-          "glass-thick text-foreground",
+          "glass-thick",
           // Keep the full form visible immediately; only the backdrop fades.
           // Desktop (sm+): switch to centred modal
           "sm:inset-x-auto sm:inset-y-auto sm:left-1/2 sm:top-1/2",
@@ -50,7 +58,7 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
         // ── default variant ────────────────────────────────────────────────
         variant === "default" && [
           "fixed left-1/2 top-1/2 z-50 grid w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 gap-4",
-          "glass-thick p-5 sm:p-6 text-foreground",
+          "glass-thick p-5 sm:p-6",
           "rounded-[28px]",
         ],
         className
@@ -70,7 +78,7 @@ DialogContent.displayName = DialogPrimitive.Content.displayName;
 DialogContent.propTypes = {
   className: PropTypes.string,
   children: PropTypes.node,
-  variant: PropTypes.oneOf(["default", "sheet"]),
+  variant: PropTypes.oneOf(["default", "sheet", "bottom"]),
 };
 
 const DialogHeader = ({ className, ...props }) => (

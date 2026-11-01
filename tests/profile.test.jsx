@@ -88,12 +88,12 @@ describe("Profile", () => {
     expect(screen.getByText(/profilePage.backup.never/)).toBeInTheDocument();
   });
 
-  it("switches theme and language inline", () => {
+  it("switches theme and language inline", async () => {
     render(<Profile />);
     fireEvent.click(screen.getByRole("radio", { name: "profile.themeDark" }));
     expect(mocks.toggleTheme).toHaveBeenCalledWith("dark");
     fireEvent.click(screen.getByRole("radio", { name: "English" }));
-    expect(mocks.changeLanguage).toHaveBeenCalledWith("en");
+    await waitFor(() => expect(mocks.changeLanguage).toHaveBeenCalledWith("en"));
   });
 
   it("saves a payday month start, suggesting the usual salary day", async () => {
