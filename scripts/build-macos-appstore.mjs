@@ -127,7 +127,7 @@ const verifyEntitlements = () => {
 
 const buildPackage = ({ installerIdentity }) => {
   const version = loadVersion();
-  const pkgPath = join(OUTPUT_DIR, `Soldi-Sotto-${version}-mac-app-store.pkg`);
+  const pkgPath = join(OUTPUT_DIR, `${APP_NAME.replace(/[^A-Za-z0-9]+/g, "-")}-${version}-mac-app-store.pkg`);
   rmSync(pkgPath, { force: true });
   run("productbuild", [
     "--component", APP_PATH, "/Applications",

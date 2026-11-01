@@ -34,7 +34,7 @@ export const RouterProvider = ({ basename = "", children }) => {
       pathname: rawPath.startsWith("/") ? rawPath : `/${rawPath}`,
       search: window.location.search,
       hash: window.location.hash,
-      state: window.history.state?.soldiSottoState ?? null,
+      state: window.history.state?.ducatState ?? null,
     };
   }, [base]);
 
@@ -54,7 +54,7 @@ export const RouterProvider = ({ basename = "", children }) => {
 
     const normalized = normalizeInternalPath(to);
     const nextUrl = `${base}${normalized}`;
-    const historyState = { soldiSottoState: options.state ?? null };
+    const historyState = { ducatState: options.state ?? null };
 
     if (options.replace) {
       window.history.replaceState(historyState, "", nextUrl);
