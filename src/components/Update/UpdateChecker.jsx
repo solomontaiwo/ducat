@@ -10,14 +10,14 @@ const UpdateChecker = () => {
   const { t } = useTranslation();
   const updater = useUpdaterContext();
 
-  if (!updater?.supported) return null;
+  if (!updater?.desktop || updater.detectingSupport) return null;
 
   return (
     <SettingsRow
       icon={FiRefreshCw}
       tone="blue"
       title={t("updater.title")}
-      subtitle={t("updater.rowSummary")}
+      subtitle={updater.supported ? t("updater.rowSummary") : t("updater.managedByPackageManagerShort")}
       to="/updates"
       testId="row-update-check"
     />

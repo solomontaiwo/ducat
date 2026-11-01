@@ -806,7 +806,8 @@
     "downloadedBody": "Restart the app to finish installing.",
     "restart": "Restart now",
     "error": "Update failed",
-    "retry": "Retry"
+    "retry": "Retry",
+    "managedByPackageManagerShort": "Update with your package manager"
   },
   "updates": {
     "desktopOnly": "Automatic updates are only available in the desktop app.",
@@ -823,6 +824,10 @@
     "frequencyWeekly": "Weekly",
     "historyTitle": "Update history",
     "historyError": "Unable to load the update history.",
-    "historyEmpty": "No updates published yet."
+    "historyEmpty": "No updates published yet.",
+    "managedTitle": "Updates managed by your system",
+    "managedByPackageManager": "This installation (.deb, .rpm or pacman package) cannot update itself: download the new version and install it with your package manager.",
+    "appImageHint": "If you prefer automatic updates, use the AppImage build.",
+    "openReleases": "Open the releases page"
   }
 }

@@ -28,10 +28,21 @@ endpoint configurati, scarica l'aggiornamento firmato e si reinstalla, poi chied
 |---|---|---|
 | macOS aarch64 / x86_64 | `.app.tar.gz` (target `app`) | `.dmg` |
 | Windows x64 / arm64 | NSIS `-setup.exe` (target `nsis`) | idem |
-| Linux x86_64 (Ubuntu) | `.deb` (target `deb`) | idem |
+| Linux x86_64 | `.AppImage.tar.gz` (target `appimage`) | `.AppImage` |
 
-Fedora (`.rpm`) e Arch non hanno aggiornamento automatico: si aggiornano a mano con il nuovo
-pacchetto.
+Su Linux l'updater Tauri funziona **solo con l'AppImage**: il processo sostituisce il file
+AppImage da cui l'app è in esecuzione. I pacchetti `.deb`, `.rpm` e pacman sono di proprietà
+del gestore pacchetti e non possono essere aggiornati dall'app.
+
+Il client rileva il tipo di bundle con `getBundleType()` e:
+
+- con AppImage abilita controllo e installazione automatica;
+- con `.deb`, `.rpm` o pacchetto pacman **disabilita l'updater** e nella pagina Aggiornamenti
+  spiega di scaricare il nuovo pacchetto dalla release (con pulsante che apre la pagina).
+
+Per questo `latest.json` non deve mai puntare a `.deb`/`.rpm`: la CI costruisce una AppImage
+dedicata e `scripts/build-update-manifest.mjs` usa solo `*.AppImage.tar.gz` per
+`linux-x86_64`.
 
 ## Firma
 
@@ -85,17 +96,18 @@ patch con una gestione manuale/tag.
 
 ## File coinvolti
 
-- `src-tauri/Cargo.toml` — dipendenze `tauri-plugin-updater` e `tauri-plugin-process`.
+- `src-tauri/Cargo.toml` — dipendenze `tauri-plugin-updater`, `tauri-plugin-process` e `tauri-plugin-opener`.
 - `src-tauri/src/lib.rs` — registrazione dei plugin.
 - `src-tauri/capabilities/desktop.json` — permessi `updater:default` e `process:default`.
+- `src-tauri/capabilities/default.json` — permesso `opener:default` per aprire le release dal browser.
 - `src-tauri/tauri.conf.json` — `bundle.createUpdaterArtifacts`, `plugins.updater` (pubkey,
   endpoint, `requireSignedVersion`), target `app`/`appimage`/`deb`/`rpm`.
-- `src/services/updaterService.js`, `src/hooks/useUpdater.jsx` — logica client.
-- `src/components/Update/*` — prompt, progress e voce «Aggiornamenti» nel profilo.
-- `scripts/build-update-manifest.mjs` — genera `latest.json`.
+- `src/services/updaterService.js` (`canSelfUpdate`, `readBundleType`), `src/hooks/useUpdater.jsx` — logica client.
+- `src/components/Update/*` — prompt, progress, voce «Aggiornamenti» e avviso per i pacchetti di sistema.
+- `scripts/build-update-manifest.mjs` — genera `latest.json` (Linux solo AppImage).
 - `scripts/bump-version.mjs` — incrementa il patch di versione (package.json, lockfile, Cargo.toml).
 - `.github/workflows/bump-version.yml` — bump automatico a ogni push su `main`.
-- `.github/workflows/desktop.yml` — firma in build e pubblicazione manifest + bundle.
+- `.github/workflows/desktop.yml` — firma in build, job `linux-appimage`, manifest + bundle.
 
 ## Rigenerare le chiavi (solo se necessario)
 

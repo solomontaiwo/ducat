@@ -179,7 +179,7 @@ jobs:
         run: npm ci
 
       - name: Build Ubuntu package
-        run: npm run tauri -- build --target x86_64-unknown-linux-gnu --bundles deb
+        run: npm run tauri -- build --target x86_64-unknown-linux-gnu --bundles deb --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Check Ubuntu installation
         shell: bash
@@ -196,7 +196,6 @@ jobs:
           name: soldi-sotto-linux-x64-${{ github.sha }}
           path: |
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
-            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb.sig
           if-no-files-found: error
           retention-days: 30
 
@@ -234,7 +233,7 @@ jobs:
         run: npm ci
 
       - name: Build Fedora package
-        run: npm run tauri -- build --target x86_64-unknown-linux-gnu --bundles rpm
+        run: npm run tauri -- build --target x86_64-unknown-linux-gnu --bundles rpm --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Check Fedora installation
         run: |
@@ -324,10 +323,74 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  linux-appimage:
+    name: Linux x64 AppImage
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
+    runs-on: ubuntu-22.04
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION }}
+      VITE_DESKTOP_WEB_URL: ${{ vars.VITE_DESKTOP_WEB_URL }}
+      VITE_APP_VERSION: ${{ github.sha }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential ca-certificates curl wget file git tar gzip libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Rust
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Verify public Supabase configuration
+        run: |
+          node -e 'if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_PUBLISHABLE_KEY) { console.error("Missing Supabase build configuration"); process.exit(1) }'
+          node -e 'const value = process.env.VITE_DESKTOP_WEB_URL; if (value) { const url = new URL(value); if (url.protocol !== "https:" || !url.pathname.endsWith("/")) throw new Error("Desktop web URL must be HTTPS and end with a slash"); }'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build AppImage
+        run: npm run tauri -- build --target x86_64-unknown-linux-gnu --bundles appimage
+
+      - name: Check updater artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle=src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage
+          test -n "$(find "$bundle" -maxdepth 1 -name '*.AppImage' -print -quit)"
+          test -n "$(find "$bundle" -maxdepth 1 -name '*.AppImage.tar.gz' -print -quit)"
+          test -n "$(find "$bundle" -maxdepth 1 -name '*.AppImage.tar.gz.sig' -print -quit)"
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: soldi-sotto-linux-appimage-${{ github.sha }}
+          path: |
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage.tar.gz
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage.tar.gz.sig
+          if-no-files-found: error
+          retention-days: 30
+
   release:
     name: Publish desktop release
     if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
-    needs: [desktop, ubuntu-package, fedora-package, arch-package]
+    needs: [desktop, ubuntu-package, fedora-package, arch-package, linux-appimage]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -378,6 +441,7 @@ jobs:
           copy_one linux-x64 '*.deb' ubuntu-x64.deb
           copy_one fedora-x64 '*.rpm' fedora-x64.rpm
           copy_one arch-x64 '*.pkg.tar.zst' arch-x64.pkg.tar.zst
+          copy_one linux-appimage '*.AppImage' linux-x86_64.AppImage
           printf '%s\n' "$version" > "$RUNNER_TEMP/soldi-sotto-release-version"
 
       - name: Build update manifest
@@ -422,6 +486,7 @@ jobs:
             printf 'Desktop build for version `%s` · commit `%s`.\n\n' "$version" "$COMMIT_SHA"
             printf 'Choose the installer for your operating system and architecture. '
             printf 'The macOS and Windows installers are not signed or notarized.\n'
+            printf 'On Linux, the AppImage supports built-in updates; .deb, .rpm and pacman packages are updated with the package manager.\n'
           } > "$notes"
           options=(--draft)
           if [[ "$SOURCE_REF" != "refs/heads/$DEFAULT_BRANCH" && "$SOURCE_REF" != refs/tags/* ]]; then

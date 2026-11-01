@@ -10,6 +10,27 @@
 export const isDesktopRuntime = () => import.meta.env.MODE === "desktop";
 
 /**
+ * Bundle types whose runtime can install an update itself. On Linux this is
+ * AppImage only: deb, rpm and pacman packages are owned by the system package
+ * manager, so the updater must not try to replace their binaries.
+ */
+const SELF_UPDATE_BUNDLES = new Set(["appimage", "app", "nsis"]);
+
+export const canSelfUpdate = (bundleType) => SELF_UPDATE_BUNDLES.has(bundleType);
+
+/** The bundle type reported by the running desktop app (null in the web app). */
+export const readBundleType = async () => {
+  if (!isDesktopRuntime()) return null;
+  try {
+    const { getBundleType } = await import("@tauri-apps/api/app");
+    return await getBundleType();
+  } catch {
+    // Older runtimes without the command are treated as not self-updatable.
+    return null;
+  }
+};
+
+/**
  * Checks the configured `plugins.updater.endpoints` for a newer version.
  * Resolves to the raw `Update` object when an update is available, otherwise
  * `null` (up to date) — and `null` in the web runtime.

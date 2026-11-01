@@ -6,9 +6,11 @@ import { Button } from "../ui/button";
 import { InlineSegmented } from "../Profile/SettingsList";
 import { APP_VERSION } from "../../utils/appVersion";
 import { readUpdaterSettings, writeUpdaterSettings } from "../../utils/updaterSettings";
+import { openExternal } from "../../utils/openExternal.js";
 import { cn } from "../../lib/utils.js";
 
 const RELEASES_API = "https://api.github.com/repos/solomontaiwo/soldi-sotto/releases?per_page=8";
+const RELEASES_URL = "https://github.com/solomontaiwo/soldi-sotto/releases/latest";
 
 const formatDate = (value, language) => {
   if (!value) return "";
@@ -41,13 +43,53 @@ const UpdatesPage = () => {
     writeUpdaterSettings(next);
   };
 
-  if (!updater?.supported) {
+  const versionBadge = (
+    <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-foreground">v{APP_VERSION}</span>
+  );
+
+  if (!updater || updater.detectingSupport) {
+    return (
+      <div className="page-shell">
+        <header className="mobile-glass-header flex items-center justify-between gap-2">
+          <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("updater.title")}</h1>
+          {versionBadge}
+        </header>
+        <section className="surface p-6 text-sm text-muted-foreground" role="status">{t("common.loadingPage")}</section>
+      </div>
+    );
+  }
+
+  if (!updater.desktop) {
     return (
       <div className="page-shell">
         <header className="mobile-glass-header flex items-center gap-2">
           <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("updater.title")}</h1>
         </header>
         <section className="surface p-6 text-sm text-muted-foreground">{t("updates.desktopOnly")}</section>
+      </div>
+    );
+  }
+
+  // deb/rpm/pacman installs are updated by the system package manager: the
+  // Tauri updater only works for AppImage on Linux and must not be offered.
+  if (!updater.supported) {
+    return (
+      <div className="page-shell">
+        <header className="mobile-glass-header flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("updater.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("updates.subtitle")}</p>
+          </div>
+          {versionBadge}
+        </header>
+        <section className="surface space-y-3 p-5 sm:p-6">
+          <h2 className="text-lg font-bold">{t("updates.managedTitle")}</h2>
+          <p className="text-sm text-muted-foreground">{t("updates.managedByPackageManager")}</p>
+          <p className="text-sm text-muted-foreground">{t("updates.appImageHint")}</p>
+          <Button onClick={() => openExternal(RELEASES_URL)}>
+            <FiDownload className="h-4 w-4" aria-hidden="true" /> {t("updates.openReleases")}
+          </Button>
+        </section>
       </div>
     );
   }

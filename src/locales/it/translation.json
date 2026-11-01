@@ -806,7 +806,8 @@
     "downloadedBody": "Riavvia l'app per completare l'installazione.",
     "restart": "Riavvia ora",
     "error": "Aggiornamento non riuscito",
-    "retry": "Riprova"
+    "retry": "Riprova",
+    "managedByPackageManagerShort": "Aggiorna con il gestore pacchetti"
   },
   "updates": {
     "desktopOnly": "Gli aggiornamenti automatici sono disponibili solo nell'app desktop.",
@@ -823,6 +824,10 @@
     "frequencyWeekly": "Ogni settimana",
     "historyTitle": "Storico aggiornamenti",
     "historyError": "Impossibile caricare lo storico degli aggiornamenti.",
-    "historyEmpty": "Nessun aggiornamento pubblicato."
+    "historyEmpty": "Nessun aggiornamento pubblicato.",
+    "managedTitle": "Aggiornamenti gestiti dal sistema",
+    "managedByPackageManager": "Questa installazione (pacchetto .deb, .rpm o pacman) non può aggiornarsi da sola: scarica la nuova versione e installala con il gestore pacchetti.",
+    "appImageHint": "Se preferisci gli aggiornamenti automatici, usa la versione AppImage.",
+    "openReleases": "Apri la pagina delle release"
   }
 }
