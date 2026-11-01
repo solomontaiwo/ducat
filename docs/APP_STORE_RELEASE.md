@@ -159,47 +159,41 @@ Non coperte:
 
 ## 8. Dominio e hosting
 
-**Raccomandazione: comprare `ducatapp.com` e servirlo da lì.** `ducat.app` è
-già registrato (parcheggiato su Namecheap), `ducatapp.com` risulta libero.
+Il dominio è **`ducatapp.com`**, registrato su Cloudflare Registrar: i
+nameserver sono già quelli Cloudflare, non serve cambiare nulla dal registrar.
 
-Non è branding fine a sé stesso: senza un dominio tuo alcune cose non
-funzionano.
-
-| Serve per | GitHub Pages (`*.github.io`) | Dominio |
+| Serve per | GitHub Pages (`*.github.io`) | `ducatapp.com` (Cloudflare Pages) |
 |---|---|---|
-| Universal Links (AASA) | il file `.well-known` viene servito come `application/octet-stream`: Apple si aspetta `application/json` | header impostabili con `public/_headers` (Cloudflare Pages, Netlify) |
-| URL privacy e supporto in App Store Connect | `solomontaiwo.github.io/ducat/privacy` | `ducatapp.com/privacy` |
-| Email di conferma e reset | dominio Supabase | `noreply@ducatapp.com`, migliore deliverability |
-| Fiducia del revisore | repo personale | prodotto |
-| Costo | 0 € | ~12 €/anno + hosting gratuito |
+| Universal Links (AASA) | `.well-known` servito come `application/octet-stream`: Apple vuole `application/json` | `public/_headers` imposta l'header |
+| Rotte profonde (`/privacy`, `/reset-password`) | 404 con fallback `404.html` | `public/_redirects` risponde 200 |
+| URL in App Store Connect | repo personale | dominio del prodotto |
+| Email di conferma e reset | dominio Supabase | `support@ducatapp.com` (Email Routing) |
 
-### Attivare il dominio (una variabile)
+### Cloudflare Pages (percorso consigliato)
 
-1. Compra il dominio e configura i DNS verso l'hosting (GitHub Pages: record
-   `A`/`CNAME`; Cloudflare Pages: nameserver Cloudflare).
-2. Su GitHub → **Settings → Secrets and variables → Actions → Variables** crea
-   `SITE_DOMAIN=ducatapp.com`.
-3. Al push successivo il deploy:
-   - scrive `dist/CNAME`,
-   - costruisce con `VITE_BASE_PATH=/`,
-   - imposta `VITE_DESKTOP_WEB_URL=https://ducatapp.com/` per i link nelle
-     email,
-   - GitHub Pages reindirizza `solomontaiwo.github.io/ducat/` al dominio.
+1. **Workers & Pages → Create → Pages → Connect to Git**, repository
+   `solomontaiwo/ducat`, branch `main`.
+2. Build: `npm ci && npm run build`, output `dist`, root `/`, variabile
+   `NODE_VERSION=24`.
+3. Variabili d'ambiente del progetto:
+   `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`,
+   `VITE_BASE_PATH=/`, `VITE_DESKTOP_WEB_URL=https://ducatapp.com/`,
+   `VITE_ENABLE_ACCOUNT_DELETION=true`, `APPLE_TEAM_ID=<Team ID>`,
+   `AASA_REQUIRE_TEAM_ID=1`.
+4. **Custom domains → Set up a domain**: `ducatapp.com` e `www.ducatapp.com`.
+   Cloudflare crea i record DNS e il certificato; non aggiungere record a mano.
+5. Verifica: `curl -I https://ducatapp.com/.well-known/apple-app-site-association`
+   deve rispondere `200` con `content-type: application/json`.
+6. Supabase → Authentication → URL Configuration: Site URL
+   `https://ducatapp.com/` e Redirect URLs `https://ducatapp.com/**`,
+   `https://solomontaiwo.github.io/ducat/**`, `http://localhost:5173/**`.
 
-Nessun `CNAME` è committato: finché `SITE_DOMAIN` non esiste, il sito resta
-raggiungibile all'URL attuale.
+Il deploy GitHub Pages resta come specchio su `/ducat/` e non rivendica il
+dominio: non impostare `SITE_DOMAIN`.
 
-### Dopo l'attivazione
+### Alternativa: GitHub Pages sul dominio
 
-4. Secret `APPLE_TEAM_ID=<Team ID>`: `scripts/generate-aasa.mjs` scrive
-   `.well-known/apple-app-site-association` nel sito.
-5. Supabase → Authentication → URL Configuration: Site URL e Redirect URLs a
-   `https://ducatapp.com/**`.
-6. In Xcode l'entitlement è già `applinks:ducatapp.com` (e `www`); se compri un
-   altro dominio aggiorna `ios/App/App/App.entitlements`.
-7. Verifica `https://ducatapp.com/.well-known/apple-app-site-association`:
-   deve rispondere `application/json`, senza redirect.
-
-Se resti su GitHub Pages senza dominio, l'app funziona e i link email puntano
-al sito, ma i Universal Links non sono affidabili e la conferma torna a passare
-dal browser.
+Se in futuro vuoi servire il dominio da GitHub Pages, imposta la variabile di
+repository `SITE_DOMAIN=ducatapp.com`: il deploy scrive `CNAME`, costruisce con
+base `/` e GitHub reindirizza `github.io/ducat/` al dominio. In quel caso il
+progetto Cloudflare Pages va rimosso per evitare due host sullo stesso dominio.

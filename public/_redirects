@@ -1,0 +1,4 @@
+# Cloudflare Pages: serve the SPA for every route with a 200 status, so deep
+# links such as /privacy, /reset-password and /verify-email work on first load.
+# GitHub Pages ignores this file (it falls back to 404.html).
+/*    /index.html    200
