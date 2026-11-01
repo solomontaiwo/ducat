@@ -28,7 +28,7 @@ endpoint configurati, scarica l'aggiornamento firmato e si reinstalla, poi chied
 |---|---|---|
 | macOS aarch64 / x86_64 | `.app.tar.gz` (target `app`) | `.dmg` |
 | Windows x64 / arm64 | NSIS `-setup.exe` (target `nsis`) | idem |
-| Linux x86_64 | `.AppImage.tar.gz` (target `appimage`) | `.AppImage` |
+| Linux x86_64 | `.AppImage` + `.AppImage.sig` (target `appimage`) | idem |
 
 Su Linux l'updater Tauri funziona **solo con l'AppImage**: il processo sostituisce il file
 AppImage da cui l'app è in esecuzione. I pacchetti `.deb`, `.rpm` e pacman sono di proprietà
@@ -41,8 +41,8 @@ Il client rileva il tipo di bundle con `getBundleType()` e:
   spiega di scaricare il nuovo pacchetto dalla release (con pulsante che apre la pagina).
 
 Per questo `latest.json` non deve mai puntare a `.deb`/`.rpm`: la CI costruisce una AppImage
-dedicata e `scripts/build-update-manifest.mjs` usa solo `*.AppImage.tar.gz` per
-`linux-x86_64`.
+dedicata e `scripts/build-update-manifest.mjs` usa solo l'AppImage (e la sua firma
+`.AppImage.sig`) per `linux-x86_64`.
 
 ## Firma
 

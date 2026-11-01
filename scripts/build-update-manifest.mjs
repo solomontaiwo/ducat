@@ -79,9 +79,9 @@ const PLATFORMS = [
     // The Linux updater only supports AppImage. deb/rpm/pacman packages are
     // managed by the system package manager and must never appear here.
     artifact: "linux-appimage",
-    bundleGlob: "**/*.AppImage.tar.gz",
-    sigGlob: "**/*.AppImage.tar.gz.sig",
-    assetName: (v) => `Soldi-Sotto-${v}-linux-x86_64.AppImage.tar.gz`,
+    bundleGlob: "**/*.AppImage",
+    sigGlob: "**/*.AppImage.sig",
+    assetName: (v) => `Soldi-Sotto-${v}-linux-x86_64.AppImage`,
   },
 ];
 
