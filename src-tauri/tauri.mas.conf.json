@@ -1,0 +1,24 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "bundle": {
+    "targets": [
+      "app"
+    ],
+    "createUpdaterArtifacts": false,
+    "category": "Finance",
+    "copyright": "© 2026 Soldi Sotto",
+    "shortDescription": "Personal finance tracker",
+    "longDescription": "Track income and expenses, set monthly budgets and see where your money goes. Data syncs across devices through your account; demo mode works offline.",
+    "macOS": {
+      "entitlements": "entitlements/AppStore.entitlements",
+      "infoPlist": "Info.mas.plist",
+      "hardenedRuntime": true,
+      "minimumSystemVersion": "11.0"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": []
+    }
+  }
+}

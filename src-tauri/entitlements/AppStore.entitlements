@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Mac App Store entitlements.
+
+	  The App Sandbox is mandatory on the store. Everything else is the minimum
+	  the app needs:
+	  - network.client: Supabase over HTTPS and the WebSocket for realtime;
+	  - files.user-selected.read-write: the save dialog writes the PDF, CSV and
+	    JSON exports to a path the user picked.
+
+	  Missing entitlements show up as "operation not permitted" only in the
+	  sandboxed build, so check exports before every submission.
+	-->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+</dict>
+</plist>
