@@ -6,6 +6,12 @@ Ducat is a personal finance app for the **web, desktop** (macOS, Windows, Linux)
 The GitHub Pages build at `solomontaiwo.github.io/ducat/` is a mirror.
 **Source:** [solomontaiwo/ducat](https://github.com/solomontaiwo/ducat).
 
+### The name
+
+The ducat is the gold coin Venice first minted in 1284, and for centuries it
+was the currency of Mediterranean trade. The name comes from Latin *ducatus*,
+"duchy": the duke's coin, made to travel and to be looked after.
+
 ## Features
 
 - **Accounts and login** — email/password accounts with password reset and email change, plus a local demo mode that needs no backend.

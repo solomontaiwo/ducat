@@ -230,6 +230,10 @@
       "title": "Your first movement takes 3 seconds.",
       "demo": "or try the demo →"
     },
+    "name": {
+      "title": "Why Ducat",
+      "body": "The ducat is the gold coin Venice first minted in 1284, and for centuries it was the currency of Mediterranean trade. The name comes from Latin ducatus, “duchy”: the duke’s coin, made to travel and to be looked after."
+    },
     "footer": {
       "privacy": "Privacy",
       "terms": "Terms of use"

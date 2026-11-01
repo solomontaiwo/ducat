@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
-import { FiCalendar, FiCheck, FiFileText, FiMinus, FiMoon, FiSearch } from "react-icons/fi";
+import { FiAward, FiCalendar, FiCheck, FiFileText, FiMinus, FiMoon, FiSearch } from "react-icons/fi";
 import { Link, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
@@ -201,6 +201,26 @@ const LandingPage = () => {
                 {t("landing.final.demo")}
               </button>
             </div>
+          </div>
+        </section>
+
+        <section
+          className="surface flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:gap-6 sm:p-8"
+          aria-labelledby="name-title"
+        >
+          <span
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground"
+            aria-hidden="true"
+          >
+            <FiAward className="h-5 w-5" />
+          </span>
+          <div className="space-y-2">
+            <h2 id="name-title" className="text-xl font-extrabold sm:text-2xl">
+              {t("landing.name.title")}
+            </h2>
+            <p className="max-w-3xl text-[15px] leading-relaxed text-muted-foreground">
+              {t("landing.name.body")}
+            </p>
           </div>
         </section>
       </main>
