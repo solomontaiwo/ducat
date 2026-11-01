@@ -169,24 +169,43 @@ nameserver sono già quelli Cloudflare, non serve cambiare nulla dal registrar.
 | URL in App Store Connect | repo personale | dominio del prodotto |
 | Email di conferma e reset | dominio Supabase | `support@ducatapp.com` (Email Routing) |
 
-### Cloudflare Pages (percorso consigliato)
+### Cloudflare Workers con static assets (percorso consigliato)
 
-1. **Workers & Pages → Create → Pages → Connect to Git**, repository
-   `solomontaiwo/ducat`, branch `main`.
-2. Build: `npm ci && npm run build`, output `dist`, root `/`, variabile
-   `NODE_VERSION=24`.
-3. Variabili d'ambiente del progetto:
-   `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`,
+Il progetto si crea da **Workers & Pages → Create → Workers → Connect to Git**:
+è il flusso che Cloudflare propone oggi al posto di Pages, e serve gli asset
+statici con le stesse regole (`_headers`, dominio custom, TLS).
+
+1. Repository `solomontaiwo/ducat`, branch `main`, nome progetto `ducat`.
+2. Comandi:
+   - Build: `npm ci && npm run build`
+   - Deploy: `npx wrangler deploy`
+   - Preview: `npx wrangler versions upload`
+3. `wrangler.jsonc` nella root dice a Wrangler cosa pubblicare:
+   `assets.directory = ./dist` e
+   `not_found_handling = single-page-application`. Così le rotte profonde
+   (`/privacy`, `/reset-password`) rispondono 200 e i file veri restano serviti.
+   **Non** usare `_redirects` con `/* /index.html 200`: su Workers i redirect
+   hanno priorità anche sui file e romperebbero gli asset.
+4. Variabili di build (Settings → Build → Variables and secrets), per
+   Production e Preview:
+   `NODE_VERSION=24`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`,
    `VITE_BASE_PATH=/`, `VITE_DESKTOP_WEB_URL=https://ducatapp.com/`,
    `VITE_ENABLE_ACCOUNT_DELETION=true`, `APPLE_TEAM_ID=<Team ID>`,
-   `AASA_REQUIRE_TEAM_ID=1`.
-4. **Custom domains → Set up a domain**: `ducatapp.com` e `www.ducatapp.com`.
-   Cloudflare crea i record DNS e il certificato; non aggiungere record a mano.
-5. Verifica: `curl -I https://ducatapp.com/.well-known/apple-app-site-association`
-   deve rispondere `200` con `content-type: application/json`.
-6. Supabase → Authentication → URL Configuration: Site URL
-   `https://ducatapp.com/` e Redirect URLs `https://ducatapp.com/**`,
+   `AASA_REQUIRE_TEAM_ID=1` (o `0` finché non hai il Team ID).
+   Senza le due `VITE_SUPABASE_*` il build passa ma l'app mostra un errore.
+5. Settings → **Domains & Routes** → Add custom domain: `ducatapp.com` e
+   `www.ducatapp.com`. Cloudflare crea record e certificato.
+6. Verifica:
+   `curl -I https://ducatapp.com/.well-known/apple-app-site-association`
+   → `200` con `content-type: application/json`;
+   `curl -I https://ducatapp.com/privacy` → `200`.
+7. Supabase → Authentication → URL Configuration: Site URL
+   `https://ducatapp.com/`; Redirect URLs `https://ducatapp.com/**`,
    `https://solomontaiwo.github.io/ducat/**`, `http://localhost:5173/**`.
+
+I redirect di www si gestiscono con una Redirect Rule della zona, non nel repo:
+`www.ducatapp.com` → `https://ducatapp.com` 301, con eccezione per
+`/.well-known/*` così la AASA resta raggiungibile anche su www.
 
 Il deploy GitHub Pages resta come specchio su `/ducat/` e non rivendica il
 dominio: non impostare `SITE_DOMAIN`.

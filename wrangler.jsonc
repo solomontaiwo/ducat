@@ -1,0 +1,13 @@
+{
+  // Cloudflare Workers with static assets: the Vite build in ./dist is served
+  // as a static site, with no Worker script in front.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ducat",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    // Serve the SPA for unmatched routes with a 200 (so /privacy and
+    // /reset-password work on first load) while still serving real files.
+    "not_found_handling": "single-page-application"
+  }
+}
