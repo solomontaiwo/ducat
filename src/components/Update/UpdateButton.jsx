@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { FiRefreshCw } from "react-icons/fi";
@@ -15,6 +15,24 @@ const UpdateButton = ({ className }) => {
   const { t } = useTranslation();
   const updater = useUpdaterContext();
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  // Close the popover on an outside click or Escape.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = (event) => {
+      if (wrapRef.current && !wrapRef.current.contains(event.target)) setOpen(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   if (!updater?.supported) return null;
 
@@ -37,7 +55,7 @@ const UpdateButton = ({ className }) => {
     .filter(Boolean);
 
   return (
-    <div className={cn("relative", className)}>
+    <div ref={wrapRef} className={cn("relative", className)}>
       <button
         type="button"
         onClick={toggle}
@@ -54,7 +72,7 @@ const UpdateButton = ({ className }) => {
       </button>
 
       {open && (
-        <div className="absolute left-full top-0 z-50 ml-2 w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl">
+        <div className="absolute bottom-full left-0 z-50 mb-2 w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl">
           {status === "checking" && (
             <div className="px-4 py-7 text-center text-sm text-muted-foreground">{t("updater.checking")}</div>
           )}
