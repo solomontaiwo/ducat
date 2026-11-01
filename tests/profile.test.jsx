@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => {
   return {
     transactions: [
       tx("s1", "income", "stipendio", 200000, 1), tx("s2", "income", "stipendio", 200000, 2), tx("s3", "income", "stipendio", 200000, 3),
-      tx("e1", "expense", "supermercato", 5000, 0, 3),
+      tx("e1", "expense", "supermercato", 5000, 0, 1),
     ],
     preferences: {
       monthStartDay: 1, defaultType: "last", defaultCategory: null, quickAmounts: [5, 10, 20, 50, 100],
