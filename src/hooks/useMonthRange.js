@@ -8,12 +8,16 @@ import { cycleMonthFor, cycleRange } from "../utils/monthCycle.js";
  * user's chosen start day (payday), so October may run 27 Sep – 26 Oct.
  * Navigation stops at the current month: there is nothing to show ahead.
  */
-export const useMonthRange = () => {
+export const useMonthRange = (initialMonth = null) => {
   const { preferences } = usePlanning();
   const startDay = preferences?.monthStartDay || 1;
   const currentMonth = cycleMonthFor(new Date(), startDay);
   // null = follow the current cycle, so changing the start day moves with it.
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState(() => (
+    initialMonth && !isSameMonth(initialMonth, currentMonth) && initialMonth < currentMonth
+      ? initialMonth
+      : null
+  ));
   const month = selected || currentMonth;
 
   const goToPrevious = useCallback(() => setSelected((value) => addMonths(value || cycleMonthFor(new Date(), startDay), -1)), [startDay]);

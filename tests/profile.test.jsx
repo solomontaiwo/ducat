@@ -24,6 +24,8 @@ const mocks = vi.hoisted(() => {
     refreshProfileName: vi.fn(async () => "Ada"),
     toggleTheme: vi.fn(),
     changeLanguage: vi.fn(),
+    openExternal: vi.fn(async () => {}),
+    toggleHideAmounts: vi.fn(),
   };
 });
 
@@ -67,6 +69,18 @@ vi.mock("../src/router/RouterProvider", () => ({
 vi.mock("../src/services/profileService.js", () => ({ saveProfileName: mocks.saveProfileName }));
 vi.mock("../src/services/accountService.js", () => ({
   deleteCurrentAccount: vi.fn(), requestEmailChange: vi.fn(async () => {}), requestPasswordReset: vi.fn(async () => {}),
+}));
+vi.mock("../src/utils/openExternal.js", () => ({ openExternal: mocks.openExternal }));
+vi.mock("../src/context/PrivacyProvider.jsx", () => ({
+  usePrivacy: () => ({
+    hideAmounts: false,
+    toggleHideAmounts: mocks.toggleHideAmounts,
+    biometricAvailable: false,
+    biometricType: "none",
+    biometricEnabled: false,
+    enableBiometricLock: vi.fn(async () => true),
+    disableBiometricLock: vi.fn(async () => true),
+  }),
 }));
 
 import Profile from "../src/components/Profile/Profile.jsx";
@@ -161,5 +175,14 @@ describe("Profile", () => {
     fireEvent.change(within(sheet).getByLabelText("profilePage.name.label"), { target: { value: "Ada Lovelace" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "save" }));
     await waitFor(() => expect(mocks.notification.error).toHaveBeenCalledWith("profile.usernamePermissionError"));
+  });
+
+  it("toggles privacy mode and opens a feedback email", async () => {
+    render(<Profile />);
+    fireEvent.click(screen.getByRole("switch", { name: "privacy.modeTitle" }));
+    expect(mocks.toggleHideAmounts).toHaveBeenCalledOnce();
+
+    fireEvent.click(screen.getByTestId("row-feedback"));
+    await waitFor(() => expect(mocks.openExternal).toHaveBeenCalledWith(expect.stringMatching(/^mailto:/)));
   });
 });

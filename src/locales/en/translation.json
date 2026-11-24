@@ -357,7 +357,8 @@
         "income": "Income"
       },
       "category": "Category",
-      "allTime": "All time"
+      "allTime": "All time",
+      "reset": "Clear filters"
     },
     "empty": {
       "title": "No transactions found",
@@ -641,7 +642,13 @@
     "autoRegistered_other": "Recorded {{count}} recurring movements",
     "back": "Back",
     "deleteConfirmTitle": "Delete this recurring rule?",
-    "deleteConfirmDescription": "The rule will be removed. Transactions already recorded stay in your data."
+    "deleteConfirmDescription": "The rule will be removed. Transactions already recorded stay in your data.",
+    "edit": "Edit recurring",
+    "editTitle": "Edit recurring",
+    "editHint": "Changes apply to future movements; already recorded ones stay as they are.",
+    "editDescriptionRequired": "Enter a description",
+    "frequencyChangeUnavailable": "Frequency cannot be changed for this rule.",
+    "updated": "Recurring rule updated"
   },
   "budgets": {
     "title": "Monthly budgets",
@@ -765,6 +772,12 @@
       "step1": "Tap the Share button at the bottom",
       "step2": "Choose “Add to Home Screen”",
       "step3": "Confirm with “Add”"
+    },
+    "feedback": {
+      "title": "Send feedback",
+      "summary": "Report a bug or suggest an idea",
+      "subject": "Feedback",
+      "bodyPrompt": "Tell us what happened or share your idea:"
     }
   },
   "preferences": {
@@ -848,6 +861,57 @@
   },
   "offline": {
     "title": "You are offline.",
-    "body": "You are seeing data saved on this device. Saving changes and syncing need a connection."
+    "body": "You can still add new transactions: they will sync automatically when you are back online.",
+    "bodyWithPending_one": "1 transaction waiting to sync.",
+    "bodyWithPending_other": "{{count}} transactions waiting to sync.",
+    "queuedSuccess": "Saved on this device. It will sync once you are back online.",
+    "queueFull": "Too many queued offline transactions. Reconnect to sync them.",
+    "syncing_one": "Syncing 1 transaction…",
+    "syncing_other": "Syncing {{count}} transactions…",
+    "pendingReady_one": "1 offline transaction ready to sync.",
+    "pendingReady_other": "{{count}} offline transactions ready to sync.",
+    "syncNow": "Sync now",
+    "synced_one": "Synced 1 offline transaction.",
+    "synced_other": "Synced {{count}} offline transactions.",
+    "pendingBadge": "Queued"
+  },
+  "privacy": {
+    "modeTitle": "Hide amounts",
+    "modeSummary": "Blur balances and numbers in public",
+    "hideAmounts": "Hide amounts",
+    "showAmounts": "Show amounts",
+    "biometric": {
+      "title": "Lock with {{method}}",
+      "summary": "Require unlock when opening the app",
+      "faceId": "Face ID",
+      "touchId": "Touch ID",
+      "device": "passcode",
+      "promptReason": "Unlock {{app}}",
+      "lockedTitle": "{{app}} is locked",
+      "lockedSubtitle": "Verify your identity to view balances and transactions.",
+      "unlockWith": "Unlock with {{method}}",
+      "unlocking": "Verifying…",
+      "enabled": "{{method}} lock enabled",
+      "disabled": "{{method}} lock disabled"
+    }
+  },
+  "mobileWelcome": {
+    "highlights": "Key highlights",
+    "next": "Next",
+    "tryDemo": "Try demo without an account",
+    "slides": {
+      "fast": {
+        "title": "Log in 3 seconds",
+        "body": "Amount and description: Ducat suggests the category from your habits."
+      },
+      "plan": {
+        "title": "Budgets & recurring",
+        "body": "Payday months, automatic fixed bills and clear limits before you overspend."
+      },
+      "private": {
+        "title": "Private, everywhere",
+        "body": "No ads, Face ID, privacy mode and offline transaction entry."
+      }
+    }
   }
 }

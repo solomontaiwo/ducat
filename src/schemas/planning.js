@@ -22,7 +22,16 @@ export const recurringInputSchema = z.object({
 });
 
 export const recurringPatchSchema = recurringInputSchema
-  .pick({ nextIndex: true, paused: true, mode: true, amountMinor: true })
+  .pick({
+    nextIndex: true,
+    paused: true,
+    mode: true,
+    amountMinor: true,
+    description: true,
+    category: true,
+    frequency: true,
+    anchorDateKey: true,
+  })
   .partial();
 
 /** Category -> monthly limit in cents. Zero or missing means "no budget". */

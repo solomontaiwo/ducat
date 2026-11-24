@@ -9,13 +9,12 @@ import { NotificationProvider } from "./utils/notificationUtils";
 import { AuthProvider } from "./context/AuthProvider";
 import UnifiedTransactionProvider from "./context/UnifiedTransactionProvider";
 import PlanningProvider from "./context/PlanningProvider";
+import PrivacyProvider from "./context/PrivacyProvider";
 import { ensureLanguage } from "./utils/i18n.jsx";
 import './utils/installPrompt';
 import ErrorBoundary from "./components/ErrorBoundary";
 import { installGlobalErrorReporting } from "./utils/errorReporting";
-import { startNativeShell } from "./platform/native";
-import { installDeepLinkHandler } from "./platform/deepLinks";
-import { isWeb } from "./platform/index.js";
+import { isMobile, isWeb } from "./platform/index.js";
 
 installGlobalErrorReporting();
 
@@ -39,7 +38,9 @@ ensureLanguage().finally(() => {
             <AuthProvider>
               <UnifiedTransactionProvider>
                 <PlanningProvider>
-                  <App />
+                  <PrivacyProvider>
+                    <App />
+                  </PrivacyProvider>
                 </PlanningProvider>
               </UnifiedTransactionProvider>
             </AuthProvider>
@@ -49,16 +50,27 @@ ensureLanguage().finally(() => {
     </ErrorBoundary>
   );
 
-  // iOS: theme-aware status bar, splash hand-off and paused auth refresh.
-  // No-op on the web and on the desktop. The Supabase client is loaded on
-  // demand so it stays out of the initial bundle on the web.
-  const withClient = (action) => async () => {
-    const { supabase } = await import("./utils/supabaseClient.js");
-    supabase.auth[action]();
-  };
-  startNativeShell({
-    onActive: withClient("startAutoRefresh"),
-    onInactive: withClient("stopAutoRefresh"),
-  });
-  installDeepLinkHandler();
+  // iOS: theme-aware status bar, splash hand-off, Universal Links and paused auth refresh.
+  // Loaded only in the mobile shell so web and desktop bundles stay lean.
+  if (isMobile()) {
+    const withClient = (action) => async () => {
+      const { supabase } = await import("./utils/supabaseClient.js");
+      supabase.auth[action]();
+    };
+    Promise.all([import("./platform/native"), import("./platform/deepLinks")]).then(
+      ([{ startNativeShell }, { installDeepLinkHandler }]) => {
+        startNativeShell({
+          onActive: () => {
+            window.dispatchEvent(new Event("ducat:app-active"));
+            return withClient("startAutoRefresh")();
+          },
+          onInactive: () => {
+            window.dispatchEvent(new Event("ducat:app-inactive"));
+            return withClient("stopAutoRefresh")();
+          },
+        });
+        installDeepLinkHandler();
+      }
+    );
+  }
 });

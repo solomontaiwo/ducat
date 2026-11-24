@@ -28,10 +28,10 @@ import { writeLocalValue } from "../../utils/storage.js";
 import { cn } from "../../lib/utils.js";
 import { handleRadioKeyDown } from "../../utils/radioGroup.js";
 import TransactionRow from "../Transaction/TransactionRow.jsx";
-import { Link } from "../../router/RouterProvider";
+import { Link, useOptionalNavigate } from "../../router/RouterProvider";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
-import { FiDownload } from "react-icons/fi";
+import { FiChevronRight, FiDownload } from "react-icons/fi";
 
 const PERIODS = ["month", "lastMonth", "last3Months", "year", "custom"];
 
@@ -47,13 +47,13 @@ const DELTA_TONE = {
   neutral: "text-muted-foreground",
 };
 
-const KpiTile = ({ label, value, note, tone, delta }) => {
+const KpiTile = ({ label, value, note, tone, delta, maskNote = false }) => {
   const [showDetail, setShowDetail] = useState(false);
   return (
     <div className="surface flex flex-col gap-1 p-4 sm:p-5">
       <span className="text-[13px] font-semibold text-muted-foreground">{label}</span>
       <span className={cn("amount text-2xl sm:text-[1.75rem]", tone === "income" && "text-income")}>{value}</span>
-      {note && <span className="text-xs font-medium text-muted-foreground">{note}</span>}
+      {note && <span className="text-xs font-medium text-muted-foreground" data-amount={maskNote ? "true" : undefined}>{note}</span>}
       {delta && (
         <button
           type="button"
@@ -77,6 +77,7 @@ const TransactionAnalytics = () => {
   const { expenseCategories, incomeCategories } = useCategories();
   const { t, i18n } = useTranslation();
   const notification = useNotification();
+  const navigate = useOptionalNavigate();
   const { isDarkMode } = useTheme();
   const [categoryType, setCategoryType] = useState("expense");
   const { budgets, ready: planningReady, preferences } = usePlanning();
@@ -267,6 +268,7 @@ const TransactionAnalytics = () => {
           note={stats.balance >= 0
             ? t("analytics.savedAmount", { amount: formatCurrency(stats.balance) })
             : t("analytics.overspentAmount", { amount: formatCurrency(Math.abs(stats.balance)) })}
+          maskNote
           delta={describeDelta(stats.balance, previousStats.balance, true)}
         />
         <KpiTile
@@ -328,28 +330,44 @@ const TransactionAnalytics = () => {
           </div>
 
           {categoryList.length ? (
-            <ul className="space-y-3.5">
-              {categoryList.map((category) => (
-                <li key={category.category} className="space-y-1.5">
-                  <div className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="flex min-w-0 items-baseline gap-2">
-                      <span className="truncate font-semibold">{category.label}</span>
-                      <CategoryDelta
-                        value={deltasByCategory[category.category]}
-                        higherIsBetter={categoryType === "income"}
-                        label={t("analytics.compare.categoryLabel", { ref: reference })}
-                      />
-                    </span>
-                    <span className="shrink-0 tabular-nums">
-                      <strong className="font-semibold">{formatCurrency(category.amount)}</strong>
-                      <span className="ml-1.5 text-muted-foreground">{Math.round(category.percentage)}%</span>
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full" style={{ width: `${Math.max(category.percentage, 2)}%`, background: category.fill }} />
-                  </div>
-                </li>
-              ))}
+            <ul className="space-y-1.5">
+              {categoryList.map((category) => {
+                const drillParams = new URLSearchParams({ category: category.category, type: categoryType });
+                if (period === "month" || period === "lastMonth") {
+                  drillParams.set("month", format(endDate, "yyyy-MM"));
+                } else {
+                  drillParams.set("allTime", "1");
+                }
+                const openCategory = () => navigate?.(`/transactions?${drillParams.toString()}`);
+                return (
+                  <li key={category.category}>
+                    <button
+                      type="button"
+                      onClick={openCategory}
+                      className="block w-full space-y-1.5 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/60"
+                    >
+                      <div className="flex items-baseline justify-between gap-3 text-sm">
+                        <span className="flex min-w-0 items-baseline gap-2">
+                          <span className="truncate font-semibold">{category.label}</span>
+                          <CategoryDelta
+                            value={deltasByCategory[category.category]}
+                            higherIsBetter={categoryType === "income"}
+                            label={t("analytics.compare.categoryLabel", { ref: reference })}
+                          />
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1.5 tabular-nums">
+                          <strong className="font-semibold" data-amount="true">{formatCurrency(category.amount)}</strong>
+                          <span className="text-muted-foreground">{Math.round(category.percentage)}%</span>
+                          <FiChevronRight className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full" style={{ width: `${Math.max(category.percentage, 2)}%`, background: category.fill }} />
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="py-4 text-sm text-muted-foreground">
@@ -417,6 +435,7 @@ KpiTile.propTypes = {
   note: PropTypes.string,
   tone: PropTypes.string,
   delta: PropTypes.shape({ text: PropTypes.string, tone: PropTypes.string, detail: PropTypes.string }),
+  maskNote: PropTypes.bool,
 };
 
 export default TransactionAnalytics;

@@ -16,6 +16,10 @@ import { useTranslation } from 'react-i18next';
 import { getTransactionAmountMinor, minorToMajor } from "../utils/money.js";
 import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/storage.js";
 
+const OFFLINE_QUEUE_PREFIX = "ducat-offline-queue:";
+const hasStoredOfflineQueue = (userId) => Boolean(userId && readLocalValue(`${OFFLINE_QUEUE_PREFIX}${userId}`));
+const loadOfflineQueue = () => import("../utils/offlineQueue.js");
+
 const EMPTY_PAGE = Object.freeze({ items: [], nextCursor: null, hasMore: false });
 const EMPTY_STATS = Object.freeze({
   totalIncome: 0,
@@ -50,6 +54,9 @@ const INERT_VALUE = Object.freeze({
   seedOnMount: false,
   startDemo: () => false,
   stopDemo: () => {},
+  pendingOfflineCount: 0,
+  syncingOfflineQueue: false,
+  syncOfflineQueue: async () => ({ synced: 0, failed: 0 }),
 });
 
 const UnifiedTransactionContext = createContext({ ...INERT_VALUE, loading: true });
@@ -60,10 +67,23 @@ const DEMO_FLAG_KEY = "ducat-demo-enabled";
 // Wrapper for the signed-in (Supabase) provider
 const AccountTransactionWrapper = ({ children }) => {
   const { currentUser } = useAuth();
-  const { transactions, loading, recentRevision, fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals, getFirstTransactionDate } = useTransactions();
+  const {
+    transactions: serverTransactions,
+    loading,
+    recentRevision: serverRevision,
+    fetchAllTransactions: fetchAllServer,
+    fetchTransactionPage: fetchPageServer,
+    getTotalTransactionCount,
+    getTransactionTotals,
+    getFirstTransactionDate,
+  } = useTransactions();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingTransactions, setPendingTransactions] = useState([]);
+  const [syncingOfflineQueue, setSyncingOfflineQueue] = useState(false);
+  const [queueRevision, setQueueRevision] = useState(0);
   // Several writes can overlap: only the last one finishing turns the flag off.
   const processingRef = useRef(0);
+  const syncingRef = useRef(false);
   const beginProcessing = useCallback(() => {
     processingRef.current += 1;
     setIsProcessing(true);
@@ -75,10 +95,125 @@ const AccountTransactionWrapper = ({ children }) => {
   const notification = useNotification();
   const { t } = useTranslation();
 
-  // Adds a transaction
+  const refreshPending = useCallback(async (uid) => {
+    if (!hasStoredOfflineQueue(uid)) {
+      setPendingTransactions([]);
+      return [];
+    }
+    const { readOfflineQueue, queuedItemToTransaction } = await loadOfflineQueue();
+    const items = readOfflineQueue(uid);
+    const mapped = items.map((item) => queuedItemToTransaction(uid, item));
+    setPendingTransactions(mapped);
+    return items;
+  }, []);
+
+  useEffect(() => {
+    refreshPending(currentUser?.uid);
+  }, [currentUser?.uid, refreshPending]);
+
+  // Merge optimistic pending offline items ahead of server rows, deduplicating by id.
+  const transactions = useMemo(() => {
+    if (!pendingTransactions.length) return serverTransactions;
+    const seen = new Set(serverTransactions.map((item) => item.id));
+    const extras = pendingTransactions.filter((item) => !seen.has(item.id));
+    return extras.length ? [...extras, ...serverTransactions] : serverTransactions;
+  }, [pendingTransactions, serverTransactions]);
+
+  const recentRevision = serverRevision + queueRevision;
+
+  const fetchAllTransactions = useCallback(async (options = {}) => {
+    let remote = [];
+    try {
+      remote = await fetchAllServer(options);
+    } catch (error) {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        remote = serverTransactions;
+      } else {
+        throw error;
+      }
+    }
+    if (!pendingTransactions.length) return remote;
+    const { mergePendingTransactions } = await loadOfflineQueue();
+    return mergePendingTransactions(remote, pendingTransactions, options);
+  }, [fetchAllServer, pendingTransactions, serverTransactions]);
+
+  const fetchTransactionPage = useCallback(async (options = {}) => {
+    const page = await fetchPageServer(options);
+    if (options.cursor || !pendingTransactions.length) return page;
+    const { mergePendingTransactions } = await loadOfflineQueue();
+    return {
+      ...page,
+      items: mergePendingTransactions(page.items, pendingTransactions, options),
+    };
+  }, [fetchPageServer, pendingTransactions]);
+
+  const syncOfflineQueue = useCallback(async () => {
+    if (!currentUser || syncingRef.current || (typeof navigator !== "undefined" && navigator.onLine === false)) {
+      return { synced: 0, failed: 0 };
+    }
+    if (!hasStoredOfflineQueue(currentUser.uid)) {
+      setPendingTransactions([]);
+      return { synced: 0, failed: 0 };
+    }
+    syncingRef.current = true;
+    setSyncingOfflineQueue(true);
+    try {
+      const [{ flushOfflineQueue }, { TransactionService }] = await Promise.all([
+        loadOfflineQueue(),
+        import("../services/transactionService.jsx"),
+      ]);
+      const result = await flushOfflineQueue(
+        currentUser.uid,
+        (entry) => TransactionService.add(currentUser.uid, entry.payload, { requestId: entry.clientRequestId }),
+        (remaining) => {
+          setPendingTransactions(remaining);
+          setQueueRevision((value) => value + 1);
+        }
+      );
+      if (result.synced > 0) notification.success(t("offline.synced", { count: result.synced }));
+      return result;
+    } finally {
+      syncingRef.current = false;
+      setSyncingOfflineQueue(false);
+    }
+  }, [currentUser, notification, t]);
+
+  useEffect(() => {
+    if (!currentUser) return undefined;
+    if (hasStoredOfflineQueue(currentUser.uid) && (typeof navigator === "undefined" || navigator.onLine !== false)) {
+      syncOfflineQueue();
+    }
+    const handleOnline = () => {
+      syncOfflineQueue();
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [currentUser, syncOfflineQueue]);
+
+  // Adds a transaction (queues locally when the device is offline)
   const addTransaction = useCallback(async (transactionData, { silent = false } = {}) => {
     if (!currentUser) return false;
-    
+
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      try {
+        const { enqueueOfflineTransaction } = await loadOfflineQueue();
+        const { clientRequestId, ...payload } = transactionData;
+        const result = enqueueOfflineTransaction(currentUser.uid, payload, { requestId: clientRequestId });
+        if (!result.ok) {
+          notification.error(t(result.reason === "queue-full" ? "offline.queueFull" : "notifications.addError"));
+          return false;
+        }
+        setPendingTransactions(result.pending);
+        setQueueRevision((value) => value + 1);
+        if (!silent) notification.info(t("offline.queuedSuccess"));
+        return true;
+      } catch (error) {
+        console.error("Error queuing offline transaction:", error);
+        notification.error(error.issues ? t("validation.invalidTransaction") : t("notifications.addError"));
+        return false;
+      }
+    }
+
     beginProcessing();
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
@@ -176,9 +311,13 @@ const AccountTransactionWrapper = ({ children }) => {
     maxTransactions: Infinity,
     getStats,
     isAuthenticated: true,
+    pendingOfflineCount: pendingTransactions.length,
+    syncingOfflineQueue,
+    syncOfflineQueue,
   }), [
     transactions, loading, isProcessing, addTransaction, updateTransaction, deleteTransaction,
-    fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals, getFirstTransactionDate, recentRevision, getStats,
+    fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals,
+    getFirstTransactionDate, recentRevision, getStats, pendingTransactions.length, syncingOfflineQueue, syncOfflineQueue,
   ]);
 
   return (

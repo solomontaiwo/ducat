@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { format } from "date-fns";
+import { FiChevronRight, FiEye, FiEyeOff } from "react-icons/fi";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { useAuth } from "../../context/AuthProvider.jsx";
@@ -17,6 +19,8 @@ import { useMonthRange } from "../../hooks/useMonthRange.js";
 import UpcomingCard from "../Planning/UpcomingCard.jsx";
 import BudgetCard from "../Planning/BudgetCard.jsx";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
+import { usePrivacy } from "../../context/PrivacyProvider.jsx";
+import { hapticTap } from "../../platform/haptics.js";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
 import { todayDateKey } from "../../utils/dateUtils.js";
 import { upcomingOccurrences } from "../../utils/recurrence.js";
@@ -35,6 +39,7 @@ const Dashboard = () => {
   const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions } = useUnifiedTransactions();
   const { openAddTransaction, canAdd } = useAddTransaction();
   const { recurring, budgets } = usePlanning();
+  const { hideAmounts, toggleHideAmounts } = usePrivacy();
   const { t, i18n } = useTranslation();
   const { month, startDate, endDate, startDay, isCurrentMonth, goToPrevious, goToNext } = useMonthRange();
   const [monthData, setMonthData] = useState([]);
@@ -104,6 +109,7 @@ const Dashboard = () => {
   const showUpcoming = isCurrentMonth && upcomingOccurrences(recurring, todayDateKey()).length > 0;
   const hasBudgets = Object.values(budgets).some((limit) => limit > 0);
   const monthName = formatMonthLabel(month, i18n.language);
+  const monthParam = format(month, "yyyy-MM");
   const balance = stats?.balance || 0;
   const expenseShare = stats?.totalIncome > 0 ? (stats.totalExpense / stats.totalIncome) * 100 : null;
   const balanceLabel = balance < 0
@@ -151,11 +157,26 @@ const Dashboard = () => {
             <Skeleton height={150} baseColor="rgba(255,255,255,0.14)" highlightColor="rgba(255,255,255,0.26)" borderRadius={16} />
           ) : (
             <>
-              <div className="space-y-1.5">
-                <p className="text-sm font-semibold text-hero-muted">{balanceLabel}</p>
-                <p className="amount text-[2.75rem] leading-none sm:text-5xl lg:text-[3.5rem]">
-                  {balance < 0 ? formatSignedAmount(balance, "expense") : formatCurrency(balance)}
-                </p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1.5">
+                  <p className="text-sm font-semibold text-hero-muted">{balanceLabel}</p>
+                  <p className="amount text-[2.75rem] leading-none sm:text-5xl lg:text-[3.5rem]">
+                    {balance < 0 ? formatSignedAmount(balance, "expense") : formatCurrency(balance)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticTap();
+                    toggleHideAmounts();
+                  }}
+                  aria-pressed={hideAmounts}
+                  aria-label={hideAmounts ? t("privacy.showAmounts") : t("privacy.hideAmounts")}
+                  title={hideAmounts ? t("privacy.showAmounts") : t("privacy.hideAmounts")}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 text-hero-foreground transition hover:bg-white/25"
+                >
+                  {hideAmounts ? <FiEyeOff className="h-[18px] w-[18px]" aria-hidden="true" /> : <FiEye className="h-[18px] w-[18px]" aria-hidden="true" />}
+                </button>
               </div>
               {expenseShare !== null && (
                 <div
@@ -198,15 +219,38 @@ const Dashboard = () => {
                   <span key={item.category} style={{ flexGrow: Math.max(item.percentage, 1), background: item.color }} />
                 ))}
               </div>
-              <ul className="space-y-2.5">
-                {spendingCategories.map((item) => (
-                  <li key={item.category} className="flex items-center gap-3 text-sm">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-[4px]" style={{ background: item.color }} aria-hidden="true" />
-                    <span className="min-w-0 flex-1 truncate font-semibold">{item.label}</span>
-                    <span className="font-semibold tabular-nums">{formatCurrency(item.amount)}</span>
-                    <span className="w-10 text-right tabular-nums text-muted-foreground">{Math.round(item.percentage)}%</span>
-                  </li>
-                ))}
+              <ul className="space-y-1">
+                {spendingCategories.map((item) => {
+                  const rowBody = (
+                    <>
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-[4px]" style={{ background: item.color }} aria-hidden="true" />
+                      <span className="min-w-0 flex-1 truncate font-semibold">{item.label}</span>
+                      <span className="font-semibold tabular-nums" data-amount="true">{formatCurrency(item.amount)}</span>
+                      <span className="w-10 text-right tabular-nums text-muted-foreground">{Math.round(item.percentage)}%</span>
+                      {item.category !== "remaining" && (
+                        <FiChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+                      )}
+                    </>
+                  );
+                  if (item.category === "remaining") {
+                    return (
+                      <li key={item.category} className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 text-sm">
+                        {rowBody}
+                      </li>
+                    );
+                  }
+                  const query = new URLSearchParams({ category: item.category, type: "expense", month: monthParam }).toString();
+                  return (
+                    <li key={item.category}>
+                      <Link
+                        to={`/transactions?${query}`}
+                        className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 text-sm transition-colors hover:bg-muted/60"
+                      >
+                        {rowBody}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             </>
           ) : (
@@ -218,7 +262,7 @@ const Dashboard = () => {
       {(showUpcoming || hasBudgets) && !isLoading && (
         <div className={showUpcoming && hasBudgets ? "grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5" : "grid grid-cols-1 gap-4"}>
           {showUpcoming && <UpcomingCard />}
-          {hasBudgets && <BudgetCard breakdown={stats?.categoryBreakdown || {}} isCurrentMonth={isCurrentMonth} endDate={endDate} />}
+          {hasBudgets && <BudgetCard breakdown={stats?.categoryBreakdown || {}} isCurrentMonth={isCurrentMonth} endDate={endDate} monthParam={monthParam} />}
         </div>
       )}
 

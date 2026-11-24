@@ -1,9 +1,12 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
+import { isMobile } from "../../platform/index.js";
 import LandingPage from "./LandingPage";
 import LoadingWrapper from "../../utils/loadingWrapper";
+
+const MobileWelcome = lazy(() => import("./MobileWelcome"));
 
 const Home = () => {
   const navigate = useNavigate();
@@ -22,8 +25,15 @@ const Home = () => {
     return <LoadingWrapper loading={true}>{null}</LoadingWrapper>;
   }
 
-  // Mostra la landing solo se non c'è utente né demo
+  // Mostra l'onboarding mobile nativo su iOS, la landing web altrove
   if (!currentUser && !isDemo) {
+    if (isMobile()) {
+      return (
+        <Suspense fallback={<LoadingWrapper loading={true}>{null}</LoadingWrapper>}>
+          <MobileWelcome />
+        </Suspense>
+      );
+    }
     return <LandingPage />;
   }
 

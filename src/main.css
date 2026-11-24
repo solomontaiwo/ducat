@@ -211,6 +211,13 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.01em;
   }
+  /* Privacy mode: softly masks balances and amounts when viewed in public. */
+  .privacy-masked .amount,
+  .privacy-masked [data-amount="true"] {
+    filter: blur(8px);
+    user-select: none;
+    transition: filter 150ms ease;
+  }
   .chip {
     @apply inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border border-input bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted;
   }

@@ -3,23 +3,28 @@ import { useLocation } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
+import { usePrivacy } from "../../context/PrivacyProvider.jsx";
 import { AddTransactionContext } from "../../context/AddTransactionContext.jsx";
 import Sidebar from "./Sidebar";
 import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
-import OfflineNotice from "./OfflineNotice";
+import { useOnlineStatus } from "../../hooks/useOnlineStatus.js";
 import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 
 const TransactionModal = lazy(() => import("../Transaction/TransactionModal"));
+const AppLockOverlay = lazy(() => import("./AppLockOverlay"));
+const OfflineNotice = lazy(() => import("./OfflineNotice"));
 
 const PUBLIC_ROUTES = ["/", "/landing", "/login", "/register", "/forgot-password", "/verify-email", "/privacy", "/terms"];
 
 const AppLayout = ({ children }) => {
   const location = useLocation();
   const { currentUser } = useAuth();
-  const { isDemo, canAddMoreTransactions } = useUnifiedTransactions();
+  const { isDemo, canAddMoreTransactions, pendingOfflineCount = 0 } = useUnifiedTransactions();
   const { error: planningError, retry: retryPlanning } = usePlanning();
+  const { locked } = usePrivacy();
+  const online = useOnlineStatus();
   const { t } = useTranslation();
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const [showAddModal, setShowAddModal] = useState(false);
@@ -64,7 +69,11 @@ const AppLayout = ({ children }) => {
           }
         >
           <div className="w-full space-y-5">
-            {showNavigation && <OfflineNotice />}
+            {showNavigation && (!online || pendingOfflineCount > 0) && (
+              <Suspense fallback={null}>
+                <OfflineNotice />
+              </Suspense>
+            )}
             {showNavigation && planningError && (
               <div role="alert" className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm">
                 <p>{planningError}</p>
@@ -93,6 +102,11 @@ const AppLayout = ({ children }) => {
         {showNavigation && showAddModal && (
           <Suspense fallback={null}>
             <TransactionModal show onClose={() => setShowAddModal(false)} />
+          </Suspense>
+        )}
+        {showNavigation && currentUser && locked && (
+          <Suspense fallback={null}>
+            <AppLockOverlay />
           </Suspense>
         )}
       </div>

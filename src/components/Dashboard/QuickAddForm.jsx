@@ -9,6 +9,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
 import { suggestCategory } from "../../utils/categorySuggest.js";
+import { hapticSuccess } from "../../platform/haptics.js";
 
 /** One-line entry for desktop: type, amount, description, category, date, Enter. */
 const QuickAddForm = () => {
@@ -78,6 +79,7 @@ const QuickAddForm = () => {
         setAmount("");
         setDescription("");
         setCategoryTouched(false);
+        hapticSuccess();
       }
     } finally {
       submittingRef.current = false;

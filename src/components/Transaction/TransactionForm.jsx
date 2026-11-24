@@ -17,6 +17,7 @@ import { FREQUENCIES, occurrenceDateKey } from "../../utils/recurrence.js";
 import { enUS, it as itLocale } from "date-fns/locale";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { hapticSuccess } from "../../platform/haptics.js";
 
 const QUICK_ADD_PREF_KEY = "ducat-quick-add-preferences";
 
@@ -176,7 +177,7 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
     if (!isEdit) {
       writeLocalValue(QUICK_ADD_PREF_KEY, JSON.stringify({ type: formData.type, category: formData.category }));
     }
-    navigator.vibrate?.(50);
+    hapticSuccess();
   }, [categoryLabel, formData, isEdit, notification, onSubmit, planningReady, repeat, submitting, t]);
 
   const nextRepeatLabel = useMemo(() => {

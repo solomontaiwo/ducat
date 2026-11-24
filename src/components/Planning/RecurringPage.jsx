@@ -1,27 +1,101 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiPause, FiPlay, FiSkipForward, FiTrash2, FiZap } from "react-icons/fi";
+import { FiEdit2, FiPause, FiPlay, FiSkipForward, FiTrash2, FiZap } from "react-icons/fi";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
 import { useAddTransaction } from "../../context/AddTransactionContext.jsx";
+import { useCategories } from "../../utils/categories.jsx";
+import { useNotification } from "../../utils/notificationUtils.jsx";
 import { CategoryBadge } from "../Transaction/TransactionRow.jsx";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import Sheet from "../ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import formatCurrency, { formatSignedAmount } from "../../utils/formatCurrency.jsx";
-import { minorToMajor } from "../../utils/money.js";
+import { minorToMajor, parseMoneyToMinor } from "../../utils/money.js";
 import { todayDateKey } from "../../utils/dateUtils.js";
-import { firstIndexFrom, monthlyEquivalentMinor, nextOccurrence, upcomingOccurrences } from "../../utils/recurrence.js";
+import { FREQUENCIES, firstIndexFrom, monthlyEquivalentMinor, nextOccurrence, reanchorForFrequency, upcomingOccurrences } from "../../utils/recurrence.js";
+import { handleRadioKeyDown } from "../../utils/radioGroup.js";
+import { hapticSuccess } from "../../platform/haptics.js";
 import { cn } from "../../lib/utils.js";
 import UpcomingList from "./UpcomingList.jsx";
 import BackButton from "./BackButton.jsx";
 import { shortDate } from "./planningFormat.js";
 
+const toAmountInput = (minor) => String(minorToMajor(minor)).replace(".", ",");
+
 const RecurringPage = () => {
   const { t, i18n } = useTranslation();
   const { recurring, ready, updateRecurring, deleteRecurring, skipOccurrence } = usePlanning();
   const { openAddTransaction, canAdd } = useAddTransaction();
+  const { expenseCategories, incomeCategories } = useCategories();
+  const notification = useNotification();
   const [selected, setSelected] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editForm, setEditForm] = useState({ description: "", amount: "", category: "", frequency: "monthly", mode: "auto" });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  const editCategories = useMemo(() => {
+    if (!editing) return [];
+    const list = editing.type === "income" ? incomeCategories : expenseCategories;
+    if (list.some((item) => item.value === editing.category)) return list;
+    return [{ value: editing.category, label: t(`categories.${editing.category}`, { defaultValue: editing.category }) }, ...list];
+  }, [editing, expenseCategories, incomeCategories, t]);
+
+  const startEdit = (rule) => {
+    setSelected(null);
+    setEditing(rule);
+    setEditForm({
+      description: rule.description,
+      amount: toAmountInput(rule.amountMinor),
+      category: rule.category,
+      frequency: rule.frequency,
+      mode: rule.mode,
+    });
+  };
+
+  const handleSaveEdit = async (event) => {
+    event?.preventDefault();
+    if (!editing || busy) return;
+    const description = editForm.description.trim();
+    if (!description) {
+      notification.error(t("recurring.editDescriptionRequired"));
+      return;
+    }
+    let amountMinor;
+    try {
+      amountMinor = parseMoneyToMinor(editForm.amount.replace(",", "."));
+    } catch (error) {
+      notification.error(error.i18nKey ? t(error.i18nKey) : t("transaction.invalidAmount"));
+      return;
+    }
+    const patch = {
+      description,
+      amountMinor,
+      category: editForm.category,
+      mode: editForm.mode,
+    };
+    if (editForm.frequency !== editing.frequency) {
+      const anchorDateKey = reanchorForFrequency(editing, editForm.frequency);
+      if (!anchorDateKey) {
+        notification.error(t("recurring.frequencyChangeUnavailable"));
+        return;
+      }
+      patch.frequency = editForm.frequency;
+      patch.anchorDateKey = anchorDateKey;
+    }
+    setBusy(true);
+    try {
+      if (await updateRecurring(editing.id, patch)) {
+        hapticSuccess();
+        notification.success(t("recurring.updated"));
+        setEditing(null);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const today = todayDateKey();
   const upcoming = useMemo(() => upcomingOccurrences(recurring, today), [recurring, today]);
@@ -138,6 +212,10 @@ const RecurringPage = () => {
           </DialogHeader>
           {selected && (
             <div className="grid gap-2 pt-2">
+              <Button variant="outline" className="h-12 justify-start" disabled={!ready || busy} onClick={() => startEdit(selected)}>
+                <FiEdit2 aria-hidden="true" />
+                {t("recurring.edit")}
+              </Button>
               {!selected.paused && (
                 <Button variant="outline" className="h-12 justify-start" disabled={!ready || busy} onClick={() => run(() => skipOccurrence(selected))}>
                   <FiSkipForward aria-hidden="true" />
@@ -167,6 +245,124 @@ const RecurringPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <Sheet
+        open={!!editing}
+        onOpenChange={(open) => !open && !busy && setEditing(null)}
+        title={t("recurring.editTitle")}
+        description={t("recurring.editHint")}
+        footer={(
+          <Button size="lg" className="w-full" onClick={handleSaveEdit} disabled={busy || !editForm.amount || !editForm.description.trim()}>
+            {busy ? t("transactionModal.saving") : t("save")}
+          </Button>
+        )}
+      >
+        <form onSubmit={handleSaveEdit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-recurring-description">{t("transactionModal.description")}</Label>
+            <Input
+              id="edit-recurring-description"
+              value={editForm.description}
+              onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))}
+              maxLength={200}
+              disabled={busy}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-recurring-amount">{t("transaction.amount")}</Label>
+            <Input
+              id="edit-recurring-amount"
+              inputMode="decimal"
+              autoComplete="off"
+              value={editForm.amount}
+              onChange={(event) => setEditForm((current) => ({ ...current, amount: event.target.value.replace(/[^0-9.,]/g, "") }))}
+              disabled={busy}
+            />
+          </div>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-bold">{t("transactionModal.category")}</legend>
+            <div
+              role="radiogroup"
+              aria-label={t("transactionModal.category")}
+              className="flex flex-wrap gap-2"
+              onKeyDown={(event) => handleRadioKeyDown(
+                event,
+                editCategories.map((item) => item.value),
+                editForm.category,
+                (category) => setEditForm((current) => ({ ...current, category }))
+              )}
+            >
+              {editCategories.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={editForm.category === item.value}
+                  className="chip"
+                  disabled={busy}
+                  onClick={() => setEditForm((current) => ({ ...current, category: item.value }))}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-bold">{t("recurring.frequencyLabel")}</legend>
+            <div
+              role="radiogroup"
+              aria-label={t("recurring.frequencyLabel")}
+              className="segmented grid-cols-3"
+              onKeyDown={(event) => handleRadioKeyDown(
+                event,
+                FREQUENCIES,
+                editForm.frequency,
+                (frequency) => setEditForm((current) => ({ ...current, frequency }))
+              )}
+            >
+              {FREQUENCIES.map((frequency) => (
+                <button
+                  key={frequency}
+                  type="button"
+                  role="radio"
+                  aria-checked={editForm.frequency === frequency}
+                  disabled={busy}
+                  onClick={() => setEditForm((current) => ({ ...current, frequency }))}
+                >
+                  {t(`recurring.frequency.${frequency}`)}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-bold">{t("recurring.modeLabel")}</legend>
+            <div
+              role="radiogroup"
+              aria-label={t("recurring.modeLabel")}
+              className="segmented grid-cols-2"
+              onKeyDown={(event) => handleRadioKeyDown(
+                event,
+                ["auto", "confirm"],
+                editForm.mode,
+                (mode) => setEditForm((current) => ({ ...current, mode }))
+              )}
+            >
+              {["auto", "confirm"].map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="radio"
+                  aria-checked={editForm.mode === mode}
+                  disabled={busy}
+                  onClick={() => setEditForm((current) => ({ ...current, mode }))}
+                >
+                  {t(`recurring.mode.${mode}`)}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        </form>
+      </Sheet>
 
       <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && !busy && setConfirmDelete(null)}>
         <DialogContent className="max-w-sm">

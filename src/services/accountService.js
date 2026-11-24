@@ -1,6 +1,8 @@
 import { supabase, unwrap } from "../utils/supabaseClient.js";
 import { sendPasswordReset, signIn, toAuthError, updateEmail } from "./authService.js";
 import { clearOffline } from "../utils/offlineCache.js";
+import { clearAllOfflineQueues } from "../utils/offlineQueue.js";
+import { setBiometricLockEnabled } from "../platform/biometrics.js";
 
 const currentEmail = async () => {
   const { data, error } = await supabase.auth.getSession();
@@ -29,7 +31,9 @@ export const requestEmailChange = async (newEmail, password) => {
 export const deleteCurrentAccount = async (password) => {
   await reauthenticateWithPassword(password);
   unwrap(await supabase.rpc("delete_my_account"));
-  // The offline copy must not outlive the account it belongs to.
+  // The offline copy and queued writes must not outlive the account they belong to.
   clearOffline();
+  clearAllOfflineQueues();
+  setBiometricLockEnabled(false);
   await supabase.auth.signOut({ scope: "local" });
 };

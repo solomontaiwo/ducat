@@ -3,12 +3,13 @@ import { useTranslation } from "react-i18next";
 import { differenceInCalendarDays, differenceInCalendarMonths, format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
 import {
-  FiCalendar, FiDatabase, FiDownload, FiEdit2, FiGlobe, FiGrid, FiKey, FiLock, FiMail, FiMoon, FiPlusCircle,
-  FiRepeat, FiSmartphone, FiTarget, FiTrash2, FiUpload,
+  FiCalendar, FiDatabase, FiDownload, FiEdit2, FiEyeOff, FiGlobe, FiGrid, FiKey, FiLock, FiMail, FiMessageSquare, FiMoon, FiPlusCircle,
+  FiRepeat, FiShield, FiSmartphone, FiTarget, FiTrash2, FiUpload,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
+import { usePrivacy } from "../../context/PrivacyProvider.jsx";
 import { useTheme } from "../../utils/ThemeProvider";
 import { useNotification } from "../../utils/notificationUtils";
 import { Link, useNavigate } from "../../router/RouterProvider";
@@ -35,6 +36,10 @@ import { formatCompactCurrency, formatSignedCompact } from "../../utils/formatCu
 import { minorToMajor } from "../../utils/money.js";
 import { cn } from "../../lib/utils.js";
 import { APP_VERSION } from "../../utils/appVersion";
+import { buildFeedbackMailto } from "../../utils/feedback.js";
+import { openExternal } from "../../utils/openExternal.js";
+import { hapticTap } from "../../platform/haptics.js";
+import { setBiometricLockEnabled } from "../../platform/biometrics.js";
 
 // Enable only after deploying the database migration that enforces reauthentication.
 // Account deletion is required by the App Store (5.1.1(v)) for any app that
@@ -113,6 +118,15 @@ const Profile = () => {
   const { currentUser, loading: userLoading, logout, profileName, profileNameLoading, refreshProfileName } = useAuth();
   const { loading: transactionsLoading } = useUnifiedTransactions();
   const { recurring, budgets, preferences, savePreferences } = usePlanning();
+  const {
+    hideAmounts,
+    toggleHideAmounts,
+    biometricAvailable,
+    biometricType,
+    biometricEnabled,
+    enableBiometricLock,
+    disableBiometricLock,
+  } = usePrivacy();
   const { expenseCategories, incomeCategories } = useCategories();
   const { theme, toggleTheme } = useTheme();
   const notification = useNotification();
@@ -123,6 +137,7 @@ const Profile = () => {
   const budgetStatus = useBudgetStatus();
   const [sheet, setSheet] = useState(null);
   const [backingUp, setBackingUp] = useState(false);
+  const [togglingBiometric, setTogglingBiometric] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
 
@@ -204,8 +219,45 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
+    setBiometricLockEnabled(false);
     await logout();
     navigate("/");
+  };
+
+  const biometricLabel = t(
+    biometricType === "touchID"
+      ? "privacy.biometric.touchId"
+      : biometricType === "faceID"
+        ? "privacy.biometric.faceId"
+        : "privacy.biometric.device"
+  );
+
+  const handleToggleBiometric = async () => {
+    if (togglingBiometric) return;
+    hapticTap();
+    setTogglingBiometric(true);
+    try {
+      const reason = t("privacy.biometric.promptReason", { app: APP_NAME });
+      const ok = biometricEnabled ? await disableBiometricLock(reason) : await enableBiometricLock(reason);
+      if (ok) {
+        notification.success(t(biometricEnabled ? "privacy.biometric.disabled" : "privacy.biometric.enabled", { method: biometricLabel }));
+      }
+    } finally {
+      setTogglingBiometric(false);
+    }
+  };
+
+  const handleFeedback = async () => {
+    hapticTap();
+    try {
+      await openExternal(buildFeedbackMailto({
+        language: i18n.language,
+        subjectPrefix: t("profilePage.feedback.subject"),
+        promptLine: t("profilePage.feedback.bodyPrompt"),
+      }));
+    } catch {
+      notification.error(t("error"));
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -352,6 +404,36 @@ const Profile = () => {
               subtitle={t("profilePage.categories.summary", { visible: visibleCount, hidden: hiddenCount })}
               onClick={() => setSheet("categories")}
             />
+            <SettingsRow
+              icon={FiEyeOff}
+              title={t("privacy.modeTitle")}
+              subtitle={t("privacy.modeSummary")}
+              testId="row-privacy-mode"
+              trailing={(
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={hideAmounts}
+                  aria-label={t("privacy.modeTitle")}
+                  onClick={() => {
+                    hapticTap();
+                    toggleHideAmounts();
+                  }}
+                  className={cn(
+                    "relative h-8 w-[52px] shrink-0 rounded-full transition-colors",
+                    hideAmounts ? "bg-primary" : "bg-input"
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-[left]",
+                      hideAmounts ? "left-[24px]" : "left-1"
+                    )}
+                  />
+                </button>
+              )}
+            />
           </SettingsGroup>
 
           <SettingsGroup title={t("profilePage.data")}>
@@ -369,9 +451,47 @@ const Profile = () => {
             {(install.canPrompt || install.needsManualSteps) && (
               <SettingsRow icon={FiSmartphone} title={t("profilePage.install.title")} subtitle={t("profilePage.install.summary")} onClick={installApp} />
             )}
+            <SettingsRow
+              icon={FiMessageSquare}
+              title={t("profilePage.feedback.title")}
+              subtitle={t("profilePage.feedback.summary")}
+              onClick={handleFeedback}
+              testId="row-feedback"
+            />
           </SettingsGroup>
 
           <SettingsGroup title={t("profilePage.security")}>
+            {biometricAvailable && (
+              <SettingsRow
+                icon={FiShield}
+                tone="blue"
+                title={t("privacy.biometric.title", { method: biometricLabel })}
+                subtitle={t("privacy.biometric.summary")}
+                testId="row-biometric-lock"
+                trailing={(
+                  <button
+                    type="button"
+                    role="switch"
+                    disabled={togglingBiometric}
+                    aria-checked={biometricEnabled}
+                    aria-label={t("privacy.biometric.title", { method: biometricLabel })}
+                    onClick={handleToggleBiometric}
+                    className={cn(
+                      "relative h-8 w-[52px] shrink-0 rounded-full transition-colors disabled:opacity-50",
+                      biometricEnabled ? "bg-primary" : "bg-input"
+                    )}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-[left]",
+                        biometricEnabled ? "left-[24px]" : "left-1"
+                      )}
+                    />
+                  </button>
+                )}
+              />
+            )}
             <SettingsRow icon={FiKey} title={t("profilePage.password.title")} subtitle={t("profilePage.password.summary")} onClick={() => setSheet("password")} />
             <SettingsRow icon={FiMail} title={t("profilePage.email.title")} subtitle={currentUser?.email} onClick={() => setSheet("email")} />
             {ACCOUNT_DELETION_ENABLED && (

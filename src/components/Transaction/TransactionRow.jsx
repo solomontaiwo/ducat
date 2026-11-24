@@ -1,4 +1,6 @@
 import PropTypes from "prop-types";
+import { useTranslation } from "react-i18next";
+import { FiClock } from "react-icons/fi";
 import { cn } from "../../lib/utils.js";
 import { getCategoryIcon } from "../../utils/categoryIcons.jsx";
 import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
@@ -27,12 +29,23 @@ CategoryBadge.propTypes = {
 };
 
 const TransactionRow = ({ transaction, meta, onSelect, selected = false, className }) => {
+  const { t } = useTranslation();
   const content = (
     <>
       <CategoryBadge category={transaction.category} type={transaction.type} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[15px] font-semibold leading-snug">{transaction.description}</span>
-        {meta && <span className="truncate text-[13px] font-medium text-muted-foreground">{meta}</span>}
+        {(meta || transaction.pendingSync) && (
+          <span className="flex items-center gap-1.5 truncate text-[13px] font-medium text-muted-foreground">
+            {meta && <span className="truncate">{meta}</span>}
+            {transaction.pendingSync && (
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-warning-strong">
+                <FiClock className="h-3 w-3" aria-hidden="true" />
+                {t("offline.pendingBadge")}
+              </span>
+            )}
+          </span>
+        )}
       </span>
       <span className={cn("amount shrink-0 text-base", transaction.type === "income" ? "text-income" : "text-foreground")}>
         {formatSignedAmount(transaction.amount, transaction.type)}
@@ -60,6 +73,7 @@ TransactionRow.propTypes = {
     category: PropTypes.string,
     type: PropTypes.oneOf(["income", "expense"]).isRequired,
     amount: PropTypes.number.isRequired,
+    pendingSync: PropTypes.bool,
   }).isRequired,
   meta: PropTypes.node,
   onSelect: PropTypes.func,

@@ -24,8 +24,26 @@ import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { cn } from "../../lib/utils.js";
 import { useNotification } from "../../utils/notificationUtils";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
+import { useOptionalLocation } from "../../router/RouterProvider";
 
 const TYPE_FILTERS = ["all", "expense", "income"];
+
+const parseMonthParam = (value) => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}$/.test(value)) return null;
+  const [year, monthIndex] = value.split("-").map(Number);
+  if (monthIndex < 1 || monthIndex > 12) return null;
+  return new Date(year, monthIndex - 1, 1);
+};
+
+const parseInitialFilters = (search) => {
+  const params = new URLSearchParams(search || "");
+  const rawType = params.get("type");
+  const type = rawType === "expense" || rawType === "income" ? rawType : "all";
+  const category = params.get("category")?.trim() || "all";
+  const month = parseMonthParam(params.get("month"));
+  const allTime = params.get("allTime") === "1";
+  return { type, category, month, allTime };
+};
 
 const TransactionList = () => {
   const { t, i18n } = useTranslation();
@@ -67,8 +85,11 @@ const TransactionList = () => {
   const loadingMoreRef = useRef(false);
   const hasLoadedPageRef = useRef(false);
 
-  const monthRange = useMonthRange();
-  const [allTime, setAllTime] = useState(false);
+  const routerLocation = useOptionalLocation();
+  const routeSearch = routerLocation ? routerLocation.search : (typeof window !== "undefined" ? window.location.search : "");
+  const initialFilters = useMemo(() => parseInitialFilters(routeSearch), [routeSearch]);
+  const monthRange = useMonthRange(initialFilters.month);
+  const [allTime, setAllTime] = useState(initialFilters.allTime);
   const { startDate, endDate } = useMemo(() => {
     if (!allTime) return { startDate: monthRange.startDate, endDate: monthRange.endDate };
     const range = getPeriodRange("all");
@@ -114,8 +135,26 @@ const TransactionList = () => {
   } = useTransactionFilter(
     visibleTransactions,
     { startDate, endDate },
-    { searchSource, getCategoryLabel }
+    {
+      searchSource,
+      getCategoryLabel,
+      initialCategory: initialFilters.category,
+      initialType: initialFilters.type,
+    }
   );
+
+  // Apply drill-down query parameters if the user navigates here again with new filters.
+  const appliedSearchRef = useRef(routeSearch);
+  const setMonth = monthRange.setMonth;
+  useEffect(() => {
+    if (appliedSearchRef.current === routeSearch) return;
+    appliedSearchRef.current = routeSearch;
+    const next = parseInitialFilters(routeSearch);
+    setSelectedType(next.type);
+    setSelectedCategory(next.category);
+    setAllTime(next.allTime);
+    setMonth(next.month);
+  }, [routeSearch, setSelectedType, setSelectedCategory, setMonth]);
 
   useEffect(() => {
     if (!isSearching || isDemo || !userId) {
@@ -376,9 +415,11 @@ const TransactionList = () => {
 
   const categories = useMemo(() => {
     const source = allLoadedTransactions.length > 0 ? allLoadedTransactions : transactions;
-    return [...new Set(source.map((item) => item.category))].sort((first, second) =>
+    const values = new Set(source.map((item) => item.category));
+    if (selectedCategory && selectedCategory !== "all") values.add(selectedCategory);
+    return [...values].sort((first, second) =>
       getCategoryLabel(first).localeCompare(getCategoryLabel(second)));
-  }, [allLoadedTransactions, transactions, getCategoryLabel]);
+  }, [allLoadedTransactions, transactions, selectedCategory, getCategoryLabel]);
 
   const saveEdit = useCallback(async (target, payload) => {
     const success = await updateTransaction(target.id, payload);
@@ -522,6 +563,20 @@ const TransactionList = () => {
             <button type="button" className="chip" aria-pressed={allTime || isSearching} disabled={isSearching} onClick={() => setAllTime((value) => !value)}>
               {t("transactions.filters.allTime")}
             </button>
+            {hasFilters && (
+              <button
+                type="button"
+                className="chip text-muted-foreground"
+                onClick={() => {
+                  setSearchTerm("");
+                  setSelectedCategory("all");
+                  setSelectedType("all");
+                }}
+              >
+                <FiX className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("transactions.filters.reset")}
+              </button>
+            )}
           </div>
         </div>
 

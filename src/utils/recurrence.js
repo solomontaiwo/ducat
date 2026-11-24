@@ -66,3 +66,18 @@ export const firstIndexFrom = (rule, todayKey, limit = 10000) => {
   while (index < limit && occurrenceDateKey(rule.anchorDateKey, rule.frequency, index) < todayKey) index += 1;
   return index;
 };
+
+/**
+ * Re-anchors a rule when its frequency changes so the next scheduled date stays
+ * intact without lowering `nextIndex` (the database trigger only allows it to
+ * move forward). Returns `null` if the shifted anchor would fall before 1970.
+ */
+export const reanchorForFrequency = (rule, newFrequency) => {
+  if (newFrequency === rule.frequency) return rule.anchorDateKey;
+  const step = STEP[newFrequency];
+  if (!step) throw new Error(`Unknown frequency: ${newFrequency}`);
+  const target = nextOccurrence(rule).dateKey;
+  const shifted = step(dateKeyToDate(target), -rule.nextIndex);
+  if (shifted.getFullYear() < 1970) return null;
+  return format(shifted, DATE_KEY_FORMAT);
+};

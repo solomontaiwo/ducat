@@ -57,6 +57,18 @@ describe("iOS submission requirements", () => {
     expect(infoPlist).toMatch(/<key>ITSAppUsesNonExemptEncryption<\/key>\s*<false\/>/);
   });
 
+  it("declares Face ID usage description and compiles the native biometric plugin and privacy overlay", () => {
+    expect(plistValue("NSFaceIDUsageDescription")).toBeTruthy();
+    expect(existsSync(join(root, "ios/App/App/BiometricAuthPlugin.swift"))).toBe(true);
+    expect(existsSync(join(root, "ios/App/App/MainViewController.swift"))).toBe(true);
+    expect(pbxproj).toContain("BiometricAuthPlugin.swift in Sources");
+    expect(pbxproj).toContain("MainViewController.swift in Sources");
+    const sceneDelegate = read("ios/App/App/SceneDelegate.swift");
+    expect(sceneDelegate).toContain("MainViewController()");
+    expect(sceneDelegate).toContain("sceneWillResignActive");
+    expect(sceneDelegate).toContain("UIVisualEffectView");
+  });
+
   it("is a finance app for iPhone and iPad", () => {
     expect(plistValue("LSApplicationCategoryType")).toBe("public.app-category.finance");
     expect(pbxproj).toMatch(/TARGETED_DEVICE_FAMILY = "1,2";/);

@@ -83,6 +83,8 @@ const useRouter = () => {
 
 export const useLocation = () => useRouter().location;
 export const useNavigate = () => useRouter().navigate;
+export const useOptionalLocation = () => useContext(RouterContext)?.location ?? null;
+export const useOptionalNavigate = () => useContext(RouterContext)?.navigate ?? null;
 
 export const Link = forwardRef(({ to, onClick, target, children, ...props }, ref) => {
   const { base, navigate } = useRouter();

@@ -43,6 +43,8 @@
 	<!-- The app only talks HTTPS to Supabase: no non-exempt encryption. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Use Face ID to protect your balances and transactions when opening Ducat.</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.finance</string>
 	<key>LSRequiresIPhoneOS</key>

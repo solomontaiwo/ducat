@@ -357,7 +357,8 @@
         "income": "Entrate"
       },
       "category": "Categoria",
-      "allTime": "Tutto lo storico"
+      "allTime": "Tutto lo storico",
+      "reset": "Azzera filtri"
     },
     "empty": {
       "title": "Nessun movimento trovato",
@@ -641,7 +642,13 @@
     "autoRegistered_other": "Registrati {{count}} movimenti ricorrenti",
     "back": "Indietro",
     "deleteConfirmTitle": "Eliminare questa ricorrenza?",
-    "deleteConfirmDescription": "La regola verrà rimossa. I movimenti già registrati restano nei tuoi dati."
+    "deleteConfirmDescription": "La regola verrà rimossa. I movimenti già registrati restano nei tuoi dati.",
+    "edit": "Modifica ricorrenza",
+    "editTitle": "Modifica ricorrenza",
+    "editHint": "Le modifiche valgono per i prossimi movimenti; quelli già registrati restano.",
+    "editDescriptionRequired": "Inserisci una descrizione",
+    "frequencyChangeUnavailable": "Non è possibile cambiare frequenza su questa regola.",
+    "updated": "Ricorrenza aggiornata"
   },
   "budgets": {
     "title": "Budget mensili",
@@ -765,6 +772,12 @@
       "step1": "Tocca il pulsante Condividi in basso",
       "step2": "Scegli «Aggiungi alla schermata Home»",
       "step3": "Conferma con «Aggiungi»"
+    },
+    "feedback": {
+      "title": "Invia feedback",
+      "summary": "Segnala un problema o proponi un’idea",
+      "subject": "Feedback",
+      "bodyPrompt": "Descrivi cosa stavi facendo o il tuo suggerimento:"
     }
   },
   "preferences": {
@@ -848,6 +861,57 @@
   },
   "offline": {
     "title": "Sei offline.",
-    "body": "Stai vedendo i dati salvati sul dispositivo. Per salvare modifiche e sincronizzare serve la connessione."
+    "body": "Puoi comunque aggiungere nuovi movimenti: verranno sincronizzati appena torna la connessione.",
+    "bodyWithPending_one": "1 movimento in attesa di sincronizzazione.",
+    "bodyWithPending_other": "{{count}} movimenti in attesa di sincronizzazione.",
+    "queuedSuccess": "Salvato sul dispositivo. Si sincronizzerà appena torni online.",
+    "queueFull": "Troppi movimenti in coda offline. Connettiti per sincronizzarli.",
+    "syncing_one": "Sincronizzazione di 1 movimento…",
+    "syncing_other": "Sincronizzazione di {{count}} movimenti…",
+    "pendingReady_one": "1 movimento offline pronto da sincronizzare.",
+    "pendingReady_other": "{{count}} movimenti offline pronti da sincronizzare.",
+    "syncNow": "Sincronizza ora",
+    "synced_one": "Sincronizzato 1 movimento offline.",
+    "synced_other": "Sincronizzati {{count}} movimenti offline.",
+    "pendingBadge": "In coda"
+  },
+  "privacy": {
+    "modeTitle": "Nascondi importi",
+    "modeSummary": "Sfoca saldi e cifre quando sei in pubblico",
+    "hideAmounts": "Nascondi importi",
+    "showAmounts": "Mostra importi",
+    "biometric": {
+      "title": "Blocco con {{method}}",
+      "summary": "Richiedi sblocco all’apertura dell’app",
+      "faceId": "Face ID",
+      "touchId": "Touch ID",
+      "device": "codice",
+      "promptReason": "Sblocca {{app}}",
+      "lockedTitle": "{{app}} è bloccata",
+      "lockedSubtitle": "Verifica la tua identità per vedere saldi e movimenti.",
+      "unlockWith": "Sblocca con {{method}}",
+      "unlocking": "Verifica…",
+      "enabled": "Blocco con {{method}} attivo",
+      "disabled": "Blocco con {{method}} disattivato"
+    }
+  },
+  "mobileWelcome": {
+    "highlights": "Funzionalità principali",
+    "next": "Avanti",
+    "tryDemo": "Prova la demo senza account",
+    "slides": {
+      "fast": {
+        "title": "Registra in 3 secondi",
+        "body": "Importo e descrizione: Ducat suggerisce la categoria imparando dalle tue abitudini."
+      },
+      "plan": {
+        "title": "Budget e ricorrenti",
+        "body": "Mese da stipendio, spese fisse automatiche e limiti chiari prima di sforare."
+      },
+      "private": {
+        "title": "Privata e sempre con te",
+        "body": "Nessuna pubblicità, Face ID, modalità privacy e aggiunta movimenti anche offline."
+      }
+    }
   }
 }

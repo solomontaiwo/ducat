@@ -2,8 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DESKTOP, MOBILE, WEB, isDesktop, isMobile, isStoreBuild, isWeb, runtime } from "../src/platform/index.js";
 import { blobToBase64, safeFilename, saveFile } from "../src/platform/files.js";
 import { isAllowedExternalUrl, openExternal } from "../src/platform/links.js";
-import { hapticTap } from "../src/platform/haptics.js";
+import { hapticSuccess, hapticTap } from "../src/platform/haptics.js";
 import { authStorage, nativeAuthStorage } from "../src/platform/authStorage.js";
+import { buildFeedbackMailto } from "../src/utils/feedback.js";
 
 const shareMock = vi.fn(async () => ({}));
 const writeFileMock = vi.fn(async () => ({ uri: "file:///cache/report.pdf" }));
@@ -11,6 +12,7 @@ const saveDialogMock = vi.fn(async () => "/tmp/report.pdf");
 const writeTauriFileMock = vi.fn(async () => undefined);
 const browserOpenMock = vi.fn(async () => undefined);
 const impactMock = vi.fn(async () => undefined);
+const notificationHapticMock = vi.fn(async () => undefined);
 const preferencesMock = {
   get: vi.fn(async () => ({ value: "stored" })),
   set: vi.fn(async () => undefined),
@@ -27,7 +29,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({ writeFile: writeTauriFileMock }));
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => undefined) }));
 vi.mock("@capacitor/browser", () => ({ Browser: { open: browserOpenMock } }));
 vi.mock("@capacitor/haptics", () => ({
-  Haptics: { impact: impactMock, notification: vi.fn(async () => undefined) },
+  Haptics: { impact: impactMock, notification: notificationHapticMock },
   ImpactStyle: { Light: "LIGHT", Medium: "MEDIUM", Heavy: "HEAVY" },
   NotificationType: { Success: "SUCCESS" },
 }));
@@ -154,10 +156,23 @@ describe("haptics", () => {
     expect(impactMock).not.toHaveBeenCalled();
   });
 
-  it("taps on iOS", async () => {
+  it("taps and signals success on iOS", async () => {
     vi.stubEnv("MODE", "mobile");
     await expect(hapticTap("medium")).resolves.toBe(true);
     expect(impactMock).toHaveBeenCalledWith({ style: "MEDIUM" });
+    await expect(hapticSuccess()).resolves.toBe(true);
+    expect(notificationHapticMock).toHaveBeenCalledWith({ type: "SUCCESS" });
+  });
+});
+
+describe("feedback mailto", () => {
+  it("builds a mailto URL with technical diagnostics and no personal data", () => {
+    vi.stubEnv("MODE", "mobile");
+    const link = buildFeedbackMailto({ language: "it", subjectPrefix: "Feedback", promptLine: "Dettagli:" });
+    expect(isAllowedExternalUrl(link)).toBe(true);
+    expect(link).toContain("mailto:");
+    expect(link).toContain("iOS");
+    expect(link).toContain("Language%3A%20it");
   });
 });
 

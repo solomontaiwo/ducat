@@ -6,10 +6,14 @@ import { matchesSearch, MIN_SEARCH_LENGTH } from '../utils/transactionSearch.js'
  * Filters for the movements list. While a search is active it runs over
  * `searchSource` (the whole history) and ignores the selected month.
  */
-export const useTransactionFilter = (transactions, dateRange, { searchSource = null, getCategoryLabel } = {}) => {
+export const useTransactionFilter = (
+  transactions,
+  dateRange,
+  { searchSource = null, getCategoryLabel, initialCategory = "all", initialType = "all" } = {}
+) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedType, setSelectedType] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory || "all");
+  const [selectedType, setSelectedType] = useState(initialType || "all");
 
   const isSearching = searchTerm.trim().length >= MIN_SEARCH_LENGTH;
 
