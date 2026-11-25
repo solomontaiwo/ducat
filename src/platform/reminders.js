@@ -117,24 +117,32 @@ export const clearRecurringReminders = async () => {
   }
 };
 
-const ALLOWED_REMINDER_ROUTES = new Set(["/recurring", "/dashboard"]);
+const ALLOWED_REMINDER_PATHS = new Set(["/recurring", "/dashboard"]);
+
+const isAllowedNativeRoute = (route) => {
+  if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//")) return false;
+  const pathname = route.split("?", 1)[0];
+  return ALLOWED_REMINDER_PATHS.has(pathname);
+};
 
 const defaultNavigate = (route) => {
-  if (typeof window === "undefined" || window.location.pathname === route) return;
+  if (typeof window === "undefined") return;
+  const current = `${window.location.pathname}${window.location.search}`;
+  if (current === route) return;
   window.history.pushState({}, "", route);
   window.dispatchEvent(new PopStateEvent("popstate"));
 };
 
 /**
- * Listens for iOS notification taps (and consumes any route captured during a
- * cold launch from a reminder) to open `/recurring` smoothly inside the SPA.
+ * Listens for iOS notification taps & Home Screen Quick Actions (and consumes
+ * any route captured during a cold launch) to open the target route smoothly.
  */
 export const installReminderTapHandler = async (onNavigate = defaultNavigate) => {
   const plugin = getPlugin();
   if (!plugin) return () => {};
 
   const routeIfAllowed = (route) => {
-    if (typeof route === "string" && ALLOWED_REMINDER_ROUTES.has(route)) {
+    if (isAllowedNativeRoute(route)) {
       onNavigate(route);
     }
   };

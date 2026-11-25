@@ -81,8 +81,14 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(async () => {
+    const uid = sessionUserRef.current?.uid;
     removeLocalValue(PENDING_KEY);
     setPendingEmail(null);
+    if (uid) {
+      import("../utils/offlineCache.js")
+        .then(({ clearOfflineForUser }) => clearOfflineForUser(uid))
+        .catch(() => {});
+    }
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
       TransactionService.invalidateCache();

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { toInAppPath } from "../src/platform/deepLinks.js";
+import { parseQuickAddSearch } from "../src/utils/quickAddDraft.js";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -41,5 +42,18 @@ describe("universal link paths", () => {
     expect(toInAppPath("https://ducatapp.com/reset-password#type=recovery")).toBe("/reset-password#type=recovery");
     expect(toInAppPath("https://www.ducatapp.com/verify-email")).toBe("/verify-email");
     expect(toInAppPath("https://evil.example/dashboard")).toBeNull();
+  });
+
+  it("maps quick-add shortcut deep links to prefilled dashboard routes", () => {
+    const mapped = toInAppPath("ducat://quick-add?type=expense&amount=12,50&desc=Pranzo&category=alimentazione");
+    expect(mapped).toBe("/dashboard?quickAdd=1&type=expense&amount=12%2C50&description=Pranzo&category=alimentazione");
+    const search = mapped.slice(mapped.indexOf("?"));
+    expect(parseQuickAddSearch(search)).toEqual({
+      type: "expense",
+      amount: "12,50",
+      description: "Pranzo",
+      category: "alimentazione",
+    });
+    expect(parseQuickAddSearch("")).toBeNull();
   });
 });

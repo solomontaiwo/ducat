@@ -25,6 +25,7 @@ import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
 import PullToRefresh from "../ui/PullToRefresh.jsx";
 import { todayDateKey } from "../../utils/dateUtils.js";
 import { upcomingOccurrences } from "../../utils/recurrence.js";
+import { computeMonthProjection } from "../../utils/projection.js";
 
 const CATEGORY_COLORS = ["hsl(var(--cat-1))", "hsl(var(--cat-2))", "hsl(var(--cat-3))", "hsl(var(--cat-4))", "hsl(var(--cat-5))"];
 const MAX_VISIBLE_CATEGORIES = 4;
@@ -88,6 +89,13 @@ const Dashboard = () => {
   const monthTransactions = useMemo(
     () => monthData.filter((item) => item.date && item.date >= startDate && item.date <= endDate),
     [monthData, startDate, endDate]
+  );
+
+  const projection = useMemo(
+    () => (isCurrentMonth && stats
+      ? computeMonthProjection({ stats, monthTransactions, recurring, startDate, endDate })
+      : null),
+    [isCurrentMonth, stats, monthTransactions, recurring, startDate, endDate]
   );
 
   const spendingCategories = useMemo(() => {
@@ -224,6 +232,19 @@ const Dashboard = () => {
                   <dd className="amount text-lg sm:text-xl">{formatSignedAmount(stats.totalExpense, "expense")}</dd>
                 </div>
               </dl>
+              {projection && (
+                <p
+                  data-testid="month-projection"
+                  className="flex items-center justify-between gap-2 border-t border-white/15 pt-3 text-xs font-semibold text-hero-muted"
+                >
+                  <span>{t("dashboard.projectionLabel")}</span>
+                  <span data-amount="true" className="tabular-nums text-hero-foreground">
+                    {projection.projectedBalance < 0
+                      ? formatSignedAmount(projection.projectedBalance, "expense")
+                      : formatCurrency(projection.projectedBalance)}
+                  </span>
+                </p>
+              )}
             </>
           )}
         </section>
@@ -285,7 +306,7 @@ const Dashboard = () => {
       {(showUpcoming || hasBudgets) && !isLoading && (
         <div className={showUpcoming && hasBudgets ? "grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5" : "grid grid-cols-1 gap-4"}>
           {showUpcoming && <UpcomingCard />}
-          {hasBudgets && <BudgetCard breakdown={stats?.categoryBreakdown || {}} isCurrentMonth={isCurrentMonth} endDate={endDate} monthParam={monthParam} />}
+          {hasBudgets && <BudgetCard breakdown={stats?.categoryBreakdown || {}} isCurrentMonth={isCurrentMonth} startDate={startDate} endDate={endDate} monthParam={monthParam} />}
         </div>
       )}
 

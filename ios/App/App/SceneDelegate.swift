@@ -12,7 +12,33 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.rootViewController = MainViewController()
         window?.makeKeyAndVisible()
 
+        if let shortcutItem = connectionOptions.shortcutItem {
+            handleShortcut(shortcutItem)
+        }
+
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
+    }
+
+    func windowScene(
+        _ windowScene: UIWindowScene,
+        performActionFor shortcutItem: UIApplicationShortcutItem,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        completionHandler(handleShortcut(shortcutItem))
+    }
+
+    @discardableResult
+    private func handleShortcut(_ shortcutItem: UIApplicationShortcutItem) -> Bool {
+        switch shortcutItem.type {
+        case "app.ducat.quick-expense":
+            NativeFeaturesPlugin.enqueueRoute("/dashboard?quickAdd=1&type=expense")
+            return true
+        case "app.ducat.quick-income":
+            NativeFeaturesPlugin.enqueueRoute("/dashboard?quickAdd=1&type=income")
+            return true
+        default:
+            return false
+        }
     }
 
     func sceneWillResignActive(_ scene: UIScene) {

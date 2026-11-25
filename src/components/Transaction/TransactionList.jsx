@@ -10,7 +10,7 @@ import DeleteTransactionDialog from "./DeleteTransactionDialog.jsx";
 import { compareTransactions } from "../../utils/transactionOrder.js";
 import { formatGroupDate as formatGroupDateLabel, formatRowDate, groupNetAmount, groupTransactionsByDate } from "../../utils/transactionGrouping.js";
 import { groupTransactionsByMonth, mergeTransactions } from "../../utils/transactionSearch.js";
-import { FiChevronDown, FiCopy, FiSearch, FiTrash2, FiX } from "react-icons/fi";
+import { FiCheckSquare, FiChevronDown, FiCopy, FiSearch, FiTrash2, FiX } from "react-icons/fi";
 import { useCategories } from "../../utils/categories.jsx";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
@@ -72,6 +72,9 @@ const TransactionList = () => {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [actionTransaction, setActionTransaction] = useState(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const [allLoadedTransactions, setAllLoadedTransactions] = useState([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -134,6 +137,8 @@ const TransactionList = () => {
     setSelectedCategory,
     selectedType,
     setSelectedType,
+    sortBy,
+    setSortBy,
   } = useTransactionFilter(
     visibleTransactions,
     { startDate, endDate },
@@ -438,9 +443,72 @@ const TransactionList = () => {
   }, [addTransaction, editTransaction, saveEdit]);
 
   const handleSelect = useCallback((transaction) => {
+    if (selectionMode) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(transaction.id)) next.delete(transaction.id);
+        else next.add(transaction.id);
+        return next;
+      });
+      return;
+    }
     if (isDesktop) setSelectedTransaction(transaction);
     else setActionTransaction(transaction);
-  }, [isDesktop]);
+  }, [isDesktop, selectionMode]);
+
+  const exitSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const selectedItems = useMemo(
+    () => filteredTransactions.filter((item) => selectedIds.has(item.id)),
+    [filteredTransactions, selectedIds]
+  );
+
+  const bulkCategories = useMemo(() => {
+    const types = new Set(selectedItems.map((item) => item.type));
+    if (types.size === 1 && types.has("income")) return incomeCategories;
+    return expenseCategories;
+  }, [selectedItems, expenseCategories, incomeCategories]);
+
+  const handleBulkCategory = useCallback(async (nextCategory) => {
+    if (!nextCategory || !selectedItems.length || bulkBusy) return;
+    setBulkBusy(true);
+    let updated = 0;
+    try {
+      for (const item of selectedItems) {
+        const ok = await updateTransaction(item.id, { category: nextCategory });
+        if (ok) {
+          updated += 1;
+          setAllLoadedTransactions((prev) => prev.map((row) => (row.id === item.id ? { ...row, category: nextCategory } : row)));
+        }
+      }
+      if (updated) notification.success(t("transactions.bulk.updated", { count: updated }));
+      exitSelection();
+    } finally {
+      setBulkBusy(false);
+    }
+  }, [selectedItems, bulkBusy, updateTransaction, notification, t, exitSelection]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!selectedItems.length || bulkBusy) return;
+    setBulkBusy(true);
+    let deleted = 0;
+    try {
+      for (const item of selectedItems) {
+        const ok = await deleteTransaction(item.id, { silent: true });
+        if (ok) {
+          deleted += 1;
+          setAllLoadedTransactions((prev) => prev.filter((row) => row.id !== item.id));
+        }
+      }
+      if (deleted) notification.success(t("transactions.bulk.deleted", { count: deleted }));
+      exitSelection();
+    } finally {
+      setBulkBusy(false);
+    }
+  }, [selectedItems, bulkBusy, deleteTransaction, notification, t, exitSelection]);
 
   const loadedTotals = useMemo(() => filteredTransactions.reduce(
     (sum, item) => {
@@ -496,8 +564,9 @@ const TransactionList = () => {
   const groupedTransactions = isSearching
     ? groupTransactionsByMonth(filteredTransactions, i18n.language)
     : groupTransactionsByDate(filteredTransactions, formatGroupDate);
-  const hasFilters = searchTerm || selectedCategory !== "all" || selectedType !== "all";
-  const showPanel = isDesktop && selectedTransaction;
+  const isAmountSorted = sortBy !== "date-desc";
+  const hasFilters = searchTerm || selectedCategory !== "all" || selectedType !== "all" || isAmountSorted;
+  const showPanel = isDesktop && selectedTransaction && !selectionMode;
   const demoCount = transactions.filter((item) => !item.isSample).length;
 
   return (
@@ -573,8 +642,33 @@ const TransactionList = () => {
               </select>
               <FiChevronDown className={cn("pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2", selectedCategory !== "all" ? "text-background" : "text-muted-foreground")} aria-hidden="true" />
             </label>
+            <label className="relative shrink-0">
+              <span className="sr-only">{t("transactions.sort.label")}</span>
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+                data-active={isAmountSorted}
+                className="chip appearance-none pr-9 text-sm"
+                aria-label={t("transactions.sort.label")}
+              >
+                <option value="date-desc">{t("transactions.sort.dateDesc")}</option>
+                <option value="amount-desc">{t("transactions.sort.amountDesc")}</option>
+                <option value="amount-asc">{t("transactions.sort.amountAsc")}</option>
+              </select>
+              <FiChevronDown className={cn("pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2", isAmountSorted ? "text-background" : "text-muted-foreground")} aria-hidden="true" />
+            </label>
             <button type="button" className="chip" aria-pressed={allTime || isSearching} disabled={isSearching} onClick={() => setAllTime((value) => !value)}>
               {t("transactions.filters.allTime")}
+            </button>
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={selectionMode}
+              onClick={() => (selectionMode ? exitSelection() : setSelectionMode(true))}
+              data-testid="toggle-bulk-select"
+            >
+              <FiCheckSquare className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("transactions.bulk.select")}
             </button>
             {hasFilters && (
               <button
@@ -584,6 +678,7 @@ const TransactionList = () => {
                   setSearchTerm("");
                   setSelectedCategory("all");
                   setSelectedType("all");
+                  setSortBy("date-desc");
                 }}
               >
                 <FiX className="h-3.5 w-3.5" aria-hidden="true" />
@@ -591,6 +686,47 @@ const TransactionList = () => {
               </button>
             )}
           </div>
+          {selectionMode && (
+            <div
+              data-testid="bulk-action-bar"
+              className="surface flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 text-sm"
+            >
+              <span className="font-bold tabular-nums">
+                {t("transactions.bulk.selected", { count: selectedItems.length })}
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  aria-label={t("transactions.bulk.recategorize")}
+                  defaultValue=""
+                  disabled={!selectedItems.length || bulkBusy}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    event.target.value = "";
+                    handleBulkCategory(value);
+                  }}
+                  className="chip h-9 pr-3 text-xs"
+                >
+                  <option value="" disabled>{t("transactions.bulk.recategorize")}</option>
+                  {bulkCategories.map((cat) => (
+                    <option key={cat.value} value={cat.value}>{cat.label}</option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  disabled={!selectedItems.length || bulkBusy}
+                  onClick={handleBulkDelete}
+                >
+                  <FiTrash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("transactions.actions.delete")}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={exitSelection} disabled={bulkBusy}>
+                  {t("common.close")}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="surface grid grid-cols-3 divide-x divide-border py-3 text-center">
@@ -624,7 +760,20 @@ const TransactionList = () => {
         )}
 
         <div className="space-y-5 pb-6">
-          {groupedTransactions.length > 0 ? (
+          {filteredTransactions.length > 0 && isAmountSorted ? (
+            <section aria-label={t("transactions.sort.label")} className="surface divide-y divide-border overflow-hidden px-2">
+              {filteredTransactions.map((transaction) => (
+                <SwipeableTransactionCard
+                  key={transaction.id}
+                  transaction={transaction}
+                  meta={`${getCategoryLabel(transaction.category)} · ${formatRowDate(transaction.date, i18n.language, t)}`}
+                  onSelect={handleSelect}
+                  onDelete={handleDeleteClick}
+                  selected={selectionMode ? selectedIds.has(transaction.id) : (showPanel && selectedTransaction.id === transaction.id)}
+                />
+              ))}
+            </section>
+          ) : groupedTransactions.length > 0 ? (
             groupedTransactions.map((group) => {
               const net = groupNetAmount(group.transactions);
               return (
@@ -643,7 +792,7 @@ const TransactionList = () => {
                           : getCategoryLabel(transaction.category)}
                         onSelect={handleSelect}
                         onDelete={handleDeleteClick}
-                        selected={showPanel && selectedTransaction.id === transaction.id}
+                        selected={selectionMode ? selectedIds.has(transaction.id) : (showPanel && selectedTransaction.id === transaction.id)}
                       />
                     ))}
                   </div>

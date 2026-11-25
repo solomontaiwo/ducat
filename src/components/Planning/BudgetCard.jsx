@@ -7,12 +7,13 @@ import { usePlanning } from "../../context/PlanningProvider.jsx";
 import { formatCompactCurrency } from "../../utils/formatCurrency.jsx";
 import { minorToMajor } from "../../utils/money.js";
 import { budgetRows } from "../../utils/budgets.js";
+import { projectBudgetRow } from "../../utils/projection.js";
 import { cn } from "../../lib/utils.js";
 
 const BAR_TONE = { ok: "bg-primary", near: "bg-warning", over: "bg-warning-strong" };
 
 /** Month budgets on the overview; renders nothing until a budget exists. */
-const BudgetCard = ({ breakdown, isCurrentMonth, endDate, monthParam }) => {
+const BudgetCard = ({ breakdown, isCurrentMonth, startDate, endDate, monthParam }) => {
   const { t, i18n } = useTranslation();
   const { budgets } = usePlanning();
   const rows = useMemo(
@@ -35,6 +36,7 @@ const BudgetCard = ({ breakdown, isCurrentMonth, endDate, monthParam }) => {
             type: "expense",
             ...(monthParam ? { month: monthParam } : {}),
           }).toString();
+          const pace = isCurrentMonth ? projectBudgetRow(row, { startDate, endDate }) : null;
           return (
             <li key={row.category} data-testid="budget-row" data-status={row.status}>
               <Link
@@ -62,6 +64,11 @@ const BudgetCard = ({ breakdown, isCurrentMonth, endDate, monthParam }) => {
                 >
                   <div className={cn("h-full rounded-full", BAR_TONE[row.status])} style={{ width: `${Math.max(2, Math.min(100, row.ratio * 100))}%` }} />
                 </div>
+                {pace && (
+                  <p className="text-[11px] font-semibold text-warning-strong" data-testid="budget-pace">
+                    {t("budgets.paceWarning", { days: pace.daysUntilOver })}
+                  </p>
+                )}
               </Link>
             </li>
           );
@@ -77,6 +84,7 @@ const BudgetCard = ({ breakdown, isCurrentMonth, endDate, monthParam }) => {
 BudgetCard.propTypes = {
   breakdown: PropTypes.object.isRequired,
   isCurrentMonth: PropTypes.bool,
+  startDate: PropTypes.instanceOf(Date),
   endDate: PropTypes.instanceOf(Date),
   monthParam: PropTypes.string,
 };

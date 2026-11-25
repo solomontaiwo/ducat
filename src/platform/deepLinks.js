@@ -10,6 +10,7 @@
  */
 
 import { MOBILE, runtime } from "./index.js";
+import { buildQuickAddPath } from "../utils/quickAddDraft.js";
 
 const DEFAULT_UNIVERSAL_LINK_HOSTS = new Set(["ducatapp.com", "www.ducatapp.com"]);
 
@@ -48,7 +49,11 @@ export const toInAppPath = (value) => {
     ? `${parsed.host ? `/${parsed.host}` : ""}${parsed.pathname}`
     : parsed.pathname;
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  return `${normalized.replace(/^\/{2,}/, "/")}${parsed.search}${parsed.hash}`;
+  const cleanPath = normalized.replace(/^\/{2,}/, "/");
+  if (cleanPath === "/quick-add" || cleanPath === "/quick-add/") {
+    return buildQuickAddPath(parsed.searchParams);
+  }
+  return `${cleanPath}${parsed.search}${parsed.hash}`;
 };
 
 /** Listens for Universal Links. No-op outside the iOS shell. */

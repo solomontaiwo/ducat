@@ -328,3 +328,48 @@ test("inline amount calculator, privacy mode toggle and category drill-down work
   await expect(page).toHaveURL(/\/transactions\?.*category=trasporti/);
   await expect(page.getByRole("button", { name: /Taxi condiviso/ })).toBeVisible();
 });
+
+test("quick-add deep link, sorting, bulk recategorization, annual recap and shortcuts work", async ({ page, isMobile }) => {
+  await page.goto(".");
+  await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
+  await expect(page).toHaveURL(/\/transactions$/);
+
+  // 1. Quick-add URL prefill (used by iOS Quick Actions & Shortcuts)
+  await page.evaluate(() => {
+    window.history.pushState({}, "", "/dashboard?quickAdd=1&type=expense&amount=45&description=Cena%20amici");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  const modal = page.getByRole("dialog");
+  await expect(modal).toBeVisible();
+  await expect(modal.locator("#transaction-amount")).toHaveValue("45");
+  await expect(modal.locator("#transaction-description")).toHaveValue("Cena amici");
+  await modal.getByRole("button", { name: /45,00|45\.00/ }).click();
+  await expect(modal).toBeHidden();
+
+  // 2. Sorting by amount and bulk recategorization in Transactions
+  await goTo(page, "transactions");
+  await page.getByLabel(/^(ordina|sort)$/i).selectOption("amount-desc");
+  await page.getByTestId("toggle-bulk-select").click();
+  await expect(page.getByTestId("bulk-action-bar")).toBeVisible();
+  await page.getByRole("button", { name: /Cena amici/ }).click();
+  await expect(page.getByTestId("bulk-action-bar")).toContainText(/1/);
+  await page.getByLabel(/cambia categoria|change category/i).selectOption("viaggi");
+  await expect(page.getByTestId("bulk-action-bar")).toBeHidden();
+
+  // 3. Annual recap in Analytics
+  await goTo(page, "analytics");
+  await page.getByRole("radio", { name: /quest'anno|this year/i }).click();
+  await expect(page.getByTestId("annual-summary")).toBeVisible();
+
+  // 4. Desktop keyboard shortcuts (`?` opens shortcuts dialog, `P` toggles privacy)
+  if (!isMobile) {
+    await page.keyboard.press("?");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await page.keyboard.press("p");
+    await expect(page.locator("html")).toHaveClass(/privacy-masked/);
+    await page.keyboard.press("p");
+    await expect(page.locator("html")).not.toHaveClass(/privacy-masked/);
+  }
+});

@@ -54,6 +54,7 @@ import {
 // lets people create an account, so it is on unless it is explicitly disabled.
 const ACCOUNT_DELETION_ENABLED = import.meta.env.VITE_ENABLE_ACCOUNT_DELETION !== "false";
 const RestoreBackupSheet = lazy(() => import("./RestoreBackupSheet.jsx"));
+const ImportCsvSheet = lazy(() => import("./ImportCsvSheet.jsx"));
 const BACKUP_REMINDER_DAYS = 30;
 
 /** Movements, months tracked and average monthly saving across the whole history. */
@@ -512,6 +513,7 @@ const Profile = () => {
 
           <SettingsGroup title={t("profilePage.data")}>
             <SettingsRow icon={FiDownload} tone="green" title={t("profilePage.export.title")} subtitle={t("profilePage.export.summary")} onClick={() => setSheet("export")} />
+            <SettingsRow icon={FiUpload} tone="green" title={t("csvImport.title")} subtitle={t("csvImport.summary")} onClick={() => setSheet("importCsv")} testId="row-import-csv" />
             <SettingsRow
               icon={FiDatabase}
               tone="amber"
@@ -599,6 +601,7 @@ const Profile = () => {
       <ExportSheet open={sheet === "export"} onClose={close} firstDate={summary?.firstDate || undefined} />
       <InstallSheet open={sheet === "install"} onClose={close} />
       {sheet === "restore" && <Suspense fallback={null}><RestoreBackupSheet onClose={close} /></Suspense>}
+      {sheet === "importCsv" && <Suspense fallback={null}><ImportCsvSheet onClose={close} /></Suspense>}
       {ACCOUNT_DELETION_ENABLED && (
         <Sheet
           open={sheet === "delete"}

@@ -14,6 +14,7 @@ export const useTransactionFilter = (
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(initialCategory || "all");
   const [selectedType, setSelectedType] = useState(initialType || "all");
+  const [sortBy, setSortBy] = useState("date-desc");
 
   const isSearching = searchTerm.trim().length >= MIN_SEARCH_LENGTH;
 
@@ -22,9 +23,7 @@ export const useTransactionFilter = (
     if (!source || source.length === 0) return [];
 
     const { startDate, endDate } = dateRange;
-    const sorted = [...source].sort((a, b) => b.date - a.date);
-
-    return sorted.filter((transaction) => {
+    const filtered = source.filter((transaction) => {
       if (!isSearching && startDate && endDate) {
         if (!transaction.date || !isWithinInterval(transaction.date, { start: startDate, end: endDate })) {
           return false;
@@ -35,7 +34,15 @@ export const useTransactionFilter = (
       if (selectedType !== "all" && transaction.type !== selectedType) return false;
       return true;
     });
-  }, [transactions, searchSource, isSearching, dateRange, searchTerm, selectedCategory, selectedType, getCategoryLabel]);
+
+    if (sortBy === "amount-desc") {
+      return [...filtered].sort((a, b) => (b.amount - a.amount) || (b.date - a.date));
+    }
+    if (sortBy === "amount-asc") {
+      return [...filtered].sort((a, b) => (a.amount - b.amount) || (b.date - a.date));
+    }
+    return [...filtered].sort((a, b) => b.date - a.date);
+  }, [transactions, searchSource, isSearching, dateRange, searchTerm, selectedCategory, selectedType, sortBy, getCategoryLabel]);
 
   return {
     filteredTransactions,
@@ -46,5 +53,7 @@ export const useTransactionFilter = (
     setSelectedCategory,
     selectedType,
     setSelectedType,
+    sortBy,
+    setSortBy,
   };
 };

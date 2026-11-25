@@ -226,3 +226,69 @@ export const withChartColors = (categories = [], palette) => categories.map((cat
   ...category,
   fill: palette[index % palette.length],
 }));
+
+/** Annual recap highlights for one calendar year (best saving month, biggest expense month, top category). */
+export const buildAnnualSummary = (transactions = [], year, { expenseCategories = [], t, locale } = {}) => {
+  const inYear = transactions.filter((item) => item?.date && item.date.getFullYear() === year);
+  if (!inYear.length) return null;
+
+  const byMonth = Array.from({ length: 12 }, (_, monthIndex) => ({
+    monthIndex,
+    label: format(new Date(year, monthIndex, 1), "LLLL", { locale }),
+    incomeMinor: 0,
+    expenseMinor: 0,
+    count: 0,
+  }));
+
+  const expenseByCat = {};
+  let incomeMinor = 0;
+  let expenseMinor = 0;
+
+  for (const item of inYear) {
+    const month = byMonth[item.date.getMonth()];
+    const minor = getTransactionAmountMinor(item);
+    month.count += 1;
+    if (item.type === "income") {
+      month.incomeMinor += minor;
+      incomeMinor += minor;
+    } else if (item.type === "expense") {
+      month.expenseMinor += minor;
+      expenseMinor += minor;
+      expenseByCat[item.category] = (expenseByCat[item.category] || 0) + minor;
+    }
+  }
+
+  const activeMonths = byMonth.filter((m) => m.count > 0);
+  const bestSavingMonth = activeMonths.reduce((best, m) => (
+    !best || (m.incomeMinor - m.expenseMinor) > (best.incomeMinor - best.expenseMinor) ? m : best
+  ), null);
+  const highestExpenseMonth = activeMonths
+    .filter((m) => m.expenseMinor > 0)
+    .reduce((worst, m) => (!worst || m.expenseMinor > worst.expenseMinor ? m : worst), null);
+
+  const topEntry = Object.entries(expenseByCat).sort(([, a], [, b]) => b - a)[0];
+  const topCategory = topEntry ? {
+    category: topEntry[0],
+    amount: minorToMajor(topEntry[1]),
+    label: expenseCategories.find((c) => c.value === topEntry[0])?.label
+      || (t ? t(`categories.${topEntry[0]}`, { defaultValue: topEntry[0] }) : topEntry[0]),
+  } : null;
+
+  const netMinor = incomeMinor - expenseMinor;
+  return {
+    year,
+    transactionCount: inYear.length,
+    activeMonths: activeMonths.length,
+    income: minorToMajor(incomeMinor),
+    expense: minorToMajor(expenseMinor),
+    net: minorToMajor(netMinor),
+    savingsRate: incomeMinor > 0 ? Math.round((netMinor * 100) / incomeMinor) : null,
+    bestSavingMonth: bestSavingMonth
+      ? { label: bestSavingMonth.label, net: minorToMajor(bestSavingMonth.incomeMinor - bestSavingMonth.expenseMinor) }
+      : null,
+    highestExpenseMonth: highestExpenseMonth
+      ? { label: highestExpenseMonth.label, expense: minorToMajor(highestExpenseMonth.expenseMinor) }
+      : null,
+    topCategory,
+  };
+};

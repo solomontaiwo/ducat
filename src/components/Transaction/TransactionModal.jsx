@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import TransactionForm from "./TransactionForm.jsx";
 
 /** Full-screen sheet on phones, centred dialog from `sm` up. */
-const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
+const TransactionModal = ({ show, onClose, onSubmit, transaction, initialDraft }) => {
   const isEdit = !!transaction;
   const { addTransaction, updateTransaction } = useUnifiedTransactions();
   const { t } = useTranslation();
@@ -35,6 +35,7 @@ const TransactionModal = ({ show, onClose, onSubmit, transaction }) => {
         {show && (
           <TransactionForm
             transaction={transaction}
+            initialDraft={initialDraft}
             onSubmit={handleSubmit}
             onCancel={onClose}
           />
@@ -49,6 +50,7 @@ TransactionModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func,
   transaction: PropTypes.object,
+  initialDraft: PropTypes.object,
 };
 
 export default TransactionModal;

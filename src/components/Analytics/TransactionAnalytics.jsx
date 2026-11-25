@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { format } from "date-fns";
+import { endOfYear, format, startOfYear } from "date-fns";
 import { enUS, it } from "date-fns/locale";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useAuth } from "../../context/AuthProvider.jsx";
@@ -15,7 +15,7 @@ import { useDateRange } from "../../hooks/useDateRange.jsx";
 import { useAnalyticsData } from "../../hooks/useAnalyticsData.js";
 import { SeriesTooltip } from "./ChartTooltips.jsx";
 import {
-  CATEGORY_CHART_COLORS, PERIOD_PREFERENCE_KEY, buildExtendedStats, categoryDeltas, compareValues,
+  CATEGORY_CHART_COLORS, PERIOD_PREFERENCE_KEY, buildAnnualSummary, buildExtendedStats, categoryDeltas, compareValues,
   describeComparisonRange, getComparisonRange, getEffectiveEnd, readPeriodPreference, withChartColors,
 } from "../../utils/analyticsModel";
 import { exportAnalyticsCsv, exportAnalyticsPdf } from "../../utils/analyticsExport";
@@ -31,7 +31,8 @@ import TransactionRow from "../Transaction/TransactionRow.jsx";
 import { Link, useOptionalNavigate } from "../../router/RouterProvider";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
-import { FiChevronRight, FiDownload } from "react-icons/fi";
+import PullToRefresh from "../ui/PullToRefresh.jsx";
+import { FiChevronLeft, FiChevronRight, FiDownload } from "react-icons/fi";
 
 const PERIODS = ["month", "lastMonth", "last3Months", "year", "custom"];
 
@@ -72,7 +73,7 @@ const KpiTile = ({ label, value, note, tone, delta, maskNote = false }) => {
 };
 
 const TransactionAnalytics = () => {
-  const { isDemo, transactions: recentTransactions, maxTransactions, loading: contextLoading, fetchAllTransactions } = useUnifiedTransactions();
+  const { isDemo, transactions: recentTransactions, maxTransactions, loading: contextLoading, fetchAllTransactions, syncOfflineQueue } = useUnifiedTransactions();
   const { currentUser } = useAuth();
   const { expenseCategories, incomeCategories } = useCategories();
   const { t, i18n } = useTranslation();
@@ -80,23 +81,44 @@ const TransactionAnalytics = () => {
   const navigate = useOptionalNavigate();
   const { isDarkMode } = useTheme();
   const [categoryType, setCategoryType] = useState("expense");
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { budgets, ready: planningReady, preferences } = usePlanning();
   const startDay = preferences?.monthStartDay || 1;
   const showBudgetInvite = planningReady && categoryType === "expense" && Object.keys(budgets).length === 0;
 
   const initialPreference = useMemo(readPeriodPreference, []);
-  const { period, setPeriod, customRange, setCustomRange, startDate, endDate } = useDateRange(
+  const { period, setPeriod, customRange, setCustomRange, startDate: rawStartDate, endDate: rawEndDate } = useDateRange(
     initialPreference.period,
     initialPreference.customRange,
     startDay
   );
 
+  const { startDate, endDate } = useMemo(() => {
+    if (period !== "year" || selectedYear === currentYear) {
+      return { startDate: rawStartDate, endDate: rawEndDate };
+    }
+    const anchor = new Date(selectedYear, 0, 1);
+    return { startDate: startOfYear(anchor), endDate: endOfYear(anchor) };
+  }, [period, selectedYear, currentYear, rawStartDate, rawEndDate]);
+
   const effectiveEnd = useMemo(() => getEffectiveEnd(endDate), [endDate]);
   const comparison = useMemo(() => getComparisonRange(period, startDate, endDate), [period, startDate, endDate]);
 
   const { analyticsData, isLoadingAnalyticsData, analyticsError } = useAnalyticsData({
-    isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate, compareStart: comparison.startDate, startDay,
+    isDemo, recentTransactions, currentUser, fetchAllTransactions, startDate, endDate, compareStart: comparison.startDate, startDay, refreshKey,
   });
+
+  const handleRefresh = useCallback(async () => {
+    if (isDemo || !currentUser) return;
+    if (typeof navigator === "undefined" || navigator.onLine !== false) {
+      await syncOfflineQueue?.();
+      const { TransactionService } = await import("../../services/transactionService.jsx");
+      TransactionService.invalidateCache();
+    }
+    setRefreshKey((value) => value + 1);
+  }, [isDemo, currentUser, syncOfflineQueue]);
 
   useEffect(() => {
     writeLocalValue(PERIOD_PREFERENCE_KEY, JSON.stringify({ period, customRange }));
@@ -155,6 +177,10 @@ const TransactionAnalytics = () => {
     label: format(month.monthStart, "MMM", { locale }).replace(".", ""),
   })), [extendedStats.monthlyTrend, locale]);
   const hasTrend = trend.some((month) => month.income > 0 || month.expense > 0);
+  const annualSummary = useMemo(
+    () => (period === "year" ? buildAnnualSummary(analyticsData, selectedYear, { expenseCategories, t, locale }) : null),
+    [period, analyticsData, selectedYear, expenseCategories, t, locale]
+  );
 
   // Runs an export and offers a retry action when it fails.
   const periodLabel = period === "custom"
@@ -195,6 +221,7 @@ const TransactionAnalytics = () => {
   const demoCount = recentTransactions.filter((item) => !item.isSample).length;
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} disabled={contextLoading || isLoadingAnalyticsData}>
     <div className="page-shell">
       {analyticsError && (
         <div role="alert" className="rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
@@ -231,6 +258,30 @@ const TransactionAnalytics = () => {
             </button>
           ))}
         </div>
+        {period === "year" && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-1 py-0.5">
+              <button
+                type="button"
+                aria-label={t("analytics.annual.prevYear")}
+                onClick={() => setSelectedYear((y) => y - 1)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+              >
+                <FiChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <span className="px-2 text-sm font-bold tabular-nums" data-testid="selected-year">{selectedYear}</span>
+              <button
+                type="button"
+                aria-label={t("analytics.annual.nextYear")}
+                disabled={selectedYear >= currentYear}
+                onClick={() => setSelectedYear((y) => Math.min(currentYear, y + 1))}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted disabled:opacity-40"
+              >
+                <FiChevronRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        )}
         {period === "custom" && (
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1.5 text-sm font-semibold">
@@ -278,6 +329,43 @@ const TransactionAnalytics = () => {
           delta={describeDelta(stats.dailyAverageExpense, previousStats.dailyAverageExpense, false)}
         />
       </section>
+
+      {annualSummary && (
+        <section className="surface space-y-3 p-5 sm:p-6" aria-labelledby="annual-recap-title" data-testid="annual-summary">
+          <h2 id="annual-recap-title" className="text-lg font-bold">
+            {t("analytics.annual.title", { year: annualSummary.year })}
+          </h2>
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {annualSummary.bestSavingMonth && (
+              <div className="rounded-2xl bg-muted/60 p-3.5">
+                <dt className="text-xs font-semibold text-muted-foreground">{t("analytics.annual.bestMonth")}</dt>
+                <dd className="mt-0.5 text-base font-bold capitalize">{annualSummary.bestSavingMonth.label}</dd>
+                <dd data-amount="true" className="text-xs font-semibold tabular-nums text-income">
+                  {formatCurrency(annualSummary.bestSavingMonth.net)}
+                </dd>
+              </div>
+            )}
+            {annualSummary.highestExpenseMonth && (
+              <div className="rounded-2xl bg-muted/60 p-3.5">
+                <dt className="text-xs font-semibold text-muted-foreground">{t("analytics.annual.highestSpend")}</dt>
+                <dd className="mt-0.5 text-base font-bold capitalize">{annualSummary.highestExpenseMonth.label}</dd>
+                <dd data-amount="true" className="text-xs font-semibold tabular-nums text-muted-foreground">
+                  {formatCurrency(annualSummary.highestExpenseMonth.expense)}
+                </dd>
+              </div>
+            )}
+            {annualSummary.topCategory && (
+              <div className="rounded-2xl bg-muted/60 p-3.5">
+                <dt className="text-xs font-semibold text-muted-foreground">{t("analytics.annual.topCategory")}</dt>
+                <dd className="mt-0.5 truncate text-base font-bold">{annualSummary.topCategory.label}</dd>
+                <dd data-amount="true" className="text-xs font-semibold tabular-nums text-muted-foreground">
+                  {formatCurrency(annualSummary.topCategory.amount)}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:gap-5">
         <section className="surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="trend-title">
@@ -403,6 +491,7 @@ const TransactionAnalytics = () => {
       </div>
 
     </div>
+    </PullToRefresh>
   );
 };
 

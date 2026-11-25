@@ -28,7 +28,7 @@ const DEFAULT_REPEAT = Object.freeze({ enabled: false, frequency: "monthly", mod
 
 const yesterdayDateKey = () => format(subDays(new Date(), 1), DATE_KEY_FORMAT);
 
-const initialState = (transaction, expenseCategories, incomeCategories, preferences) => {
+const initialState = (transaction, expenseCategories, incomeCategories, preferences, initialDraft) => {
   if (transaction) {
     return {
       type: transaction.type,
@@ -38,13 +38,30 @@ const initialState = (transaction, expenseCategories, incomeCategories, preferen
       category: transaction.category || "",
     };
   }
+  const applyDraft = (base) => {
+    if (!initialDraft) return base;
+    const type = initialDraft.type === "income" || initialDraft.type === "expense" ? initialDraft.type : base.type;
+    const list = type === "income" ? incomeCategories : expenseCategories;
+    const category = initialDraft.category && list.some((item) => item.value === initialDraft.category)
+      ? initialDraft.category
+      : list.some((item) => item.value === base.category)
+        ? base.category
+        : list[0]?.value || "";
+    return {
+      ...base,
+      type,
+      category,
+      amount: initialDraft.amount ?? base.amount,
+      description: initialDraft.description ?? base.description,
+    };
+  };
   if (preferences && preferences.defaultType !== "last") {
     const type = preferences.defaultType;
     const list = type === "income" ? incomeCategories : expenseCategories;
     const category = list.some((item) => item.value === preferences.defaultCategory)
       ? preferences.defaultCategory
       : list[0]?.value || "";
-    return { type, amount: "", description: "", date: todayDateKey(), category };
+    return applyDraft({ type, amount: "", description: "", date: todayDateKey(), category });
   }
   let type = "expense";
   let category = expenseCategories[0]?.value || "";
@@ -58,7 +75,7 @@ const initialState = (transaction, expenseCategories, incomeCategories, preferen
   } catch {
     // ignore malformed local preference
   }
-  return { type, amount: "", description: "", date: todayDateKey(), category };
+  return applyDraft({ type, amount: "", description: "", date: todayDateKey(), category });
 };
 
 /**
@@ -66,7 +83,7 @@ const initialState = (transaction, expenseCategories, incomeCategories, preferen
  * side panel of the transaction list. `onSubmit` receives the validated payload
  * and resolves to `true` when the write succeeded.
  */
-const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transaction", autoFocusAmount = false, className }) => {
+const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPrefix = "transaction", autoFocusAmount = false, className }) => {
   const isEdit = !!transaction;
   const { visibleExpenseCategories: expenseCategories, visibleIncomeCategories: incomeCategories, expenseCategories: allExpense, incomeCategories: allIncome } = useCategories();
   const { preferences, ready: planningReady } = usePlanning();
@@ -75,19 +92,19 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
   const [submitting, setSubmitting] = useState(false);
   const requestIdRef = useRef(crypto.randomUUID());
   const amountInputRef = useRef(null);
-  const [formData, setFormData] = useState(() => initialState(transaction, expenseCategories, incomeCategories, preferences));
+  const [formData, setFormData] = useState(() => initialState(transaction, expenseCategories, incomeCategories, preferences, initialDraft));
   const [showDatePicker, setShowDatePicker] = useState(false);
   // Once the user picks a category by hand, suggestions stop overriding it.
-  const [categoryTouched, setCategoryTouched] = useState(false);
+  const [categoryTouched, setCategoryTouched] = useState(() => Boolean(initialDraft?.category));
   const { transactions: history } = useUnifiedTransactions();
   const [repeat, setRepeat] = useState(DEFAULT_REPEAT);
 
   // Reset whenever another transaction is opened in the same form instance.
-  const transactionKey = transaction?.id || "new";
+  const transactionKey = transaction?.id || (initialDraft ? `draft:${JSON.stringify(initialDraft)}` : "new");
   useEffect(() => {
-    setFormData(initialState(transaction, expenseCategories, incomeCategories, preferences));
+    setFormData(initialState(transaction, expenseCategories, incomeCategories, preferences, initialDraft));
     setShowDatePicker(false);
-    setCategoryTouched(false);
+    setCategoryTouched(Boolean(initialDraft?.category));
     setRepeat(DEFAULT_REPEAT);
     requestIdRef.current = crypto.randomUUID();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -517,6 +534,7 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
 
 TransactionForm.propTypes = {
   transaction: PropTypes.object,
+  initialDraft: PropTypes.object,
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func,
   idPrefix: PropTypes.string,

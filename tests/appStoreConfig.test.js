@@ -80,6 +80,10 @@ describe("iOS submission requirements", () => {
     expect(sceneDelegate).toContain("MainViewController()");
     expect(sceneDelegate).toContain("sceneWillResignActive");
     expect(sceneDelegate).toContain("UIVisualEffectView");
+    expect(sceneDelegate).toContain("performActionFor shortcutItem");
+    expect(infoPlist).toContain("UIApplicationShortcutItems");
+    expect(infoPlist).toContain("app.ducat.quick-expense");
+    expect(infoPlist).toContain("app.ducat.quick-income");
     const iosWorkflow = read(".github/workflows/ios.yml");
     expect(iosWorkflow).toContain("NativeFeaturesPlugin.swift");
     expect(iosWorkflow).toContain("NSFaceIDUsageDescription");

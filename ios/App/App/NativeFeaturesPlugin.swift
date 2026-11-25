@@ -24,10 +24,20 @@ public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificati
 
     private static let reminderPrefix = "ducat-rec-"
     private static let maxReminders = 40
-    private var pendingRoute: String?
+    private static weak var sharedInstance: NativeFeaturesPlugin?
+    private static var queuedRoute: String?
 
     override public func load() {
+        Self.sharedInstance = self
         UNUserNotificationCenter.current().delegate = self
+    }
+
+    /// Routes an iOS Home Screen Quick Action or notification tap into the SPA.
+    public static func enqueueRoute(_ route: String) {
+        DispatchQueue.main.async {
+            queuedRoute = route
+            sharedInstance?.notifyListeners("reminderTapped", data: ["route": route])
+        }
     }
 
     public func userNotificationCenter(
@@ -50,18 +60,15 @@ public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificati
         let request = response.notification.request
         if request.identifier.hasPrefix(Self.reminderPrefix) {
             let route = (request.content.userInfo["route"] as? String) ?? "/recurring"
-            DispatchQueue.main.async {
-                self.pendingRoute = route
-                self.notifyListeners("reminderTapped", data: ["route": route])
-            }
+            Self.enqueueRoute(route)
         }
         completionHandler()
     }
 
     @objc func consumePendingRoute(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            let route = self.pendingRoute
-            self.pendingRoute = nil
+            let route = Self.queuedRoute
+            Self.queuedRoute = nil
             call.resolve(["route": route as Any])
         }
     }

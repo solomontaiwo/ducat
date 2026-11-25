@@ -2,11 +2,11 @@ import PropTypes from "prop-types";
 import { Link, useLocation, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
-import { FiBarChart2, FiHome, FiList, FiLogOut, FiPlus, FiRefreshCw } from "react-icons/fi";
+import { FiBarChart2, FiHome, FiList, FiLogOut, FiPlus, FiRefreshCw, FiRepeat, FiTarget } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
 import { cn } from "../../lib/utils.js";
-import { canCheckForUpdates } from "../../services/updaterService";
+import { isDesktop, isStoreBuild } from "../../platform/index.js";
 
 const logo = `${import.meta.env.BASE_URL}icon-192.png`;
 
@@ -22,6 +22,10 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
     { label: t("navbar.dashboard"), path: "/dashboard", icon: FiHome },
     { label: t("navbar.transactions"), path: "/transactions", icon: FiList },
     { label: t("navbar.analytics"), path: "/analytics", icon: FiBarChart2 },
+  ];
+  const planningItems = [
+    { label: t("recurring.title"), path: "/recurring", icon: FiRepeat },
+    { label: t("budgets.title"), path: "/budgets", icon: FiTarget },
   ];
 
   const handleLogout = async () => {
@@ -70,11 +74,30 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
             </Link>
           );
         })}
+        <div className="my-1.5 border-t border-border/70" />
+        {planningItems.map((item) => {
+          const active = location.pathname === item.path;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
+                active ? "glass-active text-accent-foreground" : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
+              )}
+            >
+              <Icon className="h-[17px] w-[17px]" aria-hidden="true" />
+              {item.label}
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="flex-1" />
 
-      {canCheckForUpdates() && (
+      {isDesktop() && !isStoreBuild() && (
         <Link
           to="/updates"
           aria-current={location.pathname === "/updates" ? "page" : undefined}

@@ -137,7 +137,8 @@
     "whereMoneyGoes": "Where your money goes",
     "noTransactionsInMonth": "No transactions in {{month}}.",
     "quickAdd": "Quick add",
-    "quickAddSubmit": "Add"
+    "quickAddSubmit": "Add",
+    "projectionLabel": "End-of-month forecast"
   },
   "transaction": {
     "add": "Add Transaction",
@@ -291,6 +292,14 @@
       "categoryLabel": "Change compared with {{ref}}",
       "detail": "Compared with {{range}}.",
       "sameDays": "The same number of days as the current period so far."
+    },
+    "annual": {
+      "title": "{{year}} recap",
+      "prevYear": "Previous year",
+      "nextYear": "Next year",
+      "bestMonth": "Best month",
+      "highestSpend": "Highest spend",
+      "topCategory": "Top category"
     }
   },
   "transactionModal": {
@@ -379,7 +388,20 @@
     "loadedOfTotal": "Loaded",
     "loadAll": "Load all",
     "partialResults": "Filters active: totals based on loaded transactions",
-    "searchLoading": "Loading your whole history for search…"
+    "searchLoading": "Loading your whole history for search…",
+    "sort": {
+      "label": "Sort",
+      "dateDesc": "Newest",
+      "amountDesc": "Highest amount",
+      "amountAsc": "Lowest amount"
+    },
+    "bulk": {
+      "select": "Select",
+      "selected": "{{count}} selected",
+      "recategorize": "Change category…",
+      "updated": "Updated {{count}} transactions",
+      "deleted": "Deleted {{count}} transactions"
+    }
   },
   "pdf": {
     "reportTitle": "Financial Statistics Report",
@@ -671,6 +693,7 @@
     "over": "Over by {{amount}}",
     "daysLeft_one": "1 day left in the month",
     "daysLeft_other": "{{count}} days left in the month",
+    "paceWarning": "At this pace, over in {{days}}d",
     "invite": "Want a spending limit per category?",
     "inviteAction": "Set a budget",
     "limitFor": "Monthly budget for {{category}}",
@@ -928,5 +951,27 @@
     "notifTitle": "Upcoming: {{description}}",
     "notifBodyTomorrow": "Tomorrow · {{amount}} to confirm",
     "notifBodyToday": "Today · {{amount}} to confirm"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "newTransaction": "New transaction",
+    "search": "Search transactions",
+    "privacy": "Toggle hide amounts",
+    "navigate": "Switch section",
+    "help": "This help"
+  },
+  "csvImport": {
+    "title": "Import CSV",
+    "summary": "From bank or spreadsheet",
+    "description": "Pick a CSV file, verify columns and import without duplicates.",
+    "file": "CSV file",
+    "tooLarge": "File exceeds 5 MB.",
+    "empty": "No rows to import.",
+    "invalid": "Unable to read CSV file.",
+    "readySummary": "{{ready}} ready · {{duplicates}} existing · {{skipped}} skipped",
+    "importAction": "Import {{count}} transactions",
+    "importing": "Importing… {{progress}}%",
+    "success": "Imported {{count}} transactions.",
+    "failed": "Import failed."
   }
 }
