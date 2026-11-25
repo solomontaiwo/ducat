@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { differenceInCalendarDays, differenceInCalendarMonths, format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
 import {
-  FiCalendar, FiDatabase, FiDownload, FiEdit2, FiEyeOff, FiGlobe, FiGrid, FiKey, FiLock, FiMail, FiMessageSquare, FiMoon, FiPlusCircle,
+  FiBell, FiCalendar, FiDatabase, FiDownload, FiEdit2, FiEyeOff, FiGlobe, FiGrid, FiKey, FiLock, FiMail, FiMessageSquare, FiMoon, FiPlusCircle,
   FiRepeat, FiShield, FiSmartphone, FiTarget, FiTrash2, FiUpload,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthProvider.jsx";
@@ -40,6 +40,14 @@ import { buildFeedbackMailto } from "../../utils/feedback.js";
 import { openExternal } from "../../utils/openExternal.js";
 import { hapticTap } from "../../platform/haptics.js";
 import { setBiometricLockEnabled } from "../../platform/biometrics.js";
+import { isMobile } from "../../platform/index.js";
+import {
+  clearRecurringReminders,
+  isRecurringRemindersEnabled,
+  requestReminderPermission,
+  setRecurringRemindersEnabled,
+  syncRecurringReminders,
+} from "../../platform/reminders.js";
 
 // Enable only after deploying the database migration that enforces reauthentication.
 // Account deletion is required by the App Store (5.1.1(v)) for any app that
@@ -138,6 +146,9 @@ const Profile = () => {
   const [sheet, setSheet] = useState(null);
   const [backingUp, setBackingUp] = useState(false);
   const [togglingBiometric, setTogglingBiometric] = useState(false);
+  const showRemindersToggle = isMobile();
+  const [remindersEnabled, setRemindersEnabled] = useState(() => isRecurringRemindersEnabled());
+  const [togglingReminders, setTogglingReminders] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
 
@@ -220,8 +231,40 @@ const Profile = () => {
 
   const handleLogout = async () => {
     setBiometricLockEnabled(false);
+    await clearRecurringReminders();
     await logout();
     navigate("/");
+  };
+
+  const handleToggleReminders = async () => {
+    if (togglingReminders) return;
+    hapticTap();
+    setTogglingReminders(true);
+    try {
+      if (remindersEnabled) {
+        await clearRecurringReminders();
+        setRemindersEnabled(false);
+        notification.success(t("reminders.disabled"));
+        return;
+      }
+      const granted = await requestReminderPermission();
+      if (!granted) {
+        notification.error(t("reminders.denied"));
+        return;
+      }
+      setRecurringRemindersEnabled(true);
+      setRemindersEnabled(true);
+      await syncRecurringReminders(recurring, {
+        formatTitle: (rule) => t("reminders.notifTitle", { description: rule.description }),
+        formatBody: (_rule, amount, isDayBefore) => t(
+          isDayBefore ? "reminders.notifBodyTomorrow" : "reminders.notifBodyToday",
+          { amount: `${amount.toFixed(2).replace(".", ",")} €` }
+        ),
+      });
+      notification.success(t("reminders.enabled"));
+    } finally {
+      setTogglingReminders(false);
+    }
   };
 
   const biometricLabel = t(
@@ -434,6 +477,37 @@ const Profile = () => {
                 </button>
               )}
             />
+            {showRemindersToggle && (
+              <SettingsRow
+                icon={FiBell}
+                tone="blue"
+                title={t("reminders.title")}
+                subtitle={t("reminders.summary")}
+                testId="row-recurring-reminders"
+                trailing={(
+                  <button
+                    type="button"
+                    role="switch"
+                    disabled={togglingReminders}
+                    aria-checked={remindersEnabled}
+                    aria-label={t("reminders.title")}
+                    onClick={handleToggleReminders}
+                    className={cn(
+                      "relative h-8 w-[52px] shrink-0 rounded-full transition-colors disabled:opacity-50",
+                      remindersEnabled ? "bg-primary" : "bg-input"
+                    )}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-[left]",
+                        remindersEnabled ? "left-[24px]" : "left-1"
+                      )}
+                    />
+                  </button>
+                )}
+              />
+            )}
           </SettingsGroup>
 
           <SettingsGroup title={t("profilePage.data")}>

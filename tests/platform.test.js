@@ -3,7 +3,7 @@ import { DESKTOP, MOBILE, WEB, isDesktop, isMobile, isStoreBuild, isWeb, runtime
 import { blobToBase64, safeFilename, saveFile } from "../src/platform/files.js";
 import { isAllowedExternalUrl, openExternal } from "../src/platform/links.js";
 import { hapticSuccess, hapticTap } from "../src/platform/haptics.js";
-import { authStorage, nativeAuthStorage } from "../src/platform/authStorage.js";
+import { authStorage, hasStoredAuthSession, nativeAuthStorage } from "../src/platform/authStorage.js";
 import { buildFeedbackMailto } from "../src/utils/feedback.js";
 
 const shareMock = vi.fn(async () => ({}));
@@ -186,9 +186,19 @@ describe("auth storage", () => {
     vi.stubEnv("MODE", "mobile");
     expect(authStorage()).toBe(nativeAuthStorage);
     await expect(nativeAuthStorage.getItem("sb-key")).resolves.toBe("stored");
+    await expect(hasStoredAuthSession("sb-key")).resolves.toBe(true);
     await nativeAuthStorage.setItem("sb-key", "value");
     expect(preferencesMock.set).toHaveBeenCalledWith({ key: "sb-key", value: "value" });
     await nativeAuthStorage.removeItem("sb-key");
     expect(preferencesMock.remove).toHaveBeenCalledWith({ key: "sb-key" });
+  });
+
+  it("checks localStorage for stored sessions on web", async () => {
+    vi.stubEnv("MODE", "production");
+    localStorage.clear();
+    await expect(hasStoredAuthSession("sb-web")).resolves.toBe(false);
+    localStorage.setItem("sb-web", '{"access_token":"tok"}');
+    await expect(hasStoredAuthSession("sb-web")).resolves.toBe(true);
+    localStorage.clear();
   });
 });

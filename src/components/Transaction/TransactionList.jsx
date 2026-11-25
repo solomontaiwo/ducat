@@ -24,6 +24,7 @@ import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { cn } from "../../lib/utils.js";
 import { useNotification } from "../../utils/notificationUtils";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
+import PullToRefresh from "../ui/PullToRefresh.jsx";
 import { useOptionalLocation } from "../../router/RouterProvider";
 
 const TYPE_FILTERS = ["all", "expense", "income"];
@@ -61,6 +62,7 @@ const TransactionList = () => {
     getTransactionTotals,
     fetchAllTransactions,
     recentRevision,
+    syncOfflineQueue,
   } = useUnifiedTransactions();
 
   const { expenseCategories, incomeCategories } = useCategories();
@@ -455,6 +457,16 @@ const TransactionList = () => {
     ? { count: serverTotals.count, income: serverTotals.incomeMinor / 100, expense: serverTotals.expenseMinor / 100 }
     : { count: filteredTransactions.length, ...loadedTotals };
 
+  const handleRefresh = useCallback(async () => {
+    if (isDemo || !currentUser) return;
+    if (typeof navigator === "undefined" || navigator.onLine !== false) {
+      await syncOfflineQueue?.();
+      const { TransactionService } = await import("../../services/transactionService.jsx");
+      TransactionService.invalidateCache();
+    }
+    setReloadKey((value) => value + 1);
+  }, [isDemo, currentUser, syncOfflineQueue]);
+
   if (loading) {
     return (
       <div className="page-shell">
@@ -489,7 +501,8 @@ const TransactionList = () => {
   const demoCount = transactions.filter((item) => !item.isSample).length;
 
   return (
-    <div className={cn("mx-auto flex w-full gap-6", showPanel ? "max-w-[1400px]" : "max-w-6xl")}>
+    <PullToRefresh onRefresh={handleRefresh} disabled={loading} className={cn("mx-auto w-full", showPanel ? "max-w-[1400px]" : "max-w-6xl")}>
+    <div className="flex w-full gap-6">
       <div className="min-w-0 flex-1 space-y-4">
         {loadError && (
           <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
@@ -722,6 +735,7 @@ const TransactionList = () => {
         onConfirm={confirmDelete}
       />
     </div>
+    </PullToRefresh>
   );
 };
 

@@ -9,7 +9,7 @@
  * and account deletion wipes every queue on the device.
  */
 
-import { DEFAULT_CURRENCY, MAX_AMOUNT_MINOR, minorToMajor, parseMoneyToMinor } from "./money.js";
+import { DEFAULT_CURRENCY, MAX_AMOUNT_MINOR, getTransactionAmountMinor, minorToMajor, parseMoneyToMinor } from "./money.js";
 import { coerceDateKey, dateKeyToDate, isDateKey } from "./dateUtils.js";
 import { compareTransactions } from "./transactionOrder.js";
 
@@ -179,6 +179,69 @@ export const mergePendingTransactions = (remote, pending, { type = "all", startD
     && (!endKey || item.dateKey <= endKey)
   ));
   return extras.length ? [...extras, ...remote].sort(compareTransactions) : remote;
+};
+
+const matchesOfflineFilters = (item, { type = "all", startKey, endKey }) => {
+  if (!item) return false;
+  if (type !== "all" && item.type !== type) return false;
+  const key = item.dateKey || coerceDateKey(item.date);
+  if (startKey && key < startKey) return false;
+  if (endKey && key > endKey) return false;
+  return true;
+};
+
+/** Combines cached server transactions and pending offline writes matching filters, newest first. */
+export const filterOfflineTransactions = (remote = [], pending = [], { type = "all", startDate, endDate } = {}) => {
+  const startKey = startDate ? coerceDateKey(startDate) : null;
+  const endKey = endDate ? coerceDateKey(endDate) : null;
+  const filters = { type, startKey, endKey };
+  const merged = new Map();
+  for (const item of remote) {
+    if (matchesOfflineFilters(item, filters)) merged.set(item.id, item);
+  }
+  for (const item of pending) {
+    if (!merged.has(item.id) && matchesOfflineFilters(item, filters)) merged.set(item.id, item);
+  }
+  return Array.from(merged.values()).sort(compareTransactions);
+};
+
+/** Builds a paginated slice from local + pending transactions when the device is offline. */
+export const buildOfflinePage = (remote = [], pending = [], { pageSize = 40, cursor = null, type = "all", startDate, endDate } = {}) => {
+  const rows = filterOfflineTransactions(remote, pending, { type, startDate, endDate });
+  const offset = typeof cursor === "number" && cursor >= 0 ? cursor : 0;
+  const items = rows.slice(offset, offset + pageSize);
+  const nextOffset = offset + items.length;
+  const hasMore = nextOffset < rows.length;
+  return {
+    items,
+    nextCursor: hasMore ? nextOffset : null,
+    hasMore,
+  };
+};
+
+/** Computes count and income/expense minor totals locally when offline (or for pending deltas). */
+export const computeOfflineTotals = (remote = [], pending = [], { type = "all", startDate, endDate } = {}) => {
+  const rows = filterOfflineTransactions(remote, pending, { type, startDate, endDate });
+  let incomeMinor = 0;
+  let expenseMinor = 0;
+  for (const item of rows) {
+    const minor = getTransactionAmountMinor(item);
+    if (item.type === "income") incomeMinor += minor;
+    else if (item.type === "expense") expenseMinor += minor;
+  }
+  return { count: rows.length, incomeMinor, expenseMinor };
+};
+
+/** Adds unsynced pending offline items onto server totals. */
+export const mergePendingTotals = (serverTotals, serverRows, pending, options = {}) => {
+  if (!pending?.length) return serverTotals;
+  const seen = new Set(serverRows.map((item) => item.id));
+  const extra = computeOfflineTotals([], pending.filter((item) => !seen.has(item.id)), options);
+  return {
+    count: serverTotals.count + extra.count,
+    incomeMinor: serverTotals.incomeMinor + extra.incomeMinor,
+    expenseMinor: serverTotals.expenseMinor + extra.expenseMinor,
+  };
 };
 
 /** Replays queued writes in FIFO order using idempotent request IDs. */

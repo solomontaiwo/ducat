@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   // Both packaged shells load their bundle from the app container root.
   const embedded = mode === 'desktop' || mode === 'mobile'
   const desktop = mode === 'desktop'
+  const mobile = mode === 'mobile'
   // GitHub Pages serves a project site under /<repository>/ and the deploy
   // workflow passes that path in; a custom domain sets VITE_BASE_PATH=/.
   const basePath = embedded ? '/' : (process.env.VITE_BASE_PATH || '/')
@@ -19,6 +20,13 @@ export default defineConfig(({ mode }) => {
       name: 'desktop-content-security-policy',
       transformIndexHtml(html) {
         return html.replace("connect-src 'self'", "connect-src 'self' ipc: http://ipc.localhost")
+          .replace('; upgrade-insecure-requests', '')
+      },
+    },
+    mobile && {
+      name: 'mobile-content-security-policy',
+      transformIndexHtml(html) {
+        return html.replace(' https://api.github.com', '')
           .replace('; upgrade-insecure-requests', '')
       },
     },

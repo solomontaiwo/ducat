@@ -79,7 +79,7 @@ const VerifyEmail = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {import.meta.env.MODE === "desktop" && currentUser?.pending && (
+          {currentUser?.pending && (
             <>
               <p className="text-sm text-muted-foreground">{t("auth.verifyEmail.desktopHint")}</p>
               <Button className="w-full" onClick={returnToLogin}>{t("auth.verifyEmail.desktopLogin")}</Button>

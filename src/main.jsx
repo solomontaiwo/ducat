@@ -14,7 +14,7 @@ import { ensureLanguage } from "./utils/i18n.jsx";
 import './utils/installPrompt';
 import ErrorBoundary from "./components/ErrorBoundary";
 import { installGlobalErrorReporting } from "./utils/errorReporting";
-import { isMobile, isWeb } from "./platform/index.js";
+import { isWeb } from "./platform/index.js";
 
 installGlobalErrorReporting();
 
@@ -52,7 +52,7 @@ ensureLanguage().finally(() => {
 
   // iOS: theme-aware status bar, splash hand-off, Universal Links and paused auth refresh.
   // Loaded only in the mobile shell so web and desktop bundles stay lean.
-  if (isMobile()) {
+  if (import.meta.env.MODE === "mobile") {
     const withClient = (action) => async () => {
       const { supabase } = await import("./utils/supabaseClient.js");
       supabase.auth[action]();

@@ -18,6 +18,7 @@ import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/stor
 
 const OFFLINE_QUEUE_PREFIX = "ducat-offline-queue:";
 const hasStoredOfflineQueue = (userId) => Boolean(userId && readLocalValue(`${OFFLINE_QUEUE_PREFIX}${userId}`));
+const isDeviceOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
 const loadOfflineQueue = () => import("../utils/offlineQueue.js");
 
 const EMPTY_PAGE = Object.freeze({ items: [], nextCursor: null, hasMore: false });
@@ -73,8 +74,8 @@ const AccountTransactionWrapper = ({ children }) => {
     recentRevision: serverRevision,
     fetchAllTransactions: fetchAllServer,
     fetchTransactionPage: fetchPageServer,
-    getTotalTransactionCount,
-    getTransactionTotals,
+    getTotalTransactionCount: getTotalCountServer,
+    getTransactionTotals: getTotalsServer,
     getFirstTransactionDate,
   } = useTransactions();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -138,14 +139,46 @@ const AccountTransactionWrapper = ({ children }) => {
   }, [fetchAllServer, pendingTransactions, serverTransactions]);
 
   const fetchTransactionPage = useCallback(async (options = {}) => {
-    const page = await fetchPageServer(options);
-    if (options.cursor || !pendingTransactions.length) return page;
-    const { mergePendingTransactions } = await loadOfflineQueue();
-    return {
-      ...page,
-      items: mergePendingTransactions(page.items, pendingTransactions, options),
-    };
-  }, [fetchPageServer, pendingTransactions]);
+    try {
+      const page = await fetchPageServer(options);
+      if (options.cursor || !pendingTransactions.length) return page;
+      const { mergePendingTransactions } = await loadOfflineQueue();
+      return {
+        ...page,
+        items: mergePendingTransactions(page.items, pendingTransactions, options),
+      };
+    } catch (error) {
+      if (!isDeviceOffline()) throw error;
+      const { buildOfflinePage } = await loadOfflineQueue();
+      return buildOfflinePage(serverTransactions, pendingTransactions, options);
+    }
+  }, [fetchPageServer, pendingTransactions, serverTransactions]);
+
+  const getTotalTransactionCount = useCallback(async (options = {}) => {
+    try {
+      const count = await getTotalCountServer(options);
+      if (!pendingTransactions.length) return count;
+      const { mergePendingTotals } = await loadOfflineQueue();
+      return mergePendingTotals({ count, incomeMinor: 0, expenseMinor: 0 }, serverTransactions, pendingTransactions, options).count;
+    } catch (error) {
+      if (!isDeviceOffline()) throw error;
+      const { computeOfflineTotals } = await loadOfflineQueue();
+      return computeOfflineTotals(serverTransactions, pendingTransactions, options).count;
+    }
+  }, [getTotalCountServer, pendingTransactions, serverTransactions]);
+
+  const getTransactionTotals = useCallback(async (options = {}) => {
+    try {
+      const totals = await getTotalsServer(options);
+      if (!pendingTransactions.length) return totals;
+      const { mergePendingTotals } = await loadOfflineQueue();
+      return mergePendingTotals(totals, serverTransactions, pendingTransactions, options);
+    } catch (error) {
+      if (!isDeviceOffline()) throw error;
+      const { computeOfflineTotals } = await loadOfflineQueue();
+      return computeOfflineTotals(serverTransactions, pendingTransactions, options);
+    }
+  }, [getTotalsServer, pendingTransactions, serverTransactions]);
 
   const syncOfflineQueue = useCallback(async () => {
     if (!currentUser || syncingRef.current || (typeof navigator !== "undefined" && navigator.onLine === false)) {
@@ -219,7 +252,14 @@ const AccountTransactionWrapper = ({ children }) => {
       const { TransactionService } = await import("../services/transactionService.jsx");
       const { clientRequestId, ...payload } = transactionData;
       await TransactionService.add(currentUser.uid, payload, { requestId: clientRequestId });
-      if (!silent) notification.success(t('notifications.addSuccess'));
+      if (!silent) {
+        notification.success(t('notifications.addSuccess'));
+        if (import.meta.env.MODE === "mobile") {
+          import("../platform/appReview.js")
+            .then(({ recordPositiveSaveAndMaybeRequestReview }) => recordPositiveSaveAndMaybeRequestReview({ isDemo: false }))
+            .catch(() => {});
+        }
+      }
       return true;
     } catch (error) {
       console.error("Error adding transaction:", error);

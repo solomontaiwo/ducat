@@ -5,6 +5,7 @@ import { format, subDays } from "date-fns";
 import { useCategories } from "../../utils/categories.jsx";
 import { useNotification } from "../../utils/notificationUtils.jsx";
 import { minorToMajor, parseMoneyToMinor } from "../../utils/money";
+import { evaluateAmountExpression, formatEvaluatedAmount, hasAmountExpression, sanitizeAmountInput } from "../../utils/amountExpression.js";
 import { coerceDateKey, dateKeyToDate, DATE_KEY_FORMAT, todayDateKey } from "../../utils/dateUtils";
 import formatCurrency, { formatCompactCurrency } from "../../utils/formatCurrency.jsx";
 import { readLocalValue, writeLocalValue } from "../../utils/storage.js";
@@ -20,6 +21,8 @@ import { Input } from "../ui/input";
 import { hapticSuccess } from "../../platform/haptics.js";
 
 const QUICK_ADD_PREF_KEY = "ducat-quick-add-preferences";
+const CALC_OPERATORS = ["+", "−", "×", "÷"];
+const TRAILING_OP_RE = /[+\-−*×/÷]\s*$/;
 
 const DEFAULT_REPEAT = Object.freeze({ enabled: false, frequency: "monthly", mode: "auto" });
 
@@ -71,6 +74,7 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
   const { t, i18n } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const requestIdRef = useRef(crypto.randomUUID());
+  const amountInputRef = useRef(null);
   const [formData, setFormData] = useState(() => initialState(transaction, expenseCategories, incomeCategories, preferences));
   const [showDatePicker, setShowDatePicker] = useState(false);
   // Once the user picks a category by hand, suggestions stop overriding it.
@@ -126,13 +130,20 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
   const yesterday = yesterdayDateKey();
   const dateChoice = showDatePicker || (formData.date !== today && formData.date !== yesterday) ? "other" : formData.date === today ? "today" : "yesterday";
 
+  const isExpression = hasAmountExpression(formData.amount);
+  const evaluatedAmount = useMemo(
+    () => (isExpression ? evaluateAmountExpression(formData.amount) : null),
+    [formData.amount, isExpression]
+  );
+
   const parsedAmount = useMemo(() => {
+    if (isExpression) return evaluatedAmount;
     try {
       return minorToMajor(parseMoneyToMinor(formData.amount));
     } catch {
       return null;
     }
-  }, [formData.amount]);
+  }, [formData.amount, isExpression, evaluatedAmount]);
 
   const typeLabel = formData.type === "expense" ? t("transactionModal.expense") : t("transactionModal.income");
   const categoryLabel = categories.find((category) => category.value === formData.category)?.label || "";
@@ -141,7 +152,13 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
     event?.preventDefault();
     let amountMinor;
     try {
-      amountMinor = parseMoneyToMinor(formData.amount);
+      if (hasAmountExpression(formData.amount)) {
+        const computed = evaluateAmountExpression(formData.amount);
+        if (computed === null) throw new Error("Invalid expression");
+        amountMinor = parseMoneyToMinor(formatEvaluatedAmount(computed));
+      } else {
+        amountMinor = parseMoneyToMinor(formData.amount);
+      }
     } catch (error) {
       notification.error(error.i18nKey ? t(error.i18nKey) : t("transaction.invalidAmount"));
       return;
@@ -192,6 +209,24 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
 
   const setField = (field, value) => setFormData((previous) => ({ ...previous, [field]: value }));
 
+  const insertOperator = (op) => {
+    setFormData((previous) => {
+      const trimmed = previous.amount.trim();
+      if (!trimmed) return previous;
+      const next = TRAILING_OP_RE.test(trimmed)
+        ? trimmed.replace(TRAILING_OP_RE, op)
+        : `${trimmed}${op}`;
+      return { ...previous, amount: next };
+    });
+    amountInputRef.current?.focus();
+  };
+
+  const applyEvaluatedAmount = () => {
+    if (evaluatedAmount === null) return;
+    setField("amount", formatEvaluatedAmount(evaluatedAmount));
+    amountInputRef.current?.focus();
+  };
+
   const chooseDate = (choice) => {
     if (choice === "other") {
       setShowDatePicker(true);
@@ -235,6 +270,7 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
           </label>
           <div className="flex items-baseline justify-center gap-2 border-b-2 border-primary px-2 pb-1">
             <input
+              ref={amountInputRef}
               id={`${idPrefix}-amount`}
               type="text"
               inputMode="decimal"
@@ -242,24 +278,58 @@ const TransactionForm = ({ transaction, onSubmit, onCancel, idPrefix = "transact
               autoFocus={autoFocusAmount}
               placeholder={t("transactionModal.amountPlaceholder")}
               value={formData.amount}
-              onChange={(event) => setField("amount", event.target.value.replace(/[^0-9.,]/g, ""))}
+              onChange={(event) => setField("amount", sanitizeAmountInput(event.target.value))}
               onBlur={(event) => {
                 const value = event.target.value;
-                if (value && value.includes(",")) setField("amount", value.replace(",", "."));
+                if (hasAmountExpression(value)) {
+                  const computed = evaluateAmountExpression(value);
+                  if (computed !== null) setField("amount", formatEvaluatedAmount(computed));
+                } else if (value && value.includes(",")) {
+                  setField("amount", value.replace(",", "."));
+                }
               }}
               required
               aria-label={t("transactionModal.amount")}
-              className="amount w-[7.5ch] min-w-0 bg-transparent text-right text-5xl font-extrabold tracking-tight text-foreground outline-none placeholder:text-muted-foreground/50 focus-visible:outline-none"
-              style={{ fontSize: "3rem" }}
+              className={cn(
+                "amount min-w-0 bg-transparent text-right font-extrabold tracking-tight text-foreground outline-none placeholder:text-muted-foreground/50 focus-visible:outline-none",
+                isExpression ? "w-[11ch] text-3xl" : "w-[7.5ch] text-5xl"
+              )}
+              style={{ fontSize: isExpression ? "2rem" : "3rem" }}
             />
             <span className="font-display text-3xl font-bold text-muted-foreground" aria-hidden="true">€</span>
           </div>
-          <div className="flex max-w-full gap-2 overflow-x-auto scrollbar-none" data-swipe-ignore="true">
-            {(preferences?.quickAmounts || [5, 10, 20, 50, 100]).map((value) => (
-              <button key={value} type="button" className="chip h-9 px-3.5 text-[13px]" onClick={() => setField("amount", String(value))}>
-                {formatCompactCurrency(value, i18n.language)}
-              </button>
-            ))}
+          {isExpression && evaluatedAmount !== null && (
+            <button
+              type="button"
+              data-testid="amount-calc-result"
+              onClick={applyEvaluatedAmount}
+              className="rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary transition hover:bg-primary/20"
+            >
+              = {formatCurrency(evaluatedAmount)}
+            </button>
+          )}
+          <div className="flex max-w-full flex-wrap items-center justify-center gap-2">
+            <div className="flex max-w-full gap-2 overflow-x-auto scrollbar-none" data-swipe-ignore="true">
+              {(preferences?.quickAmounts || [5, 10, 20, 50, 100]).map((value) => (
+                <button key={value} type="button" className="chip h-9 px-3.5 text-[13px]" onClick={() => setField("amount", String(value))}>
+                  {formatCompactCurrency(value, i18n.language)}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5" role="group" aria-label={t("transactionModal.calcGroup")}>
+              {CALC_OPERATORS.map((op) => (
+                <button
+                  key={op}
+                  type="button"
+                  onClick={() => insertOperator(op)}
+                  disabled={!formData.amount.trim()}
+                  aria-label={t("transactionModal.calcOp", { op })}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-sm font-bold text-foreground transition hover:bg-muted disabled:opacity-40"
+                >
+                  {op}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

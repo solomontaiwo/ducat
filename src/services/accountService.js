@@ -3,6 +3,8 @@ import { sendPasswordReset, signIn, toAuthError, updateEmail } from "./authServi
 import { clearOffline } from "../utils/offlineCache.js";
 import { clearAllOfflineQueues } from "../utils/offlineQueue.js";
 import { setBiometricLockEnabled } from "../platform/biometrics.js";
+import { clearRecurringReminders } from "../platform/reminders.js";
+import { resetReviewState } from "../platform/appReview.js";
 
 const currentEmail = async () => {
   const { data, error } = await supabase.auth.getSession();
@@ -35,5 +37,7 @@ export const deleteCurrentAccount = async (password) => {
   clearOffline();
   clearAllOfflineQueues();
   setBiometricLockEnabled(false);
+  await clearRecurringReminders();
+  resetReviewState();
   await supabase.auth.signOut({ scope: "local" });
 };

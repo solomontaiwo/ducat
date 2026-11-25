@@ -8,7 +8,7 @@
  * The controller data is the only part that changes from person to person:
  * check it before submitting the app, together with the Supabase region.
  */
-export const LEGAL_UPDATED = "1 novembre 2026";
+export const LEGAL_UPDATED = "25 novembre 2026";
 
 export const LEGAL_ENTITY = {
   name: "Solomon Taiwo",
@@ -29,7 +29,7 @@ export const PRIVACY_SECTIONS = {
       title: "Dati trattati",
       paragraphs: [
         "{{app}} tratta solo i dati necessari a far funzionare l’app: indirizzo email, nome visualizzato (facoltativo) e i movimenti che inserisci (tipo, importo, valuta, categoria, descrizione e data), insieme ai budget e alle spese ricorrenti che imposti.",
-        "Tema, lingua, preferenze di inserimento rapido e dati della modalità demo restano sul dispositivo e non vengono inviati a nessun server. L’app non legge la tua rubrica, le foto, la posizione o i contatti, non accede ai conti bancari e non raccoglie dati pubblicitari.",
+        "Tema, lingua, preferenze di inserimento rapido, modalità privacy, dati della modalità demo ed eventuali movimenti salvati offline in attesa di sincronizzazione restano sul dispositivo (e vengono eliminati quando cancelli l’account). Su iOS lo sblocco con Face ID o Touch ID è gestito interamente dal sistema operativo: {{app}} non legge né trasmette dati biometrici. L’app non legge la tua rubrica, le foto, la posizione o i contatti, non accede ai conti bancari e non raccoglie dati pubblicitari.",
       ],
     },
     {
@@ -48,7 +48,7 @@ export const PRIVACY_SECTIONS = {
     {
       title: "Destinatari",
       paragraphs: [
-        "Supabase (PostgreSQL e autenticazione) è il fornitore tecnico che ospita il database. Il sito web è pubblicato tramite GitHub Pages. Non vendiamo né condividiamo dati con inserzionisti o data broker.",
+        "Supabase (PostgreSQL e autenticazione) è il fornitore tecnico che ospita il database. Il sito web è pubblicato tramite Cloudflare (ducatapp.com) con mirror su GitHub Pages. Non vendiamo né condividiamo dati con inserzionisti o data broker.",
         "Se l’installazione configura un endpoint di segnalazione errori, vengono inviati solo dati tecnici sull’errore (messaggio, versione dell’app, pagina), senza il contenuto dei movimenti.",
       ],
     },
@@ -94,7 +94,7 @@ export const PRIVACY_SECTIONS = {
       title: "What we process",
       paragraphs: [
         "{{app}} processes only what the app needs to work: your email address, an optional display name and the transactions you enter (type, amount, currency, category, description and date), together with the budgets and recurring expenses you set.",
-        "Theme, language, quick-add preferences and demo-mode data stay on the device and are never sent to a server. The app does not read your contacts, photos, location or address book, does not connect to bank accounts and does not collect advertising data.",
+        "Theme, language, quick-add preferences, privacy mode, demo-mode data and any movements queued offline while waiting to sync stay on the device (and are cleared when you delete your account). On iOS, Face ID and Touch ID unlock are handled entirely by the operating system: {{app}} never reads or transmits biometric data. The app does not read your contacts, photos, location or address book, does not connect to bank accounts and does not collect advertising data.",
       ],
     },
     {
@@ -113,7 +113,7 @@ export const PRIVACY_SECTIONS = {
     {
       title: "Recipients",
       paragraphs: [
-        "Supabase (PostgreSQL and authentication) is the technical provider hosting the database. The website is published through GitHub Pages. We do not sell or share data with advertisers or data brokers.",
+        "Supabase (PostgreSQL and authentication) is the technical provider hosting the database. The website is published through Cloudflare (ducatapp.com) with a GitHub Pages mirror. We do not sell or share data with advertisers or data brokers.",
         "If the installation configures an error-reporting endpoint, only technical data about the error is sent (message, app version, page), never transaction contents.",
       ],
     },
@@ -185,7 +185,7 @@ const TERMS = {
     {
       title: "Disponibilità del servizio",
       paragraphs: [
-        "L’app dipende da servizi di terze parti (Supabase per il database e l’autenticazione, GitHub Pages per il sito). Possono esserci interruzioni, manutenzioni o modifiche. Le funzioni possono cambiare nel tempo; gli aggiornamenti di iOS e Mac provengono dall’App Store.",
+        "L’app dipende da servizi di terze parti (Supabase per il database e l’autenticazione, Cloudflare e GitHub Pages per il sito). Possono esserci interruzioni, manutenzioni o modifiche. Le funzioni possono cambiare nel tempo; gli aggiornamenti di iOS e Mac provengono dall’App Store.",
       ],
     },
     {
@@ -247,7 +247,7 @@ const TERMS = {
     {
       title: "Availability",
       paragraphs: [
-        "The app depends on third-party services (Supabase for the database and authentication, GitHub Pages for the website). Interruptions, maintenance and changes may occur. Features may change over time; iOS and Mac updates are delivered by the App Store.",
+        "The app depends on third-party services (Supabase for the database and authentication, Cloudflare and GitHub Pages for the website). Interruptions, maintenance and changes may occur. Features may change over time; iOS and Mac updates are delivered by the App Store.",
       ],
     },
     {

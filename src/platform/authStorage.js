@@ -10,6 +10,7 @@
  */
 
 import { MOBILE, runtime } from "./index.js";
+import { readLocalValue } from "../utils/storage.js";
 
 let preferencesPromise = null;
 const preferences = () => {
@@ -35,3 +36,18 @@ export const nativeAuthStorage = {
 
 /** The `auth.storage` option for `createClient`, or `undefined` on web/desktop. */
 export const authStorage = () => (runtime() === MOBILE ? nativeAuthStorage : undefined);
+
+/**
+ * Checks whether a persisted auth session exists on the active shell's storage
+ * (`@capacitor/preferences` on iOS, `localStorage` on web and desktop).
+ */
+export const hasStoredAuthSession = async (key) => {
+  if (runtime() === MOBILE) {
+    try {
+      return Boolean(await nativeAuthStorage.getItem(key));
+    } catch {
+      return false;
+    }
+  }
+  return Boolean(readLocalValue(key));
+};

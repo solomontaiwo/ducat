@@ -11,6 +11,8 @@
 
 import { MOBILE, runtime } from "./index.js";
 
+const DEFAULT_UNIVERSAL_LINK_HOSTS = new Set(["ducatapp.com", "www.ducatapp.com"]);
+
 /**
  * Maps a Universal Link (or our custom scheme) to a same-origin path.
  * Returns null for anything that is not an app link.
@@ -23,18 +25,23 @@ export const toInAppPath = (value) => {
     return null;
   }
 
-  const publicBase = import.meta.env.VITE_DESKTOP_WEB_URL || "";
-  let expectedHost = "";
-  try {
-    expectedHost = publicBase ? new URL(publicBase).host : "";
-  } catch {
-    expectedHost = "";
+  const publicBase = import.meta.env.VITE_DESKTOP_WEB_URL;
+  const allowedHosts = new Set();
+  if (publicBase === undefined) {
+    DEFAULT_UNIVERSAL_LINK_HOSTS.forEach((host) => allowedHosts.add(host));
+  } else if (publicBase) {
+    try {
+      const host = new URL(publicBase).host;
+      if (host) allowedHosts.add(host);
+    } catch {
+      // Invalid configured URL: leave allowedHosts empty.
+    }
   }
 
   const isHttpLink = parsed.protocol === "https:" || parsed.protocol === "http:";
   const isCustomScheme = parsed.protocol === "ducat:";
 
-  if (isHttpLink && (!expectedHost || parsed.host !== expectedHost)) return null;
+  if (isHttpLink && !allowedHosts.has(parsed.host)) return null;
   if (!isHttpLink && !isCustomScheme) return null;
 
   const path = isCustomScheme

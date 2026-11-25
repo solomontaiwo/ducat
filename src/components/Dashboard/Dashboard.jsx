@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { FiChevronRight, FiEye, FiEyeOff } from "react-icons/fi";
@@ -22,6 +22,7 @@ import { usePlanning } from "../../context/PlanningProvider.jsx";
 import { usePrivacy } from "../../context/PrivacyProvider.jsx";
 import { hapticTap } from "../../platform/haptics.js";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
+import PullToRefresh from "../ui/PullToRefresh.jsx";
 import { todayDateKey } from "../../utils/dateUtils.js";
 import { upcomingOccurrences } from "../../utils/recurrence.js";
 
@@ -36,7 +37,7 @@ const getGreetingKey = (hour) => {
 
 const Dashboard = () => {
   const { currentUser, profileName, profileNameLoading } = useAuth();
-  const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions } = useUnifiedTransactions();
+  const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions, syncOfflineQueue } = useUnifiedTransactions();
   const { openAddTransaction, canAdd } = useAddTransaction();
   const { recurring, budgets } = usePlanning();
   const { hideAmounts, toggleHideAmounts } = usePrivacy();
@@ -116,7 +117,29 @@ const Dashboard = () => {
     ? t("dashboard.overspent")
     : isCurrentMonth ? t("dashboard.leftThisMonth") : t("dashboard.monthBalance", { month: monthName });
 
+  const handleRefresh = useCallback(async () => {
+    if (isDemo || !currentUser) return;
+    const requestId = ++requestIdRef.current;
+    try {
+      if (typeof navigator === "undefined" || navigator.onLine !== false) {
+        await syncOfflineQueue?.();
+        const { TransactionService } = await import("../../services/transactionService.jsx");
+        TransactionService.invalidateCache();
+      }
+      const data = await fetchAllTransactions({ startDate, endDate, forceRefresh: true });
+      if (requestId === requestIdRef.current) {
+        setMonthData(data);
+        setLoadError("");
+      }
+    } catch (error) {
+      if (requestId === requestIdRef.current) {
+        setLoadError(error.code === "permission-denied" ? t("security.emailVerificationRequired") : t("error"));
+      }
+    }
+  }, [isDemo, currentUser, syncOfflineQueue, fetchAllTransactions, startDate, endDate, t]);
+
   return (
+    <PullToRefresh onRefresh={handleRefresh} disabled={isLoading}>
     <div className="page-shell">
       <header className="mobile-glass-header flex items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
@@ -285,6 +308,7 @@ const Dashboard = () => {
         <TransactionModal show transaction={editing} onClose={() => setEditing(null)} />
       )}
     </div>
+    </PullToRefresh>
   );
 };
 

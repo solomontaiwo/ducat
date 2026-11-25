@@ -319,7 +319,9 @@
     "suggested": "Suggested",
     "suggestedFromHistory_one": "like a similar movement",
     "suggestedFromHistory_other": "like {{count}} similar movements",
-    "suggestedFromDescription": "based on the description"
+    "suggestedFromDescription": "based on the description",
+    "calcGroup": "Quick calculator",
+    "calcOp": "Operator {{op}}"
   },
   "transactions": {
     "title": "Transactions",
@@ -509,7 +511,10 @@
   "common": {
     "close": "Close",
     "retry": "Retry",
-    "loadingPage": "Loading page"
+    "loadingPage": "Loading page",
+    "pullToRefresh": "Pull to refresh",
+    "releaseToRefresh": "Release to refresh",
+    "refreshing": "Refreshing…"
   },
   "errorBoundary": {
     "title": "This page could not be displayed",
@@ -913,5 +918,15 @@
         "body": "No ads, Face ID, privacy mode and offline transaction entry."
       }
     }
+  },
+  "reminders": {
+    "title": "Recurring reminders",
+    "summary": "Alert before due rules to confirm",
+    "enabled": "Recurring reminders enabled",
+    "disabled": "Recurring reminders disabled",
+    "denied": "Enable notifications in iOS Settings.",
+    "notifTitle": "Upcoming: {{description}}",
+    "notifBodyTomorrow": "Tomorrow · {{amount}} to confirm",
+    "notifBodyToday": "Today · {{amount}} to confirm"
   }
 }

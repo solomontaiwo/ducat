@@ -112,12 +112,26 @@ export const AuthProvider = ({ children }) => {
     // Safety timeout: if the auth client never answers (e.g. bad config),
     // stop the spinner and show a recoverable "server unreachable" screen
     // instead of flashing the public landing page to a signed-in user.
+    const markStalledIfStored = () => {
+      if (import.meta.env.MODE === "mobile") {
+        import("../platform/authStorage.js")
+          .then(({ hasStoredAuthSession }) => hasStoredAuthSession(AUTH_STORAGE_KEY))
+          .then((stored) => {
+            if (!cancelled && stored) setAuthStalled(true);
+          })
+          .catch(() => {
+            if (!cancelled && readLocalValue(AUTH_STORAGE_KEY)) setAuthStalled(true);
+          });
+        return;
+      }
+      if (!cancelled && readLocalValue(AUTH_STORAGE_KEY)) setAuthStalled(true);
+    };
     const timeout = setTimeout(() => {
       setLoading(false);
       setProfileNameLoading(false);
       // A stored session means a signed-in user is waiting: avoid the landing
       // page flash. Otherwise the app is simply offline and can still demo.
-      if (readLocalValue(AUTH_STORAGE_KEY)) setAuthStalled(true);
+      markStalledIfStored();
     }, 10000);
 
     import("../services/authService.js")
@@ -146,7 +160,7 @@ export const AuthProvider = ({ children }) => {
         clearTimeout(timeout);
         setLoading(false);
         setProfileNameLoading(false);
-        if (readLocalValue(AUTH_STORAGE_KEY)) setAuthStalled(true);
+        markStalledIfStored();
       });
 
     return () => {

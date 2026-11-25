@@ -346,6 +346,21 @@ export const PlanningProvider = ({ children }) => {
     });
   }, [ready, recurring, source, registerRuleOccurrence, catchUpRevision, notification, t]);
 
+  // Keep native iOS local reminders in sync with active `confirm` recurring rules.
+  useEffect(() => {
+    if (import.meta.env.MODE !== "mobile" || !ready || isDemo || !userId) return;
+    import("../platform/reminders.js").then(({ isRecurringRemindersEnabled, syncRecurringReminders }) => {
+      if (!isRecurringRemindersEnabled()) return;
+      syncRecurringReminders(recurring, {
+        formatTitle: (rule) => t("reminders.notifTitle", { description: rule.description }),
+        formatBody: (_rule, amount, isDayBefore) => t(
+          isDayBefore ? "reminders.notifBodyTomorrow" : "reminders.notifBodyToday",
+          { amount: `${amount.toFixed(2).replace(".", ",")} €` }
+        ),
+      });
+    }).catch(() => {});
+  }, [ready, isDemo, userId, recurring, t]);
+
   const value = useMemo(() => ({
     recurring, budgets, preferences, ready, error, retry,
     addRecurring, updateRecurring, deleteRecurring, registerOccurrence, skipOccurrence, saveBudgets, savePreferences,

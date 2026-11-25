@@ -319,7 +319,9 @@
     "suggested": "Suggerita",
     "suggestedFromHistory_one": "come un movimento simile",
     "suggestedFromHistory_other": "come altri {{count}} movimenti simili",
-    "suggestedFromDescription": "in base alla descrizione"
+    "suggestedFromDescription": "in base alla descrizione",
+    "calcGroup": "Calcolatrice rapida",
+    "calcOp": "Operatore {{op}}"
   },
   "transactions": {
     "title": "Movimenti",
@@ -509,7 +511,10 @@
   "common": {
     "close": "Chiudi",
     "retry": "Riprova",
-    "loadingPage": "Caricamento pagina"
+    "loadingPage": "Caricamento pagina",
+    "pullToRefresh": "Trascina per aggiornare",
+    "releaseToRefresh": "Rilascia per aggiornare",
+    "refreshing": "Aggiornamento…"
   },
   "errorBoundary": {
     "title": "Impossibile mostrare questa pagina",
@@ -913,5 +918,15 @@
         "body": "Nessuna pubblicità, Face ID, modalità privacy e aggiunta movimenti anche offline."
       }
     }
+  },
+  "reminders": {
+    "title": "Promemoria ricorrenti",
+    "summary": "Avviso prima delle scadenze da confermare",
+    "enabled": "Promemoria ricorrenti attivi",
+    "disabled": "Promemoria ricorrenti disattivati",
+    "denied": "Abilita le notifiche nelle Impostazioni di iOS.",
+    "notifTitle": "In arrivo: {{description}}",
+    "notifBodyTomorrow": "Domani · {{amount}} da confermare",
+    "notifBodyToday": "Oggi · {{amount}} da confermare"
   }
 }

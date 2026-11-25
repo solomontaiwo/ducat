@@ -57,16 +57,25 @@ describe("iOS submission requirements", () => {
     expect(infoPlist).toMatch(/<key>ITSAppUsesNonExemptEncryption<\/key>\s*<false\/>/);
   });
 
-  it("declares Face ID usage description and compiles the native biometric plugin and privacy overlay", () => {
+  it("declares Face ID usage description and compiles the native plugins, adaptive webview and privacy overlay", () => {
     expect(plistValue("NSFaceIDUsageDescription")).toBeTruthy();
     expect(existsSync(join(root, "ios/App/App/BiometricAuthPlugin.swift"))).toBe(true);
+    expect(existsSync(join(root, "ios/App/App/NativeFeaturesPlugin.swift"))).toBe(true);
     expect(existsSync(join(root, "ios/App/App/MainViewController.swift"))).toBe(true);
     expect(pbxproj).toContain("BiometricAuthPlugin.swift in Sources");
+    expect(pbxproj).toContain("NativeFeaturesPlugin.swift in Sources");
     expect(pbxproj).toContain("MainViewController.swift in Sources");
+    const mainVc = read("ios/App/App/MainViewController.swift");
+    expect(mainVc).toContain("BiometricAuthPlugin()");
+    expect(mainVc).toContain("NativeFeaturesPlugin()");
+    expect(mainVc).toContain(".systemBackground");
     const sceneDelegate = read("ios/App/App/SceneDelegate.swift");
     expect(sceneDelegate).toContain("MainViewController()");
     expect(sceneDelegate).toContain("sceneWillResignActive");
     expect(sceneDelegate).toContain("UIVisualEffectView");
+    const iosWorkflow = read(".github/workflows/ios.yml");
+    expect(iosWorkflow).toContain("NativeFeaturesPlugin.swift");
+    expect(iosWorkflow).toContain("NSFaceIDUsageDescription");
   });
 
   it("is a finance app for iPhone and iPad", () => {

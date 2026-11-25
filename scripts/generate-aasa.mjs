@@ -46,7 +46,7 @@ export const buildAasa = ({ teamId, bundleId }) => ({
 const main = () => {
   const { identifier } = JSON.parse(readFileSync(join(ROOT, "src-tauri", "tauri.conf.json"), "utf8"));
   const teamId = process.env.APPLE_TEAM_ID || "TEAMID";
-  const publicBase = process.env.VITE_DESKTOP_WEB_URL || "https://solomontaiwo.github.io/ducat/";
+  const publicBase = process.env.VITE_DESKTOP_WEB_URL || "https://ducatapp.com/";
   const domain = process.env.AASA_DOMAIN || (() => {
     try {
       return new URL(publicBase).host;

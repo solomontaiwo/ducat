@@ -179,14 +179,18 @@ describe("ForgotPassword", () => {
 });
 
 describe("VerifyEmail", () => {
-  it("lets a pending desktop user return to sign in after confirming in a browser", async () => {
-    vi.stubEnv("MODE", "desktop");
-    mocks.currentUser = { email: "ada@example.com", pending: true };
-    mocks.logout.mockResolvedValue();
-    render(<VerifyEmail />);
-    fireEvent.click(screen.getByRole("button", { name: "auth.verifyEmail.desktopLogin" }));
-    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/login", { replace: true }));
-    expect(mocks.logout).toHaveBeenCalled();
+  it("lets a pending desktop or mobile user return to sign in after confirming in a browser", async () => {
+    for (const mode of ["desktop", "mobile"]) {
+      cleanup();
+      vi.clearAllMocks();
+      vi.stubEnv("MODE", mode);
+      mocks.currentUser = { email: "ada@example.com", pending: true };
+      mocks.logout.mockResolvedValue();
+      render(<VerifyEmail />);
+      fireEvent.click(screen.getByRole("button", { name: "auth.verifyEmail.desktopLogin" }));
+      await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/login", { replace: true }));
+      expect(mocks.logout).toHaveBeenCalled();
+    }
   });
 
   it("navigates to the dashboard once the email is verified", async () => {

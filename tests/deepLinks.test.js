@@ -35,4 +35,11 @@ describe("universal link paths", () => {
     expect(toInAppPath("https://ducat.app/dashboard")).toBeNull();
     expect(toInAppPath("ducat://dashboard")).toBe("/dashboard");
   });
+
+  it("defaults to ducatapp.com and www.ducatapp.com when VITE_DESKTOP_WEB_URL is unset", () => {
+    vi.stubEnv("VITE_DESKTOP_WEB_URL", undefined);
+    expect(toInAppPath("https://ducatapp.com/reset-password#type=recovery")).toBe("/reset-password#type=recovery");
+    expect(toInAppPath("https://www.ducatapp.com/verify-email")).toBe("/verify-email");
+    expect(toInAppPath("https://evil.example/dashboard")).toBeNull();
+  });
 });
