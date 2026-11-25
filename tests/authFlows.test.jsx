@@ -121,6 +121,14 @@ describe("Register", () => {
     fireEvent.submit(document.querySelector("form"));
   };
 
+  it("shows a useful message when registration is rate limited", async () => {
+    mocks.signUp.mockRejectedValue(Object.assign(new Error("rate limit"), { code: "auth/too-many-requests" }));
+    render(<Register />);
+    fillAll();
+    expect(await screen.findByText("errors.tooManyRequests")).toBeInTheDocument();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
   it("blocks mismatching passwords before any request", async () => {
     render(<Register />);
     fillAll({ confirmPassword: "different" });

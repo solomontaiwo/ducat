@@ -66,6 +66,9 @@ const Register = () => {
         case "auth/operation-not-allowed":
           errorMessage = t("errors.operationNotAllowed");
           break;
+        case "auth/too-many-requests":
+          errorMessage = t("errors.tooManyRequests");
+          break;
         default:
           console.error("Errore durante la registrazione:", err);
           errorMessage = t("errors.generic");
