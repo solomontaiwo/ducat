@@ -7,6 +7,8 @@ import { RouterProvider } from "../src/router/RouterProvider.jsx";
 const mocks = vi.hoisted(() => ({
   user: { uid: "owner", emailVerified: true },
   add: vi.fn(),
+  modalTransaction: undefined,
+  onDelete: vi.fn(),
   notification: { success: vi.fn(), error: vi.fn() },
   t: (key) => key,
 }));
@@ -20,13 +22,30 @@ vi.mock("../src/services/transactionService.jsx", () => ({ TransactionService: {
 vi.mock("../src/components/Layout/AppLayout.jsx", () => ({ default: ({ children }) => children }));
 vi.mock("../src/components/Profile/Profile.jsx", async () => {
   const { default: Modal } = await import("../src/components/Transaction/TransactionModal.jsx");
-  return { default: () => <Modal show onClose={() => {}} /> };
+  return { default: () => <Modal show onClose={() => {}} transaction={mocks.modalTransaction} onDelete={mocks.onDelete} /> };
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  mocks.modalTransaction = undefined;
+  mocks.onDelete.mockReset();
   delete navigator.connection;
+});
+
+it("offers deletion in an editable transaction modal but not in a new transaction", async () => {
+  mocks.modalTransaction = { id: "t1", type: "expense", amount: 12, description: "Coffee", category: "altro", date: new Date() };
+  window.history.replaceState({}, "", "/profile");
+  Object.defineProperty(navigator, "connection", { value: { saveData: true }, configurable: true });
+  const view = render(<RouterProvider><UnifiedTransactionProvider><AppRouter /></UnifiedTransactionProvider></RouterProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: "transactions.actions.delete" }));
+  expect(mocks.onDelete).toHaveBeenCalledTimes(1);
+  view.unmount();
+
+  mocks.modalTransaction = undefined;
+  render(<RouterProvider><UnifiedTransactionProvider><AppRouter /></UnifiedTransactionProvider></RouterProvider>);
+  await screen.findByLabelText("transactionModal.amount");
+  expect(screen.queryByRole("button", { name: "transactions.actions.delete" })).not.toBeInTheDocument();
 });
 
 it("keeps the real form mounted and retains values and request ID after a failed save", async () => {

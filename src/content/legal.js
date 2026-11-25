@@ -13,7 +13,7 @@ export const LEGAL_UPDATED = "25 novembre 2026";
 export const LEGAL_ENTITY = {
   name: "Solomon Taiwo",
   address: "Torino, Italia",
-  email: "solomon.taiwo@studenti.polito.it",
+  email: "taiwo.o.solomon@gmail.com",
   jurisdiction: "Torino, Italia",
 };
 

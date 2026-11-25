@@ -11,6 +11,7 @@ import { Link } from "../../router/RouterProvider";
 import RecentTransactions from "./RecentTransactions";
 import QuickAddForm from "./QuickAddForm.jsx";
 import TransactionModal from "../Transaction/TransactionModal.jsx";
+import DeleteTransactionDialog from "../Transaction/DeleteTransactionDialog.jsx";
 import MonthSwitcher from "../ui/MonthSwitcher.jsx";
 import formatCurrency, { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { calculateStats } from "../../utils/statsUtils.jsx";
@@ -26,9 +27,11 @@ import PullToRefresh from "../ui/PullToRefresh.jsx";
 import { todayDateKey } from "../../utils/dateUtils.js";
 import { upcomingOccurrences } from "../../utils/recurrence.js";
 import { computeMonthProjection } from "../../utils/projection.js";
+import { formatGroupDate } from "../../utils/transactionGrouping.js";
 
 const CATEGORY_COLORS = ["hsl(var(--cat-1))", "hsl(var(--cat-2))", "hsl(var(--cat-3))", "hsl(var(--cat-4))", "hsl(var(--cat-5))"];
 const MAX_VISIBLE_CATEGORIES = 4;
+const EMPTY_TRANSACTIONS = [];
 
 const getGreetingKey = (hour) => {
   if (hour < 12) return "greetingMorning";
@@ -38,43 +41,48 @@ const getGreetingKey = (hour) => {
 
 const Dashboard = () => {
   const { currentUser, profileName, profileNameLoading } = useAuth();
-  const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions, syncOfflineQueue } = useUnifiedTransactions();
+  const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions, syncOfflineQueue, deleteTransaction } = useUnifiedTransactions();
   const { openAddTransaction, canAdd } = useAddTransaction();
   const { recurring, budgets } = usePlanning();
   const { hideAmounts, toggleHideAmounts } = usePrivacy();
   const { t, i18n } = useTranslation();
   const { month, startDate, endDate, startDay, isCurrentMonth, goToPrevious, goToNext } = useMonthRange();
-  const [monthData, setMonthData] = useState([]);
-  const [monthLoading, setMonthLoading] = useState(false);
+  const [monthResult, setMonthResult] = useState({ key: null, data: EMPTY_TRANSACTIONS });
   const [loadError, setLoadError] = useState("");
   const [editing, setEditing] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
   const requestIdRef = useRef(0);
   const [localHour, setLocalHour] = useState(() => new Date().getHours());
+  const monthKey = JSON.stringify([isDemo ? "demo" : currentUser?.uid ?? null, startDate, endDate]);
+  const monthData = monthResult.key === monthKey ? monthResult.data : EMPTY_TRANSACTIONS;
 
   useEffect(() => {
     const load = async () => {
       const requestId = ++requestIdRef.current;
       if (isDemo) {
-        setMonthData(transactions);
+        setMonthResult({ key: monthKey, data: transactions });
+        setLoadError("");
       } else if (currentUser) {
-        setMonthLoading(true);
         setLoadError("");
         try {
           const data = await fetchAllTransactions({ startDate, endDate });
-          if (requestId === requestIdRef.current) setMonthData(data);
+          if (requestId === requestIdRef.current) setMonthResult({ key: monthKey, data });
         } catch (error) {
           if (requestId === requestIdRef.current) {
             setLoadError(error.code === "permission-denied" ? t("security.emailVerificationRequired") : t("error"));
+            setMonthResult((previous) => previous.key === monthKey ? previous : { key: monthKey, data: EMPTY_TRANSACTIONS });
           }
-        } finally {
-          if (requestId === requestIdRef.current) setMonthLoading(false);
         }
       } else {
-        setMonthData([]);
+        setMonthResult({ key: monthKey, data: EMPTY_TRANSACTIONS });
+        setLoadError("");
       }
     };
     load();
-  }, [isDemo, transactions, currentUser, fetchAllTransactions, startDate, endDate, t]);
+    return () => { requestIdRef.current += 1; };
+  }, [isDemo, transactions, currentUser, fetchAllTransactions, startDate, endDate, monthKey, t]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setLocalHour(new Date().getHours()), 60_000);
@@ -114,7 +122,7 @@ const Dashboard = () => {
     }));
   }, [stats, t]);
 
-  const isLoading = transactionsLoading || monthLoading || !stats;
+  const isLoading = transactionsLoading || monthResult.key !== monthKey || !stats;
   const showUpcoming = isCurrentMonth && upcomingOccurrences(recurring, todayDateKey()).length > 0;
   const hasBudgets = Object.values(budgets).some((limit) => limit > 0);
   const monthName = formatMonthLabel(month, i18n.language);
@@ -136,7 +144,7 @@ const Dashboard = () => {
       }
       const data = await fetchAllTransactions({ startDate, endDate, forceRefresh: true });
       if (requestId === requestIdRef.current) {
-        setMonthData(data);
+        setMonthResult({ key: monthKey, data });
         setLoadError("");
       }
     } catch (error) {
@@ -144,7 +152,33 @@ const Dashboard = () => {
         setLoadError(error.code === "permission-denied" ? t("security.emailVerificationRequired") : t("error"));
       }
     }
-  }, [isDemo, currentUser, syncOfflineQueue, fetchAllTransactions, startDate, endDate, t]);
+  }, [isDemo, currentUser, syncOfflineQueue, fetchAllTransactions, startDate, endDate, monthKey, t]);
+
+  const confirmDelete = useCallback(async () => {
+    if (!editing || deletingRef.current) return;
+    deletingRef.current = true;
+    setDeleting(true);
+    try {
+      if (await deleteTransaction(editing.id)) {
+        const requestId = ++requestIdRef.current;
+        setMonthResult((previous) => ({ ...previous, data: previous.data.filter((item) => item.id !== editing.id) }));
+        setDeleteConfirm(false);
+        setEditing(null);
+        if (!isDemo) {
+          fetchAllTransactions({ startDate, endDate, forceRefresh: true }).then((data) => {
+            if (requestId === requestIdRef.current) setMonthResult({ key: monthKey, data });
+          }).catch((error) => {
+            if (requestId === requestIdRef.current) {
+              setLoadError(error.code === "permission-denied" ? t("security.emailVerificationRequired") : t("error"));
+            }
+          });
+        }
+      }
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
+    }
+  }, [deleteTransaction, editing, isDemo, fetchAllTransactions, startDate, endDate, monthKey, t]);
 
   return (
     <PullToRefresh onRefresh={handleRefresh} disabled={isLoading}>
@@ -326,7 +360,18 @@ const Dashboard = () => {
       </section>
 
       {editing && (
-        <TransactionModal show transaction={editing} onClose={() => setEditing(null)} />
+        <>
+          <TransactionModal show transaction={editing} onClose={() => setEditing(null)} onDelete={() => setDeleteConfirm(true)} />
+          <DeleteTransactionDialog
+            open={deleteConfirm}
+            transaction={editing}
+            formatDate={(date) => formatGroupDate(date, i18n.language, t)}
+            getCategoryLabel={(category) => t(`categories.${category}`, { defaultValue: category })}
+            onCancel={() => setDeleteConfirm(false)}
+            onConfirm={confirmDelete}
+            busy={deleting}
+          />
+        </>
       )}
     </div>
     </PullToRefresh>

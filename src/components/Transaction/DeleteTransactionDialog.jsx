@@ -5,10 +5,10 @@ import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 
 /** Confirmation step shown before a transaction is permanently deleted. */
-const DeleteTransactionDialog = ({ open, transaction, formatDate, getCategoryLabel, onCancel, onConfirm }) => {
+const DeleteTransactionDialog = ({ open, transaction, formatDate, getCategoryLabel, onCancel, onConfirm, busy = false }) => {
   const { t } = useTranslation();
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !busy && onCancel()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t("confirmDelete")}</DialogTitle>
@@ -28,8 +28,8 @@ const DeleteTransactionDialog = ({ open, transaction, formatDate, getCategoryLab
         )}
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel}>{t("cancel")}</Button>
-          <Button variant="destructive" onClick={onConfirm}>{t("transactions.deleteConfirm")}</Button>
+          <Button variant="outline" onClick={onCancel} disabled={busy}>{t("cancel")}</Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={busy}>{t("transactions.deleteConfirm")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -49,6 +49,7 @@ DeleteTransactionDialog.propTypes = {
   getCategoryLabel: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   onConfirm: PropTypes.func.isRequired,
+  busy: PropTypes.bool,
 };
 
 export default DeleteTransactionDialog;

@@ -195,4 +195,4 @@ Released under the [MIT License](LICENSE).
 
 ## Contact
 
-For questions or suggestions: [solomon.taiwo@studenti.polito.it](mailto:solomon.taiwo@studenti.polito.it).
+For questions or suggestions: [taiwo.o.solomon@gmail.com](mailto:taiwo.o.solomon@gmail.com).
