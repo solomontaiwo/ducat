@@ -46,6 +46,8 @@ npm run dev
 
 The app is served at `http://localhost:5173/`. Demo mode works without any backend.
 
+For the shared web development environment, see [the dev setup guide](docs/DEV_ENVIRONMENT.md).
+
 The database schema, row level security policies and helper functions live in `supabase/migrations/`. The publishable key is meant to be public: access to data is enforced by the policies, not by the key.
 
 ## Desktop app

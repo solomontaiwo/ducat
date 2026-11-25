@@ -45,8 +45,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://demo-ducat.supabase.co' }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_demo' }}
+          VITE_SUPABASE_URL: ${{ github.ref != 'refs/heads/dev' && github.base_ref != 'dev' && github.head_ref != 'dev' && secrets.VITE_SUPABASE_URL || 'https://demo-ducat.supabase.co' }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ github.ref != 'refs/heads/dev' && github.base_ref != 'dev' && github.head_ref != 'dev' && secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_demo' }}
 
       - name: Bundle budget
         run: npm run check:bundle
@@ -57,8 +57,56 @@ jobs:
       - name: End-to-end tests
         run: npm run test:e2e
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://demo-ducat.supabase.co' }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_demo' }}
+          VITE_SUPABASE_URL: ${{ github.ref != 'refs/heads/dev' && github.base_ref != 'dev' && github.head_ref != 'dev' && secrets.VITE_SUPABASE_URL || 'https://demo-ducat.supabase.co' }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ github.ref != 'refs/heads/dev' && github.base_ref != 'dev' && github.head_ref != 'dev' && secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_demo' }}
+
+  deploy-dev:
+    name: Deploy dev to Cloudflare
+    if: github.ref == 'refs/heads/dev' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: [quality]
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: https://dev.ducatapp.com/
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build dev artifact
+        env:
+          VITE_SUPABASE_URL: ${{ vars.DEV_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.DEV_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_BASE_PATH: /
+          VITE_DESKTOP_WEB_URL: https://dev.ducatapp.com/
+          VITE_APP_ENV: dev
+        run: |
+          set -euo pipefail
+          if [[ ! "$VITE_SUPABASE_URL" =~ ^https://[a-z0-9]+\.supabase\.co/?$ ||
+                "$VITE_SUPABASE_PUBLISHABLE_KEY" != sb_publishable_?* ]]; then
+            echo 'Set DEV_SUPABASE_URL and DEV_SUPABASE_PUBLISHABLE_KEY in the dev environment.' >&2
+            exit 1
+          fi
+          npm run build
+          printf '\n/*\n  X-Robots-Tag: noindex\n' >> dist/_headers
+
+      - name: Deploy dev Worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.DEV_CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.DEV_CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${CLOUDFLARE_ACCOUNT_ID:?Set DEV_CLOUDFLARE_ACCOUNT_ID in the dev environment}"
+          : "${CLOUDFLARE_API_TOKEN:?Set DEV_CLOUDFLARE_API_TOKEN in the dev environment}"
+          npm exec -- wrangler deploy --config wrangler.dev.jsonc
 
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

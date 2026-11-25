@@ -2,6 +2,10 @@ name: Desktop builds
 
 on:
   push:
+    branches-ignore:
+      - dev
+    tags:
+      - '**'
   workflow_dispatch:
 
 permissions:
@@ -10,7 +14,7 @@ permissions:
 jobs:
   desktop:
     name: ${{ matrix.name }}
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
+    if: ${{ github.ref != 'refs/heads/dev' && (github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):')) }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -146,7 +150,7 @@ jobs:
 
   ubuntu-package:
     name: Ubuntu x64 package
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
+    if: ${{ github.ref != 'refs/heads/dev' && (github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):')) }}
     runs-on: ubuntu-24.04
     container: ubuntu:22.04
     env:
@@ -209,7 +213,7 @@ jobs:
 
   fedora-package:
     name: Fedora x64 package
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
+    if: ${{ github.ref != 'refs/heads/dev' && (github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):')) }}
     runs-on: ubuntu-latest
     container: fedora:latest
     env:
@@ -261,7 +265,7 @@ jobs:
 
   arch-package:
     name: Arch Linux x64 package
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
+    if: ${{ github.ref != 'refs/heads/dev' && (github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):')) }}
     runs-on: ubuntu-latest
     container: archlinux:base
     env:
@@ -333,7 +337,7 @@ jobs:
 
   linux-appimage:
     name: Linux x64 AppImage
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
+    if: ${{ github.ref != 'refs/heads/dev' && (github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):')) }}
     runs-on: ubuntu-22.04
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -395,7 +399,7 @@ jobs:
 
   release:
     name: Publish desktop release
-    if: ${{ github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):') }}
+    if: ${{ github.ref != 'refs/heads/dev' && (github.event_name == 'workflow_dispatch' || github.ref != 'refs/heads/main' || startsWith(github.event.head_commit.message, 'chore(release):')) }}
     needs: [desktop, ubuntu-package, fedora-package, arch-package, linux-appimage]
     runs-on: ubuntu-24.04
     permissions:
