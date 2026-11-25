@@ -5,13 +5,11 @@
   "ios": {
     "scheme": "Ducat",
     "contentInset": "never",
-    "preferredContentMode": "mobile",
-    "backgroundColor": "#f5f6f8"
+    "preferredContentMode": "mobile"
   },
   "plugins": {
     "SplashScreen": {
       "launchAutoHide": false,
-      "backgroundColor": "#f5f6f8",
       "showSpinner": false
     },
     "Keyboard": {

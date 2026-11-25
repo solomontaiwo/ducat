@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   user: { uid: "owner", emailVerified: true },
   add: vi.fn(),
+  update: vi.fn(),
+  remove: vi.fn(),
   fetchPage: vi.fn(async () => ({ items: [], nextCursor: null, hasMore: false })),
   getTotalCount: vi.fn(async () => 0),
   getTotals: vi.fn(async () => ({ count: 0, incomeMinor: 0, expenseMinor: 0 })),
@@ -30,6 +32,8 @@ vi.mock("../src/services/transactionService.jsx", () => ({
     getTotals: (...args) => mocks.getTotals(...args),
     getFirstDate: async () => null,
     add: mocks.add,
+    update: mocks.update,
+    delete: mocks.remove,
   },
 }));
 
@@ -192,6 +196,42 @@ describe("UnifiedTransactionProvider offline write queue", () => {
     // When online, errors still propagate instead of masking real failures.
     setNavigatorOnline(true);
     await expect(result.current.fetchTransactionPage(range)).rejects.toThrow("offline");
+  });
+
+  it("edits and deletes pendingSync offline transactions in-place without calling Supabase", async () => {
+    setNavigatorOnline(false);
+    enqueueOfflineTransaction("owner", {
+      type: "expense",
+      amountMinor: 900,
+      description: "Panino",
+      category: "alimentazione",
+      dateKey: "2026-11-24",
+    }, { requestId: "req-edit" });
+
+    const { result } = renderHook(() => useUnifiedTransactions(), { wrapper: UnifiedTransactionProvider });
+    await waitFor(() => expect(result.current.pendingOfflineCount).toBe(1));
+    const pendingId = result.current.transactions[0].id;
+
+    let updated;
+    await act(async () => {
+      updated = await result.current.updateTransaction(pendingId, {
+        amountMinor: 1150,
+        amount: 11.5,
+        description: "Panino e acqua",
+      });
+    });
+    expect(updated).toBe(true);
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(result.current.transactions[0]).toMatchObject({ description: "Panino e acqua", amountMinor: 1150 });
+
+    let deleted;
+    await act(async () => {
+      deleted = await result.current.deleteTransaction(pendingId);
+    });
+    expect(deleted).toBe(true);
+    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(result.current.pendingOfflineCount).toBe(0);
+    expect(readOfflineQueue("owner")).toHaveLength(0);
   });
 });
 

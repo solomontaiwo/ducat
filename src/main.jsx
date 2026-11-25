@@ -57,8 +57,12 @@ ensureLanguage().finally(() => {
       const { supabase } = await import("./utils/supabaseClient.js");
       supabase.auth[action]();
     };
-    Promise.all([import("./platform/native"), import("./platform/deepLinks")]).then(
-      ([{ startNativeShell }, { installDeepLinkHandler }]) => {
+    Promise.all([
+      import("./platform/native"),
+      import("./platform/deepLinks"),
+      import("./platform/reminders"),
+    ]).then(
+      ([{ startNativeShell }, { installDeepLinkHandler }, { installReminderTapHandler }]) => {
         startNativeShell({
           onActive: () => {
             window.dispatchEvent(new Event("ducat:app-active"));
@@ -70,6 +74,7 @@ ensureLanguage().finally(() => {
           },
         });
         installDeepLinkHandler();
+        installReminderTapHandler();
       }
     );
   }

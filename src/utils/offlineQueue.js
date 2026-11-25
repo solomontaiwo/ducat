@@ -121,6 +121,55 @@ export const removeOfflineTransaction = (userId, clientRequestId) => {
   return next;
 };
 
+/** Removes a queued transaction by its synthetic transaction id (`<uid>_<reqId>`) or `clientRequestId`. */
+export const removeOfflineTransactionById = (userId, transactionId) => {
+  if (!userId || !transactionId) return { removed: false, queue: [], pending: [] };
+  const current = readOfflineQueue(userId);
+  const next = current.filter((item) => (
+    item.clientRequestId !== transactionId && queuedItemToTransaction(userId, item).id !== transactionId
+  ));
+  if (next.length === current.length) {
+    return {
+      removed: false,
+      queue: current,
+      pending: current.map((item) => queuedItemToTransaction(userId, item)),
+    };
+  }
+  writeQueue(userId, next);
+  return {
+    removed: true,
+    queue: next,
+    pending: next.map((item) => queuedItemToTransaction(userId, item)),
+  };
+};
+
+/** Updates a queued offline transaction in-place by synthetic transaction id or `clientRequestId`. */
+export const updateOfflineTransaction = (userId, transactionId, patch = {}) => {
+  if (!userId || !transactionId) return { ok: false, queue: [], pending: [] };
+  const current = readOfflineQueue(userId);
+  const index = current.findIndex((item) => (
+    item.clientRequestId === transactionId || queuedItemToTransaction(userId, item).id === transactionId
+  ));
+  if (index < 0) return { ok: false, queue: current, pending: current.map((item) => queuedItemToTransaction(userId, item)) };
+  const existing = current[index];
+  const merged = { ...existing.payload, ...patch };
+  const validated = validateInput(merged);
+  const recurring = validateRecurring(merged.recurring);
+  const updatedEntry = {
+    ...existing,
+    payload: recurring ? { ...validated, recurring } : validated,
+  };
+  const next = current.map((item, idx) => (idx === index ? updatedEntry : item));
+  const saved = writeQueue(userId, next);
+  const queue = saved ? next : current;
+  return {
+    ok: saved,
+    entry: updatedEntry,
+    queue,
+    pending: queue.map((item) => queuedItemToTransaction(userId, item)),
+  };
+};
+
 export const clearOfflineQueue = (userId) => {
   if (!userId) return;
   try {

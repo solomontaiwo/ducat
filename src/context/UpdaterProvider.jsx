@@ -1,28 +1,49 @@
-import { createContext, useContext, useEffect } from "react";
+import { createContext, lazy, Suspense, useContext } from "react";
 import PropTypes from "prop-types";
-import { useUpdater } from "../hooks/useUpdater";
-import { isAutoCheckDue, markChecked, readUpdaterSettings } from "../utils/updaterSettings";
 
-const UpdaterContext = createContext(null);
+const NOOP_ASYNC = async () => {};
+const NOOP = () => {};
+
+const INERT_UPDATER = Object.freeze({
+  desktop: false,
+  runtime: null,
+  bundleType: null,
+  supported: false,
+  blockReason: null,
+  detectingSupport: false,
+  status: "idle",
+  version: null,
+  notes: null,
+  progress: 0,
+  error: null,
+  check: NOOP_ASYNC,
+  install: NOOP_ASYNC,
+  restart: NOOP_ASYNC,
+  reset: NOOP,
+});
+
+export const UpdaterContext = createContext(INERT_UPDATER);
 
 /** Shared updater state, so the page and any prompt stay in sync. */
 export const useUpdaterContext = () => useContext(UpdaterContext);
 
+const DesktopUpdaterProvider = import.meta.env.MODE === "desktop"
+  ? lazy(() => import("./DesktopUpdaterProvider"))
+  : null;
+
 /**
- * Owns the updater state machine and runs a background check on launch,
- * honouring the user's auto-check and frequency settings (desktop only).
+ * Provides updater state. On web and mobile the desktop updater machinery is
+ * never loaded, saving bundle budget and keeping the startup path lean.
  */
 export const UpdaterProvider = ({ children }) => {
-  const updater = useUpdater();
-  const { supported, check } = updater;
-
-  useEffect(() => {
-    if (!supported) return;
-    if (!isAutoCheckDue(readUpdaterSettings())) return;
-    check().finally(markChecked);
-  }, [supported, check]);
-
-  return <UpdaterContext.Provider value={updater}>{children}</UpdaterContext.Provider>;
+  if (!DesktopUpdaterProvider) {
+    return <UpdaterContext.Provider value={INERT_UPDATER}>{children}</UpdaterContext.Provider>;
+  }
+  return (
+    <Suspense fallback={<UpdaterContext.Provider value={INERT_UPDATER}>{children}</UpdaterContext.Provider>}>
+      <DesktopUpdaterProvider>{children}</DesktopUpdaterProvider>
+    </Suspense>
+  );
 };
 
 UpdaterProvider.propTypes = {

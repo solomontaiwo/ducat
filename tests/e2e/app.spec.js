@@ -136,6 +136,11 @@ for (const colorScheme of ["light", "dark"]) {
     await page.goto(".");
     await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
     await expect(page).toHaveURL(/\/transactions$/);
+    const closeToast = page.getByRole("button", { name: /chiudi notifica|close notification/i }).first();
+    if (await closeToast.isVisible()) {
+      await closeToast.click();
+      await expect(closeToast).toBeHidden();
+    }
     for (const path of ["dashboard", "transactions", "analytics", "recurring", "budgets"]) {
       await page.evaluate((target) => {
         window.history.pushState({}, "", `/${target}`);
@@ -291,4 +296,35 @@ test('starting demo again preserves saved user transactions', async ({ page }) =
   await page.reload();
   await page.getByRole('searchbox').fill('Movimento conservato');
   await expect(page.getByRole('button', { name: /Movimento conservato/ })).toBeVisible();
+});
+
+test("inline amount calculator, privacy mode toggle and category drill-down work in demo mode", async ({ page }) => {
+  await page.goto(".");
+  await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
+  await expect(page).toHaveURL(/\/transactions$/);
+
+  // 1. Inline calculator in TransactionForm
+  await page.getByRole("button", { name: ADD_BUTTON }).first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#transaction-amount").fill("12,50+4,80");
+  await expect(dialog.getByTestId("amount-calc-result")).toContainText(/17,30|17\.30/);
+  await dialog.getByRole("radio", { name: /^(transportation|trasporti)$/i }).click();
+  await dialog.locator("#transaction-description").fill("Taxi condiviso");
+  await dialog.getByRole("button", { name: /17,30|17\.30/ }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: /Taxi condiviso/ })).toContainText(/17,30|17\.30/);
+
+  // 2. Privacy mode toggle masks amounts on the root element
+  await goTo(page, "dashboard");
+  const privacyToggle = page.getByRole("button", { name: /nascondi importi|hide amounts/i });
+  await privacyToggle.click();
+  await expect(page.locator("html")).toHaveClass(/privacy-masked/);
+  await page.getByRole("button", { name: /mostra importi|show amounts/i }).click();
+  await expect(page.locator("html")).not.toHaveClass(/privacy-masked/);
+
+  // 3. Category drill-down from "Where money goes" pre-filters Transactions
+  const spendingSection = page.getByRole("region", { name: /dove vanno i soldi|where your money goes/i });
+  await spendingSection.getByRole("link", { name: /trasporti|transportation/i }).click();
+  await expect(page).toHaveURL(/\/transactions\?.*category=trasporti/);
+  await expect(page.getByRole("button", { name: /Taxi condiviso/ })).toBeVisible();
 });

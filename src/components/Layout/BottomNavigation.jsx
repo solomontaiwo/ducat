@@ -53,7 +53,11 @@ const BottomNavigation = ({ onAdd, addDisabled = false }) => {
                 type="button"
                 onClick={() => {
                   hapticTap();
-                  navigate(item.path);
+                  if (isActive) {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  } else {
+                    navigate(item.path);
+                  }
                 }}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(

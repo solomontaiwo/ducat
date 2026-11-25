@@ -6,10 +6,11 @@ import Capacitor
 
 /// Local Capacitor plugin for lightweight iOS-native capabilities that need no
 /// external dependencies:
-/// - `UNUserNotificationCenter` local reminders for upcoming recurring rules;
+/// - `UNUserNotificationCenter` local reminders for upcoming recurring rules
+///   (with foreground presentation and tap-to-route handling);
 /// - `SKStoreReviewController` in-app App Store review prompt.
 @objc(NativeFeaturesPlugin)
-public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin {
+public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificationCenterDelegate {
     public let identifier = "NativeFeaturesPlugin"
     public let jsName = "NativeFeatures"
     public let pluginMethods: [CAPPluginMethod] = [
@@ -17,11 +18,53 @@ public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "requestNotificationPermission", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "syncRecurringReminders", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clearRecurringReminders", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "consumePendingRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestAppReview", returnType: CAPPluginReturnPromise),
     ]
 
     private static let reminderPrefix = "ducat-rec-"
     private static let maxReminders = 40
+    private var pendingRoute: String?
+
+    override public func load() {
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        if #available(iOS 14.0, *) {
+            completionHandler([.banner, .sound, .list])
+        } else {
+            completionHandler([.alert, .sound])
+        }
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let request = response.notification.request
+        if request.identifier.hasPrefix(Self.reminderPrefix) {
+            let route = (request.content.userInfo["route"] as? String) ?? "/recurring"
+            DispatchQueue.main.async {
+                self.pendingRoute = route
+                self.notifyListeners("reminderTapped", data: ["route": route])
+            }
+        }
+        completionHandler()
+    }
+
+    @objc func consumePendingRoute(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let route = self.pendingRoute
+            self.pendingRoute = nil
+            call.resolve(["route": route as Any])
+        }
+    }
 
     @objc func getNotificationPermission(_ call: CAPPluginCall) {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
@@ -81,6 +124,7 @@ public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin {
                 content.title = title
                 content.body = body
                 content.sound = .default
+                content.userInfo = ["route": "/recurring"]
 
                 var components = DateComponents()
                 components.year = year
@@ -98,10 +142,12 @@ public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin {
 
                 group.enter()
                 center.add(request) { error in
-                    if error == nil {
-                        scheduled += 1
+                    DispatchQueue.main.async {
+                        if error == nil {
+                            scheduled += 1
+                        }
+                        group.leave()
                     }
-                    group.leave()
                 }
             }
 

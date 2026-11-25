@@ -275,10 +275,29 @@ const AccountTransactionWrapper = ({ children }) => {
     }
   }, [currentUser, notification, t, beginProcessing, endProcessing]);
 
-  // Updates a transaction
+  // Updates a transaction (edits local queue in-place if the row is still pendingSync)
   const updateTransaction = useCallback(async (transactionId, updatedData) => {
     if (!currentUser) return false;
-    
+
+    if (pendingTransactions.some((item) => item.id === transactionId)) {
+      try {
+        const { updateOfflineTransaction } = await loadOfflineQueue();
+        const result = updateOfflineTransaction(currentUser.uid, transactionId, updatedData);
+        if (!result.ok) {
+          notification.error(t("notifications.updateError"));
+          return false;
+        }
+        setPendingTransactions(result.pending);
+        setQueueRevision((value) => value + 1);
+        notification.success(t("notifications.updateSuccess"));
+        return true;
+      } catch (error) {
+        console.error("Error updating offline transaction:", error);
+        notification.error(error.issues ? t("validation.invalidTransaction") : t("notifications.updateError"));
+        return false;
+      }
+    }
+
     beginProcessing();
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
@@ -292,12 +311,28 @@ const AccountTransactionWrapper = ({ children }) => {
     } finally {
       endProcessing();
     }
-  }, [currentUser, notification, t, beginProcessing, endProcessing]);
+  }, [currentUser, pendingTransactions, notification, t, beginProcessing, endProcessing]);
 
   // Deletes a transaction; `silent` lets the caller show its own (undo) toast.
   const deleteTransaction = useCallback(async (transactionId, { silent = false } = {}) => {
     if (!currentUser) return false;
-    
+
+    if (pendingTransactions.some((item) => item.id === transactionId)) {
+      try {
+        const { removeOfflineTransactionById } = await loadOfflineQueue();
+        const result = removeOfflineTransactionById(currentUser.uid, transactionId);
+        if (!result.removed) return false;
+        setPendingTransactions(result.pending);
+        setQueueRevision((value) => value + 1);
+        if (!silent) notification.success(t("notifications.deleteSuccess"));
+        return true;
+      } catch (error) {
+        console.error("Error deleting offline transaction:", error);
+        notification.error(t("notifications.deleteError"));
+        return false;
+      }
+    }
+
     beginProcessing();
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
@@ -311,7 +346,7 @@ const AccountTransactionWrapper = ({ children }) => {
     } finally {
       endProcessing();
     }
-  }, [currentUser, notification, t, beginProcessing, endProcessing]);
+  }, [currentUser, pendingTransactions, notification, t, beginProcessing, endProcessing]);
 
   // Totals over the realtime stream only (the most recent transactions);
   // range-accurate figures come from fetchAllTransactions.

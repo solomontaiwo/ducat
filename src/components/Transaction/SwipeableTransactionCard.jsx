@@ -1,8 +1,10 @@
+import { useRef } from "react";
 import PropTypes from "prop-types";
 import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { useDrag } from "@use-gesture/react";
 import { FiTrash2 } from "react-icons/fi";
 import TransactionRow from "./TransactionRow.jsx";
+import { hapticTap } from "../../platform/haptics.js";
 
 const SWIPE_DELETE_THRESHOLD = 88;
 const SWIPE_VELOCITY_THRESHOLD = 0.5;
@@ -13,15 +15,26 @@ const coarsePointer = () => typeof window !== "undefined" && window.matchMedia?.
 const SwipeableTransactionCard = ({ transaction, meta, onSelect, onDelete, selected = false }) => {
   const x = useMotionValue(0);
   const deleteOpacity = useTransform(x, [-SWIPE_DELETE_THRESHOLD, -16], [1, 0]);
+  const crossedRef = useRef(false);
 
   const bind = useDrag(
     ({ down, movement: [mx], velocity: [vx], direction: [dx] }) => {
       if (down) {
-        x.set(Math.min(0, mx));
+        const clamped = Math.min(0, mx);
+        x.set(clamped);
+        if (clamped < -SWIPE_DELETE_THRESHOLD && !crossedRef.current) {
+          crossedRef.current = true;
+          hapticTap("medium");
+        } else if (clamped >= -SWIPE_DELETE_THRESHOLD) {
+          crossedRef.current = false;
+        }
       } else {
-        if (mx < -SWIPE_DELETE_THRESHOLD || (vx > SWIPE_VELOCITY_THRESHOLD && dx < 0 && mx < -24)) {
+        const shouldDelete = mx < -SWIPE_DELETE_THRESHOLD || (vx > SWIPE_VELOCITY_THRESHOLD && dx < 0 && mx < -24);
+        if (shouldDelete) {
+          if (!crossedRef.current) hapticTap("medium");
           onDelete(transaction.id);
         }
+        crossedRef.current = false;
         animate(x, 0, SNAP_ANIMATION);
       }
     },

@@ -4,6 +4,7 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import { useCategories } from "../../utils/categories.jsx";
 import { useNotification } from "../../utils/notificationUtils.jsx";
 import { minorToMajor, parseMoneyToMinor } from "../../utils/money";
+import { evaluateAmountExpression, formatEvaluatedAmount, hasAmountExpression, sanitizeAmountInput } from "../../utils/amountExpression.js";
 import { dateKeyToDate, todayDateKey } from "../../utils/dateUtils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -55,7 +56,13 @@ const QuickAddForm = () => {
     if (disabled || submittingRef.current) return;
     let amountMinor;
     try {
-      amountMinor = parseMoneyToMinor(amount.replace(",", "."));
+      if (hasAmountExpression(amount)) {
+        const computed = evaluateAmountExpression(amount);
+        if (computed === null) throw new Error("Invalid expression");
+        amountMinor = parseMoneyToMinor(formatEvaluatedAmount(computed));
+      } else {
+        amountMinor = parseMoneyToMinor(amount.replace(",", "."));
+      }
     } catch (error) {
       notification.error(error.i18nKey ? t(error.i18nKey) : t("transaction.invalidAmount"));
       return;
@@ -98,7 +105,21 @@ const QuickAddForm = () => {
       </label>
       <label className="w-28">
         <span className="sr-only">{t("transactionModal.amount")}</span>
-        <Input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.,]/g, ""))} inputMode="decimal" placeholder="0,00 €" className="h-11 tabular-nums" disabled={disabled} />
+        <Input
+          value={amount}
+          onChange={(event) => setAmount(sanitizeAmountInput(event.target.value))}
+          onBlur={(event) => {
+            const value = event.target.value;
+            if (hasAmountExpression(value)) {
+              const computed = evaluateAmountExpression(value);
+              if (computed !== null) setAmount(formatEvaluatedAmount(computed));
+            }
+          }}
+          inputMode="decimal"
+          placeholder="0,00 €"
+          className="h-11 tabular-nums"
+          disabled={disabled}
+        />
       </label>
       <label className="min-w-[10rem] flex-1">
         <span className="sr-only">{t("transactionModal.description")}</span>

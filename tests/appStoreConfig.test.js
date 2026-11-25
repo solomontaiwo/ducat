@@ -69,6 +69,13 @@ describe("iOS submission requirements", () => {
     expect(mainVc).toContain("BiometricAuthPlugin()");
     expect(mainVc).toContain("NativeFeaturesPlugin()");
     expect(mainVc).toContain(".systemBackground");
+    const nativeFeatures = read("ios/App/App/NativeFeaturesPlugin.swift");
+    expect(nativeFeatures).toContain("UNUserNotificationCenterDelegate");
+    expect(nativeFeatures).toContain("consumePendingRoute");
+    const splashContents = read("ios/App/App/Assets.xcassets/Splash.imageset/Contents.json");
+    expect(splashContents).toContain('"value": "dark"');
+    expect(capacitor.ios.backgroundColor).toBeUndefined();
+    expect(capacitor.plugins?.SplashScreen?.backgroundColor).toBeUndefined();
     const sceneDelegate = read("ios/App/App/SceneDelegate.swift");
     expect(sceneDelegate).toContain("MainViewController()");
     expect(sceneDelegate).toContain("sceneWillResignActive");

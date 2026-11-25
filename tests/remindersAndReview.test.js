@@ -5,6 +5,12 @@ const nativeMock = vi.hoisted(() => ({
   requestNotificationPermission: vi.fn(async () => ({ granted: true })),
   syncRecurringReminders: vi.fn(async ({ reminders }) => ({ scheduled: reminders.length })),
   clearRecurringReminders: vi.fn(async () => ({ cleared: true })),
+  consumePendingRoute: vi.fn(async () => ({ route: null })),
+  addListener: vi.fn(async (_event, callback) => {
+    nativeMock._listener = callback;
+    return { remove: vi.fn() };
+  }),
+  _listener: null,
   requestAppReview: vi.fn(async () => ({ requested: true })),
 }));
 
@@ -16,6 +22,7 @@ import {
   buildReminderSchedule,
   clearRecurringReminders,
   getReminderPermission,
+  installReminderTapHandler,
   isRecurringRemindersEnabled,
   requestReminderPermission,
   resetRemindersForTests,
@@ -104,6 +111,20 @@ describe("recurring reminders", () => {
     await clearRecurringReminders();
     expect(isRecurringRemindersEnabled()).toBe(false);
     expect(nativeMock.clearRecurringReminders).toHaveBeenCalledTimes(1);
+  });
+
+  it("navigates to allowed routes on cold-start and live reminder taps, ignoring unsafe routes", async () => {
+    vi.stubEnv("MODE", "mobile");
+    nativeMock.consumePendingRoute.mockResolvedValueOnce({ route: "/recurring" });
+    const onNavigate = vi.fn();
+    const cleanup = await installReminderTapHandler(onNavigate);
+
+    expect(onNavigate).toHaveBeenCalledWith("/recurring");
+    nativeMock._listener?.({ route: "/dashboard" });
+    expect(onNavigate).toHaveBeenCalledWith("/dashboard");
+    nativeMock._listener?.({ route: "https://evil.example" });
+    expect(onNavigate).toHaveBeenCalledTimes(2);
+    cleanup();
   });
 });
 

@@ -9,6 +9,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   notification: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+  addTransaction: vi.fn().mockResolvedValue(true),
   t: (key, options) => (options && Object.keys(options).length ? `${key}:${JSON.stringify(options)}` : key),
 }));
 
@@ -33,7 +34,12 @@ vi.mock("../src/context/PlanningProvider.jsx", () => ({
   }),
 }));
 vi.mock("../src/context/UnifiedTransactionProvider.jsx", () => ({
-  useUnifiedTransactions: () => ({ transactions: [] }),
+  useUnifiedTransactions: () => ({
+    transactions: [],
+    addTransaction: mocks.addTransaction,
+    isDemo: false,
+    canAddMoreTransactions: true,
+  }),
 }));
 vi.mock("../src/platform/haptics.js", () => ({
   hapticSuccess: vi.fn(),
@@ -41,6 +47,7 @@ vi.mock("../src/platform/haptics.js", () => ({
 }));
 
 import TransactionForm from "../src/components/Transaction/TransactionForm.jsx";
+import QuickAddForm from "../src/components/Dashboard/QuickAddForm.jsx";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -111,5 +118,20 @@ describe("TransactionForm inline calculator", () => {
     fireEvent.submit(amountInput.closest("form"));
     expect(mocks.notification.error).toHaveBeenCalledWith("transaction.invalidAmount");
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe("QuickAddForm inline calculator", () => {
+  it("evaluates arithmetic expressions before submitting", async () => {
+    mocks.addTransaction.mockResolvedValue(true);
+    render(<QuickAddForm />);
+    const amountInput = screen.getByLabelText("transactionModal.amount");
+    fireEvent.change(amountInput, { target: { value: "12,50 + 4,80" } });
+    fireEvent.submit(amountInput.closest("form"));
+    await waitFor(() => expect(mocks.addTransaction).toHaveBeenCalledTimes(1));
+    expect(mocks.addTransaction).toHaveBeenCalledWith(expect.objectContaining({
+      amountMinor: 1730,
+      amount: 17.3,
+    }));
   });
 });

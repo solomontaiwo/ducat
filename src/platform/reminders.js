@@ -117,6 +117,46 @@ export const clearRecurringReminders = async () => {
   }
 };
 
+const ALLOWED_REMINDER_ROUTES = new Set(["/recurring", "/dashboard"]);
+
+const defaultNavigate = (route) => {
+  if (typeof window === "undefined" || window.location.pathname === route) return;
+  window.history.pushState({}, "", route);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+};
+
+/**
+ * Listens for iOS notification taps (and consumes any route captured during a
+ * cold launch from a reminder) to open `/recurring` smoothly inside the SPA.
+ */
+export const installReminderTapHandler = async (onNavigate = defaultNavigate) => {
+  const plugin = getPlugin();
+  if (!plugin) return () => {};
+
+  const routeIfAllowed = (route) => {
+    if (typeof route === "string" && ALLOWED_REMINDER_ROUTES.has(route)) {
+      onNavigate(route);
+    }
+  };
+
+  let handle = null;
+  try {
+    if (typeof plugin.addListener === "function") {
+      handle = await plugin.addListener("reminderTapped", (payload) => routeIfAllowed(payload?.route));
+    }
+    if (typeof plugin.consumePendingRoute === "function") {
+      const pending = await plugin.consumePendingRoute();
+      routeIfAllowed(pending?.route);
+    }
+  } catch {
+    // Ignore missing plugin methods on older native shells.
+  }
+
+  return () => {
+    handle?.remove?.();
+  };
+};
+
 /** Test helper: resets the cached Capacitor plugin proxy. */
 export const resetRemindersForTests = () => {
   cachedPlugin = null;
