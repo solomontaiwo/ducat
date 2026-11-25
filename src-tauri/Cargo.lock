@@ -864,7 +864,7 @@ dependencies = [
 
 [[package]]
 name = "ducat"
-version = "4.0.33"
+version = "4.0.34"
 dependencies = [
  "log",
  "serde",
