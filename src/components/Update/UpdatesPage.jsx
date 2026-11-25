@@ -7,6 +7,7 @@ import { InlineSegmented } from "../Profile/SettingsList";
 import { APP_VERSION } from "../../utils/appVersion";
 import { readUpdaterSettings, writeUpdaterSettings } from "../../utils/updaterSettings";
 import { openExternal } from "../../utils/openExternal.js";
+import { formatReleaseHistoryNotes } from "../../services/updaterService.js";
 import { cn } from "../../lib/utils.js";
 
 const RELEASES_REPO = import.meta.env.VITE_RELEASES_REPO || "solomontaiwo/ducat";
@@ -247,17 +248,20 @@ const UpdatesPage = () => {
           <p className="text-sm text-muted-foreground">{t("updates.historyEmpty")}</p>
         ) : (
           <ol className="divide-y divide-border">
-            {releases.map((release) => (
-              <li key={release.id} className="space-y-1 py-3 first:pt-0 last:pb-0">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <span className="text-[15px] font-semibold">{release.name || release.tag_name}</span>
-                  <span className="text-xs text-muted-foreground">{formatDate(release.published_at || release.created_at, i18n.language)}</span>
-                </div>
-                {release.body && (
-                  <p className="whitespace-pre-wrap text-[13px] leading-snug text-muted-foreground">{release.body}</p>
-                )}
-              </li>
-            ))}
+            {releases.map((release) => {
+              const body = formatReleaseHistoryNotes(release.body);
+              return (
+                <li key={release.id} className="space-y-1 py-3 first:pt-0 last:pb-0">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <span className="text-[15px] font-semibold">{release.name || release.tag_name}</span>
+                    <span className="text-xs text-muted-foreground">{formatDate(release.published_at || release.created_at, i18n.language)}</span>
+                  </div>
+                  {body && (
+                    <p className="whitespace-pre-wrap text-[13px] leading-snug text-muted-foreground">{body}</p>
+                  )}
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>
