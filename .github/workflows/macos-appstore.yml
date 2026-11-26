@@ -18,7 +18,7 @@ concurrency:
 jobs:
   macos:
     name: Mac App Store package
-    runs-on: macos-15
+    runs-on: macos-26
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
@@ -29,6 +29,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select Xcode
+        # App Store Connect only accepts builds made with Xcode 26 or later
+        # (Xcode 27 from April 2027): use the newest stable Xcode on the image.
+        run: |
+          set -euo pipefail
+          xcode=$(ls -d /Applications/Xcode_[0-9]*.app | grep -vi beta | sort -V | tail -n 1)
+          sudo xcode-select -s "$xcode/Contents/Developer"
+          xcodebuild -version
+          major=$(xcodebuild -version | awk 'NR == 1 { split($2, v, "."); print v[1] }')
+          if [ "$major" -lt 26 ]; then
+            echo "App Store Connect requires Xcode 26 or later, found $(xcodebuild -version | head -n 1)" >&2
+            exit 1
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
