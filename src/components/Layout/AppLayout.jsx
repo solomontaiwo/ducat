@@ -7,6 +7,7 @@ import { usePrivacy } from "../../context/PrivacyProvider.jsx";
 import { AddTransactionContext } from "../../context/AddTransactionContext.jsx";
 import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus.js";
+import { isMobile as isMobileApp } from "../../platform/index.js";
 import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
@@ -17,6 +18,7 @@ const AppLockOverlay = lazy(() => import("./AppLockOverlay"));
 const OfflineNotice = lazy(() => import("./OfflineNotice"));
 const ShortcutsDialog = lazy(() => import("./ShortcutsDialog"));
 const DemoImportPrompt = lazy(() => import("./DemoImportPrompt"));
+const NativeNavigationBridge = lazy(() => import("./NativeNavigationBridge"));
 
 const PUBLIC_ROUTES = ["/", "/landing", "/login", "/register", "/forgot-password", "/verify-email", "/privacy", "/terms"];
 const isEditableTarget = (el) => Boolean(el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)));
@@ -25,7 +27,7 @@ const AppLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { isDemo, canAddMoreTransactions, pendingOfflineCount = 0 } = useUnifiedTransactions();
+  const { isDemo, canAddMoreTransactions, pendingOfflineCount = 0, transactions = [], maxTransactions } = useUnifiedTransactions();
   const { error: planningError, retry: retryPlanning } = usePlanning();
   const { locked, toggleHideAmounts } = usePrivacy();
   const online = useOnlineStatus();
@@ -35,6 +37,8 @@ const AppLayout = ({ children }) => {
   const [addDraft, setAddDraft] = useState(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isSendingVerification, setIsSendingVerification] = useState(false);
+  // True when iOS shows the native tab bar in the vertical bar instead of ours.
+  const [nativeNavigation, setNativeNavigation] = useState(false);
 
   const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
   const showNavigation = !isPublicRoute && (currentUser || isDemo);
@@ -54,6 +58,8 @@ const AppLayout = ({ children }) => {
     setAddDraft(null);
   }, []);
   const addContext = useMemo(() => ({ openAddTransaction, canAdd: !addDisabled }), [openAddTransaction, addDisabled]);
+
+  const showWebBottomNav = showNavigation && isMobile && !nativeNavigation;
 
   // Open prefilled transaction modal from iOS Quick Actions / Shortcuts (`?quickAdd=1&...`).
   useEffect(() => {
@@ -127,7 +133,7 @@ const AppLayout = ({ children }) => {
         <main
           className={
             showNavigation
-              ? `app-main relative flex-1 overflow-x-clip ${isMobile ? "app-content-safe-mobile" : ""}`
+              ? `app-main relative flex-1 overflow-x-clip ${showWebBottomNav ? "app-content-safe-mobile" : isMobile ? "app-content-safe-bottom" : ""}`
               : "relative flex-1 overflow-x-clip p-0"
           }
         >
@@ -177,7 +183,21 @@ const AppLayout = ({ children }) => {
           </div>
         </main>
 
-        {showNavigation && isMobile && <BottomNavigation onAdd={openAddTransaction} addDisabled={addDisabled} />}
+        {showWebBottomNav && <BottomNavigation onAdd={openAddTransaction} addDisabled={addDisabled} />}
+        {isMobileApp() && (
+          <Suspense fallback={null}>
+            <NativeNavigationBridge
+              available={nativeNavigation}
+              onAvailabilityChange={setNativeNavigation}
+              visible={Boolean(showNavigation && !showAddModal && !(hasAccount && locked))}
+              path={location.pathname}
+              badge={isDemo ? `${transactions.filter((item) => !item.isSample).length}/${maxTransactions}` : null}
+              addEnabled={!addDisabled}
+              onNavigate={navigate}
+              onAdd={openAddTransaction}
+            />
+          </Suspense>
+        )}
 
         {showNavigation && showAddModal && (
           <Suspense fallback={null}>

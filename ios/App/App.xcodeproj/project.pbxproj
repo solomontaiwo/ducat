@@ -20,6 +20,7 @@
 		E1B0000000000000000000B2 /* BiometricAuthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A3 /* BiometricAuthPlugin.swift */; };
 		E1B0000000000000000000B3 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A4 /* MainViewController.swift */; };
 		E1B0000000000000000000B4 /* NativeFeaturesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A5 /* NativeFeaturesPlugin.swift */; };
+		E1B0000000000000000000B6 /* VerticalBarNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A7 /* VerticalBarNavigation.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +40,7 @@
 		E1A0000000000000000000A3 /* BiometricAuthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthPlugin.swift; sourceTree = "<group>"; };
 		E1A0000000000000000000A4 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		E1A0000000000000000000A5 /* NativeFeaturesPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeFeaturesPlugin.swift; sourceTree = "<group>"; };
+		E1A0000000000000000000A7 /* VerticalBarNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerticalBarNavigation.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +79,7 @@
 				E1A0000000000000000000A4 /* MainViewController.swift */,
 				E1A0000000000000000000A3 /* BiometricAuthPlugin.swift */,
 				E1A0000000000000000000A5 /* NativeFeaturesPlugin.swift */,
+				E1A0000000000000000000A7 /* VerticalBarNavigation.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -178,6 +181,7 @@
 				E1B0000000000000000000B2 /* BiometricAuthPlugin.swift in Sources */,
 				E1B0000000000000000000B3 /* MainViewController.swift in Sources */,
 				E1B0000000000000000000B4 /* NativeFeaturesPlugin.swift in Sources */,
+				E1B0000000000000000000B6 /* VerticalBarNavigation.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

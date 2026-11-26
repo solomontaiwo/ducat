@@ -184,7 +184,7 @@ export const NotificationProvider = ({ children }) => {
     <NotificationContext.Provider value={api}>
       {children}
       <div
-        className="pointer-events-none fixed left-1/2 top-[calc(env(safe-area-inset-top)+4.5rem)] z-50 flex w-80 max-w-[90vw] -translate-x-1/2 flex-col gap-2 md:top-6"
+        className="toast-region pointer-events-none fixed top-[calc(env(safe-area-inset-top)+4.5rem)] z-50 flex w-80 -translate-x-1/2 flex-col gap-2 md:top-6"
         aria-live="polite"
         aria-atomic="false"
       >

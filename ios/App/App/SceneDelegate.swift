@@ -4,6 +4,8 @@ import Capacitor
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
     private var privacyBlurView: UIVisualEffectView?
+    /// A `UITraitChangeRegistration` (iOS 17+), kept untyped for iOS 15 builds.
+    private var verticalBarRegistration: Any?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
@@ -11,6 +13,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         window?.rootViewController = MainViewController()
         window?.makeKeyAndVisible()
+
+        if #available(iOS 27.1, *) {
+            observeVerticalBar(in: windowScene)
+        }
 
         if let shortcutItem = connectionOptions.shortcutItem {
             handleShortcut(shortcutItem)
@@ -38,6 +44,33 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             return true
         default:
             return false
+        }
+    }
+
+    /// Installs the native tab bar the first time the system offers a vertical
+    /// bar (iPhone Duo outer screen). Devices without one never get it.
+    @available(iOS 27.1, *)
+    private func observeVerticalBar(in windowScene: UIWindowScene) {
+        installVerticalBarNavigationIfNeeded(windowScene)
+        guard NativeNavigationPlugin.controller == nil else { return }
+        verticalBarRegistration = windowScene.registerForTraitChanges(
+            UITraitCollection.systemTraitsAffectingVerticalBarEdge
+        ) { [weak self] (scene: UIWindowScene, _) in
+            self?.installVerticalBarNavigationIfNeeded(scene)
+        }
+    }
+
+    @available(iOS 27.1, *)
+    private func installVerticalBarNavigationIfNeeded(_ windowScene: UIWindowScene) {
+        guard NativeNavigationPlugin.controller == nil,
+              windowScene.traitCollection.verticalBarEdge != .unspecified,
+              let window, let main = window.rootViewController as? MainViewController else { return }
+        let tabController = VerticalBarTabController(content: main)
+        NativeNavigationPlugin.controller = tabController
+        window.rootViewController = tabController
+        if let registration = verticalBarRegistration as? any UITraitChangeRegistration {
+            windowScene.unregisterForTraitChanges(registration)
+            verticalBarRegistration = nil
         }
     }
 

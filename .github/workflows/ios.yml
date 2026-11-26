@@ -73,9 +73,11 @@ jobs:
           test -f ios/App/App/BiometricAuthPlugin.swift
           test -f ios/App/App/NativeFeaturesPlugin.swift
           test -f ios/App/App/MainViewController.swift
+          test -f ios/App/App/VerticalBarNavigation.swift
           grep -q "PrivacyInfo.xcprivacy in Resources" ios/App/App.xcodeproj/project.pbxproj
           grep -q "BiometricAuthPlugin.swift in Sources" ios/App/App.xcodeproj/project.pbxproj
           grep -q "NativeFeaturesPlugin.swift in Sources" ios/App/App.xcodeproj/project.pbxproj
+          grep -q "VerticalBarNavigation.swift in Sources" ios/App/App.xcodeproj/project.pbxproj
           grep -q "ITSAppUsesNonExemptEncryption" ios/App/App/Info.plist
           grep -q "NSFaceIDUsageDescription" ios/App/App/Info.plist
 

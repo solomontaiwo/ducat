@@ -175,6 +175,16 @@ describe("iOS submission requirements", () => {
     expect(urlScheme?.toLowerCase()).toBe("ducat");
   });
 
+  it("builds the native vertical-bar navigation and registers its plugin", () => {
+    expect(existsSync(join(root, "ios/App/App/VerticalBarNavigation.swift"))).toBe(true);
+    expect(pbxproj).toContain("VerticalBarNavigation.swift in Sources");
+    expect(read("ios/App/App/MainViewController.swift")).toContain("registerPluginInstance(NativeNavigationPlugin())");
+    const scene = read("ios/App/App/SceneDelegate.swift");
+    // Only installed when the system reports a vertical bar (iOS 27.1+).
+    expect(scene).toContain("#available(iOS 27.1, *)");
+    expect(scene).toContain("verticalBarEdge != .unspecified");
+  });
+
   it("points Capacitor at the shared Xcode scheme and names the product Ducat", () => {
     expect(existsSync(join(root, `ios/App/App.xcodeproj/xcshareddata/xcschemes/${capacitor.ios.scheme}.xcscheme`))).toBe(true);
     expect(pbxproj.match(/PRODUCT_NAME = Ducat;/g)).toHaveLength(2);

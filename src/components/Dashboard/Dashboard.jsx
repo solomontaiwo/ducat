@@ -225,7 +225,7 @@ const Dashboard = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-1.5">
                   <p className="text-sm font-semibold text-hero-muted">{balanceLabel}</p>
-                  <p className="amount text-[2.75rem] leading-none sm:text-5xl lg:text-[3.5rem] cols2:text-[2.25rem] short:text-[2.25rem]">
+                  <p className="amount text-[2.75rem] leading-none sm:text-5xl lg:text-[3.5rem] cols2:text-[2.25rem] short:text-[2rem]">
                     {balance < 0 ? formatSignedAmount(balance, "expense") : formatCurrency(balance)}
                   </p>
                 </div>
@@ -252,18 +252,18 @@ const Dashboard = () => {
                   <div className="h-full rounded-full bg-warning" style={{ width: `${Math.max(2, Math.min(100, expenseShare))}%` }} />
                 </div>
               )}
-              <dl className="grid grid-cols-2 gap-4">
+              <dl className="grid grid-cols-2 gap-4 short:gap-3">
                 <div>
-                  <dt className="text-[13px] font-semibold text-hero-muted">{t("dashboard.income")}</dt>
-                  <dd className="amount text-lg sm:text-xl">{formatSignedAmount(stats.totalIncome, "income")}</dd>
+                  <dt className="text-[13px] font-semibold text-hero-muted short:text-xs">{t("dashboard.income")}</dt>
+                  <dd className="amount text-lg sm:text-xl short:text-base">{formatSignedAmount(stats.totalIncome, "income")}</dd>
                 </div>
                 <div>
-                  <dt className="text-[13px] font-semibold text-hero-muted">
+                  <dt className="text-[13px] font-semibold text-hero-muted short:text-xs">
                     {expenseShare !== null
                       ? t("dashboard.expensesWithShare", { percent: Math.round(expenseShare) })
                       : t("dashboard.expenses")}
                   </dt>
-                  <dd className="amount text-lg sm:text-xl">{formatSignedAmount(stats.totalExpense, "expense")}</dd>
+                  <dd className="amount text-lg sm:text-xl short:text-base">{formatSignedAmount(stats.totalExpense, "expense")}</dd>
                 </div>
               </dl>
               {projection && (
@@ -285,7 +285,7 @@ const Dashboard = () => {
 
         <section className="surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="where-money-goes">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 id="where-money-goes" className="text-lg font-bold cols2:text-base">{t("dashboard.whereMoneyGoes")}</h2>
+            <h2 id="where-money-goes" className="text-lg font-bold cols2:text-base short:text-base">{t("dashboard.whereMoneyGoes")}</h2>
             <Link to="/analytics" className="text-sm font-semibold text-primary hover:underline">{t("navbar.analytics")}</Link>
           </div>
           {isLoading ? (
@@ -346,7 +346,7 @@ const Dashboard = () => {
 
       <section className="surface space-y-3 p-4 sm:p-6" aria-labelledby="recent-transactions">
         <div className="flex items-baseline justify-between gap-3 px-1">
-          <h2 id="recent-transactions" className="text-lg font-bold">{t("recentTransactions.title")}</h2>
+          <h2 id="recent-transactions" className="text-lg font-bold short:text-base">{t("recentTransactions.title")}</h2>
           <Link to="/transactions" className="text-sm font-semibold text-primary hover:underline">{t("recentTransactions.viewAll")}</Link>
         </div>
         <QuickAddForm />
