@@ -1,6 +1,6 @@
 [package]
 name = "ducat"
-version = "4.0.40"
+version = "4.0.41"
 description = "Gestione personale delle finanze"
 authors = ["Ducat"]
 license = "MIT"
