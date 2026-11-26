@@ -7,7 +7,7 @@ const Input = forwardRef(({ className, type = "text", ...props }, ref) => {
     <input
       type={type}
       className={cn(
-        "flex h-12 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-base md:text-sm transition placeholder:text-muted-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-12 w-full rounded-xl border border-input bg-card px-3.5 py-2 text-base transition placeholder:text-muted-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       ref={ref}

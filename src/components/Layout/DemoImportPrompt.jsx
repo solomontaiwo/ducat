@@ -97,7 +97,7 @@ const DemoImportPrompt = () => {
   return (
     <section
       aria-labelledby="demo-import-title"
-      className="mx-auto flex max-w-6xl flex-col gap-3 rounded-2xl border border-border bg-card p-4 text-sm shadow-sm"
+      className="workspace-width flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 text-sm shadow-sm"
     >
       <div className="flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">

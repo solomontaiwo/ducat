@@ -18,6 +18,14 @@ import { isWeb } from "./platform/index.js";
 
 installGlobalErrorReporting();
 
+// WebKit exposes the preferred Apple body size through a system font shorthand.
+if (CSS.supports("font", "-apple-system-body")) {
+  const sample = document.getElementById("system-text-size");
+  new ResizeObserver(([entry]) => {
+    document.documentElement.style.setProperty("--system-text-size", `${entry.contentRect.width}px`);
+  }).observe(sample);
+}
+
 // Registering a service worker makes the web app installable. The worker does
 // not cache anything (see public/sw.js), so it never serves stale data. The
 // packaged shells load their bundle locally and must not register one.

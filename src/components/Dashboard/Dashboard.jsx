@@ -195,7 +195,7 @@ const Dashboard = () => {
 
   return (
     <PullToRefresh onRefresh={handleRefresh} disabled={isLoading}>
-    <div className="page-shell">
+    <div className="page-shell dashboard-page">
       <header className="mobile-glass-header flex items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <p className="pl-1 text-sm font-semibold text-muted-foreground md:pl-0">
@@ -226,7 +226,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 cols2:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-5">
+      <div className="dashboard-summary grid gap-4 lg:gap-5">
         <section
           aria-label={t("dashboard.summary")}
           className="flex flex-col gap-5 rounded-3xl bg-hero p-6 text-hero-foreground shadow-[0_12px_32px_rgb(29_78_216/0.25)] dark:border dark:border-white/10 dark:shadow-none sm:p-7 cols2:p-6 short:gap-4 short:p-5"
@@ -235,10 +235,10 @@ const Dashboard = () => {
             <Skeleton height={150} baseColor="rgba(255,255,255,0.14)" highlightColor="rgba(255,255,255,0.26)" borderRadius={16} />
           ) : (
             <>
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 space-y-1.5">
                   <p className="text-sm font-semibold text-hero-muted">{balanceLabel}</p>
-                  <p className="amount text-[2.75rem] leading-none sm:text-5xl lg:text-[3.5rem] cols2:text-[2.25rem] short:text-[2rem]">
+                  <p className="amount [overflow-wrap:anywhere] text-[2.75rem] leading-none sm:text-5xl lg:text-[3.5rem] cols2:text-[2.25rem] short:text-[2rem]">
                     {balance < 0 ? formatSignedAmount(balance, "expense") : formatCurrency(balance)}
                   </p>
                 </div>
@@ -265,13 +265,13 @@ const Dashboard = () => {
                   <div className="h-full rounded-full bg-warning" style={{ width: `${Math.max(2, Math.min(100, expenseShare))}%` }} />
                 </div>
               )}
-              <dl className="grid grid-cols-2 gap-4 short:gap-3">
+              <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6.5em),1fr))] gap-4 short:gap-3">
                 <div>
-                  <dt className="text-[13px] font-semibold text-hero-muted short:text-xs">{t("dashboard.income")}</dt>
+                  <dt className="text-sm font-semibold text-hero-muted short:text-xs">{t("dashboard.income")}</dt>
                   <dd className="amount text-lg sm:text-xl short:text-base">{formatSignedAmount(stats.totalIncome, "income")}</dd>
                 </div>
                 <div>
-                  <dt className="text-[13px] font-semibold text-hero-muted short:text-xs">
+                  <dt className="text-sm font-semibold text-hero-muted short:text-xs">
                     {expenseShare !== null
                       ? t("dashboard.expensesWithShare", { percent: Math.round(expenseShare) })
                       : t("dashboard.expenses")}
@@ -357,7 +357,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      <section className="surface space-y-3 p-4 sm:p-6" aria-labelledby="recent-transactions">
+      <section className="recent-card surface space-y-3 p-4 sm:p-6" aria-labelledby="recent-transactions">
         <div className="flex items-baseline justify-between gap-3 px-1">
           <h2 id="recent-transactions" className="text-lg font-bold short:text-base">{t("recentTransactions.title")}</h2>
           <Link to="/transactions" className="text-sm font-semibold text-primary hover:underline">{t("recentTransactions.viewAll")}</Link>

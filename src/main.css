@@ -102,7 +102,18 @@
     @apply border-border;
   }
   html {
+    font-size: max(100%, var(--system-text-size, 0px));
     -webkit-text-size-adjust: 100%;
+  }
+  #system-text-size {
+    position: fixed;
+    visibility: hidden;
+    width: 1em;
+    height: 0;
+    font: -apple-system-body;
+  }
+  html[data-mode="desktop"] {
+    font-size: max(112.5%, var(--system-text-size, 0px));
   }
   body {
     @apply bg-background font-sans text-foreground antialiased min-h-screen;
@@ -214,8 +225,36 @@
       radial-gradient(60vmax 60vmax at -10% -15%, hsl(var(--ambient-1)), transparent 60%),
       radial-gradient(50vmax 50vmax at 115% 45%, hsl(var(--ambient-2)), transparent 60%);
   }
+  .workspace-width {
+    @apply mx-auto w-full;
+    max-width: 96rem;
+  }
+  .dashboard-page, .recent-card {
+    container-type: inline-size;
+  }
+  @container (min-width: 37em) {
+    .dashboard-summary {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    }
+  }
+  .quick-add {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .quick-add :is(input, select, button) {
+    height: 2.75rem;
+  }
+  @container (min-width: 36em) {
+    .quick-add {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @container (min-width: 56em) {
+    .quick-add {
+      grid-template-columns: 8em 7em minmax(10em, 1fr) 10em 11em auto;
+    }
+  }
   .page-shell {
-    @apply mx-auto w-full max-w-6xl space-y-5 md:space-y-6 short:space-y-4;
+    @apply workspace-width space-y-5 md:space-y-6 short:space-y-4;
   }
   /*
    * App frame. Every edge honours the safe area: besides the notch and the
@@ -227,17 +266,25 @@
     padding-left: max(1rem, calc(env(safe-area-inset-left) + 0.5rem));
     padding-right: max(1rem, calc(env(safe-area-inset-right) + 0.5rem));
   }
+  :root {
+    --sidebar-width: clamp(12rem, 18vw, 17rem);
+    --workspace-gutter: clamp(1rem, 2vw, 2.5rem);
+  }
   .app-sidebar {
+    width: var(--sidebar-width);
+    overflow-y: auto;
     top: max(1rem, calc(env(safe-area-inset-top) + 0.5rem));
     bottom: max(1rem, calc(env(safe-area-inset-bottom) + 0.5rem));
     left: calc(1rem + env(safe-area-inset-left));
   }
+  .app-sidebar > :not(.flex-1) {
+    flex-shrink: 0;
+  }
   @media (min-width: 768px) {
     .app-main {
-      /* Sidebar: 232px wide, 16px from the edge, plus the side safe area. */
       padding-top: max(2rem, calc(env(safe-area-inset-top) + 1rem));
-      padding-left: calc(248px + 2.5rem + env(safe-area-inset-left));
-      padding-right: max(2.5rem, calc(env(safe-area-inset-right) + 1rem));
+      padding-left: calc(1rem + var(--sidebar-width) + var(--workspace-gutter) + env(safe-area-inset-left));
+      padding-right: calc(var(--workspace-gutter) + env(safe-area-inset-right));
       padding-bottom: max(3rem, calc(env(safe-area-inset-bottom) + 1.5rem));
     }
   }

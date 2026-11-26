@@ -44,10 +44,10 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
   const demoCount = transactions.filter((item) => !item.isSample).length;
 
   return (
-    <aside className="app-sidebar glass fixed z-30 flex w-[232px] flex-col gap-6 rounded-[28px] px-3.5 pb-4 pt-5 short:gap-4 short:pt-4">
+    <aside className="app-sidebar glass fixed z-30 flex flex-col gap-6 rounded-[28px] px-3.5 pb-4 pt-5 short:gap-4 short:pt-4">
       <Link to="/" className="flex items-center gap-2.5 rounded-xl px-2 py-1">
         <img src={logo} alt="" width="34" height="34" className="h-[34px] w-[34px] rounded-[11px]" />
-        <span className="font-display text-[19px] font-extrabold tracking-tight">{t("appName")}</span>
+        <span className="font-display text-xl font-extrabold tracking-tight">{t("appName")}</span>
       </Link>
 
       <Button onClick={onAdd} disabled={addDisabled} size="lg" className="w-full">
@@ -65,7 +65,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
               to={item.path}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold transition-colors",
+                "flex h-11 items-center gap-3 rounded-xl px-3 text-base font-semibold transition-colors",
                 active ? "glass-active text-accent-foreground" : "text-foreground/80 hover:bg-foreground/5 hover:text-foreground"
               )}
             >
@@ -102,7 +102,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
           to="/updates"
           aria-current={location.pathname === "/updates" ? "page" : undefined}
           className={cn(
-            "flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold transition-colors",
+            "flex h-11 items-center gap-3 rounded-xl px-3 text-base font-semibold transition-colors",
             location.pathname === "/updates"
               ? "glass-active text-accent-foreground"
               : "text-foreground/80 hover:bg-foreground/5 hover:text-foreground"
@@ -140,7 +140,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
             </span>
             <span className="flex min-w-0 flex-col">
               <span className="truncate text-sm font-bold">{displayName}</span>
-              <span className="truncate text-xs font-medium text-muted-foreground">{t("navbar.profileAndSettings")}</span>
+              <span className="text-xs font-medium leading-tight text-muted-foreground">{t("navbar.profileAndSettings")}</span>
             </span>
           </Link>
           <button

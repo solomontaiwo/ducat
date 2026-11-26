@@ -144,13 +144,13 @@ const AppLayout = ({ children }) => {
               </Suspense>
             )}
             {showNavigation && planningError && (
-              <div role="alert" className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm">
+              <div role="alert" className="workspace-width flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm">
                 <p>{planningError}</p>
                 <button type="button" onClick={retryPlanning} className="rounded-xl border border-warning/50 px-3 py-2 font-semibold">{t("planning.retry")}</button>
               </div>
             )}
             {showNavigation && pendingTrial && (
-              <div role="status" className="mx-auto flex max-w-6xl flex-col gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <div role="status" className="workspace-width flex flex-col gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <p>{t("demo.pendingTrialNotice", { email: currentUser.email })}</p>
                 <button
                   type="button"
@@ -167,7 +167,7 @@ const AppLayout = ({ children }) => {
               </Suspense>
             )}
             {showNavigation && hasAccount && !currentUser.emailVerified && (
-              <div className="mx-auto flex max-w-6xl flex-col gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="workspace-width flex flex-col gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <p>{t("security.emailVerificationRequired")}</p>
                 <button
                   type="button"

@@ -196,6 +196,31 @@ test("pages never scroll horizontally on mobile, even with long descriptions", a
   }
 });
 
+test("desktop dashboard uses the window and keeps quick entry fields separate", async ({ page, isMobile }) => {
+  test.skip(isMobile, "Desktop quick entry");
+  await page.goto(".");
+  await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
+  await page.getByRole("link", { name: /^(panoramica|overview)$/i }).click();
+  const form = page.getByRole("form", { name: /aggiunta rapida|quick add/i });
+  for (const width of [1920, 1200, 1024]) {
+    await page.setViewportSize({ width, height: 600 });
+    await expect(form).toBeVisible();
+    if (width === 1920) expect((await form.boundingBox()).width).toBeGreaterThan(1200);
+    const fields = await form.locator("input, select, button").evaluateAll(elements =>
+      elements.map(el => el.getBoundingClientRect().toJSON())
+    );
+    for (const [index, field] of fields.entries()) {
+      for (const next of fields.slice(index + 1)) {
+        expect(field.right <= next.left || field.bottom <= next.top || next.right <= field.left).toBe(true);
+      }
+    }
+  }
+  await form.getByRole("textbox", { name: /importo|amount/i }).fill("6,50");
+  await form.getByRole("textbox", { name: /descrizione|description/i }).fill("Caffè in stazione");
+  await form.getByRole("button").click();
+  await expect(page.getByRole("button", { name: /Caffè in stazione/ })).toBeVisible();
+});
+
 // iPhone Duo: outer screen, and the inner screen in landscape and portrait.
 for (const [name, viewport, columns] of [
   ["outer screen", { width: 466, height: 678 }, 1],

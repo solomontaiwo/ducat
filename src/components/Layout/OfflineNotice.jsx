@@ -18,7 +18,7 @@ const OfflineNotice = () => {
     return (
       <div
         role="status"
-        className="mx-auto flex max-w-6xl items-start gap-3 rounded-2xl border border-border bg-foreground/5 p-4 text-sm"
+        className="workspace-width flex items-start gap-3 rounded-2xl border border-border bg-foreground/5 p-4 text-sm"
       >
         <FiWifiOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <p className="min-w-0 flex-1">
@@ -36,7 +36,7 @@ const OfflineNotice = () => {
   return (
     <div
       role="status"
-      className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-accent/80 p-4 text-sm"
+      className="workspace-width flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-accent/80 p-4 text-sm"
     >
       <p className="min-w-0 flex-1 font-medium text-accent-foreground">
         {syncingOfflineQueue

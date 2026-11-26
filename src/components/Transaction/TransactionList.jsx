@@ -570,7 +570,7 @@ const TransactionList = () => {
   const demoCount = transactions.filter((item) => !item.isSample).length;
 
   return (
-    <PullToRefresh onRefresh={handleRefresh} disabled={loading} className={cn("mx-auto w-full", showPanel ? "max-w-[1400px]" : "max-w-6xl")}>
+    <PullToRefresh onRefresh={handleRefresh} disabled={loading} className="workspace-width">
     <div className="flex w-full gap-6">
       <div className="min-w-0 flex-1 space-y-4">
         {loadError && (
@@ -602,7 +602,7 @@ const TransactionList = () => {
             <FiSearch className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <input
               type="search"
-              className="h-12 w-full rounded-2xl border border-input bg-card pl-11 pr-4 text-base outline-none transition placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
+              className="h-12 w-full rounded-2xl border border-input bg-card pl-11 pr-4 text-base outline-none transition placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-ring"
               placeholder={t("searchTransactions")}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
@@ -778,8 +778,8 @@ const TransactionList = () => {
               const net = groupNetAmount(group.transactions);
               return (
                 <section key={group.date.toISOString()} aria-label={group.displayDate} className="space-y-2">
-                  <div className="flex items-baseline justify-between px-1 text-[13px] font-bold text-muted-foreground">
-                    <h2 className="font-sans text-[13px] font-bold uppercase tracking-wide">{group.displayDate}</h2>
+                  <div className="flex items-baseline justify-between px-1 text-sm font-bold text-muted-foreground">
+                    <h2 className="font-sans text-sm font-bold uppercase tracking-wide">{group.displayDate}</h2>
                     <span data-amount="true" className={cn("tabular-nums", net > 0 && "text-income")}>{formatSignedAmount(net, net >= 0 ? "income" : "expense")}</span>
                   </div>
                   <div className="surface divide-y divide-border overflow-hidden px-2">

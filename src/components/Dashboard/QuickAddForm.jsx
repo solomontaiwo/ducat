@@ -12,7 +12,7 @@ import { Select } from "../ui/select";
 import { suggestCategory } from "../../utils/categorySuggest.js";
 import { hapticSuccess } from "../../platform/haptics.js";
 
-/** One-line entry for desktop: type, amount, description, category, date, Enter. */
+/** Quick entry for desktop: type, amount, description, category, date, Enter. */
 const QuickAddForm = () => {
   const { t } = useTranslation();
   const { addTransaction, isDemo, canAddMoreTransactions, transactions: history } = useUnifiedTransactions();
@@ -95,15 +95,15 @@ const QuickAddForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} aria-label={t("dashboard.quickAdd")} className="hidden flex-wrap items-center gap-2 rounded-2xl bg-muted/70 p-2.5 lg:flex">
-      <label className="w-32">
+    <form onSubmit={handleSubmit} aria-label={t("dashboard.quickAdd")} className="quick-add hidden items-center gap-2 rounded-2xl bg-muted/70 p-2.5 lg:grid">
+      <label className="min-w-0">
         <span className="sr-only">{t("transactionModal.type")}</span>
-        <Select value={type} onChange={(event) => changeType(event.target.value)} className="[&_select]:h-11" disabled={disabled}>
+        <Select value={type} onChange={(event) => changeType(event.target.value)} disabled={disabled}>
           <option value="expense">{t("transactionModal.expense")}</option>
           <option value="income">{t("transactionModal.income")}</option>
         </Select>
       </label>
-      <label className="w-28">
+      <label className="min-w-0">
         <span className="sr-only">{t("transactionModal.amount")}</span>
         <Input
           value={amount}
@@ -117,23 +117,23 @@ const QuickAddForm = () => {
           }}
           inputMode="decimal"
           placeholder="0,00 €"
-          className="h-11 tabular-nums"
+          className="tabular-nums"
           disabled={disabled}
         />
       </label>
-      <label className="min-w-[10rem] flex-1">
+      <label className="min-w-0">
         <span className="sr-only">{t("transactionModal.description")}</span>
-        <Input value={description} onChange={(event) => changeDescription(event.target.value)} maxLength={200} placeholder={t("transactionModal.description")} className="h-11" disabled={disabled} />
+        <Input value={description} onChange={(event) => changeDescription(event.target.value)} maxLength={200} placeholder={t("transactionModal.description")} disabled={disabled} />
       </label>
-      <label className="w-40">
+      <label className="min-w-0">
         <span className="sr-only">{t("transactionModal.category")}</span>
-        <Select value={category} onChange={(event) => { setCategoryTouched(true); setCategory(event.target.value); }} className="[&_select]:h-11" disabled={disabled}>
+        <Select value={category} onChange={(event) => { setCategoryTouched(true); setCategory(event.target.value); }} disabled={disabled}>
           {categories.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </Select>
       </label>
-      <label className="w-40">
+      <label className="min-w-0">
         <span className="sr-only">{t("transactionModal.date")}</span>
-        <Input type="date" value={date} max={todayDateKey()} onChange={(event) => event.target.value && setDate(event.target.value)} className="h-11" disabled={disabled} />
+        <Input type="date" value={date} max={todayDateKey()} onChange={(event) => event.target.value && setDate(event.target.value)} className="min-w-0 max-w-full appearance-none" disabled={disabled} />
       </label>
       <Button type="submit" disabled={disabled || submitting || !amount}>{t("dashboard.quickAddSubmit")}</Button>
     </form>

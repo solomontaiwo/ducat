@@ -34,9 +34,9 @@ const TransactionRow = ({ transaction, meta, onSelect, selected = false, classNa
     <>
       <CategoryBadge category={transaction.category} type={transaction.type} />
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-[15px] font-semibold leading-snug">{transaction.description}</span>
+        <span className="truncate text-base font-semibold leading-snug">{transaction.description}</span>
         {(meta || transaction.pendingSync) && (
-          <span className="flex items-center gap-1.5 truncate text-[13px] font-medium text-muted-foreground">
+          <span className="flex items-center gap-1.5 truncate text-sm font-medium text-muted-foreground">
             {meta && <span className="truncate">{meta}</span>}
             {transaction.pendingSync && (
               <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-warning-strong">
