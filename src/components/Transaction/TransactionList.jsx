@@ -780,7 +780,7 @@ const TransactionList = () => {
                 <section key={group.date.toISOString()} aria-label={group.displayDate} className="space-y-2">
                   <div className="flex items-baseline justify-between px-1 text-[13px] font-bold text-muted-foreground">
                     <h2 className="font-sans text-[13px] font-bold uppercase tracking-wide">{group.displayDate}</h2>
-                    <span className={cn("tabular-nums", net > 0 && "text-income")}>{formatSignedAmount(net, net >= 0 ? "income" : "expense")}</span>
+                    <span data-amount="true" className={cn("tabular-nums", net > 0 && "text-income")}>{formatSignedAmount(net, net >= 0 ? "income" : "expense")}</span>
                   </div>
                   <div className="surface divide-y divide-border overflow-hidden px-2">
                     {group.transactions.map((transaction) => (

@@ -56,6 +56,14 @@ describe("transaction form on short phone screens", () => {
     expect(mocks.onSubmit.mock.calls[0][0]).toMatchObject({ category: "trasporti", type: "expense" });
   });
 
+  it("never masks the amount being typed in privacy mode", () => {
+    render(<TransactionForm onSubmit={mocks.onSubmit} onCancel={vi.fn()} />);
+    const amount = screen.getByLabelText("transactionModal.amount");
+    // Privacy mode blurs `.amount` and `[data-amount]`; the input uses neither.
+    expect(amount).not.toHaveClass("amount");
+    expect(amount.closest("[data-amount]")).toBeNull();
+  });
+
   it("keeps the category chips on taller screens", () => {
     mocks.compact = false;
     render(<TransactionForm onSubmit={mocks.onSubmit} onCancel={vi.fn()} />);

@@ -137,10 +137,9 @@ export const generatePeriodPDFReport = async (
   const profileName = await getCurrentProfileName(user);
   const { doc, model } = createPDFReport({ transactions, startDate, endDate, periodLabel, lang });
   const filename = generateExportFileName(periodLabel, startDate, endDate, profileName, "pdf");
-  if (import.meta.env.MODE === "desktop") {
-    const saved = await saveFile(doc.output("blob"), filename);
-    return { success: saved, filename, transactionCount: model.transactionCount };
-  }
-  doc.save(filename);
-  return { success: true, filename, transactionCount: model.transactionCount };
+  // One path for every shell, as for CSV: a download link on the web, a save
+  // dialog on desktop and the share sheet on iOS. jsPDF's own save() fakes a
+  // link download, which the iOS WebView silently ignores.
+  const saved = await saveFile(doc.output("blob"), filename);
+  return { success: saved !== false, filename, transactionCount: model.transactionCount };
 };

@@ -126,7 +126,7 @@ const BudgetsPage = () => {
               <CategoryBadge category={value} type="expense" size="sm" />
               <label htmlFor={inputId} className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-[15px] font-semibold leading-snug">{label}</span>
-                <span className="truncate text-xs text-muted-foreground">
+                <span data-amount={average ? "true" : undefined} className="truncate text-xs text-muted-foreground">
                   {average ? t("budgets.average", { amount: formatCurrency(minorToMajor(average)) }) : t("budgets.noAverage")}
                 </span>
               </label>

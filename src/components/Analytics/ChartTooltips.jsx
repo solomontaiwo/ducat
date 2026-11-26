@@ -37,7 +37,7 @@ export const SeriesTooltip = ({ active, payload, label, colors }) => {
       <p className="font-semibold mb-1">{label}</p>
       {payload.map((entry, index) => (
         <p key={index} className="flex items-center gap-2 tabular-nums"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: entry.color }} />
-          {entry.name}: {formatCurrency(entry.value)}
+          {entry.name}: <span data-amount="true">{formatCurrency(entry.value)}</span>
         </p>
       ))}
     </Panel>

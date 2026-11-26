@@ -313,7 +313,8 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
               required
               aria-label={t("transactionModal.amount")}
               className={cn(
-                "amount min-w-0 bg-transparent text-right font-extrabold tracking-tight text-foreground outline-none placeholder:text-muted-foreground/50 focus-visible:outline-none",
+                // No `amount` class: privacy mode never masks what the person is typing.
+                "min-w-0 bg-transparent text-right font-display font-extrabold tabular-nums tracking-tight text-foreground outline-none placeholder:text-muted-foreground/50 focus-visible:outline-none",
                 isExpression ? "w-[11ch] text-3xl" : "w-[7.5ch] text-5xl"
               )}
               style={{ fontSize: isExpression ? "2rem" : compact ? "2.25rem" : "3rem" }}

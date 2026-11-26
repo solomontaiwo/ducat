@@ -207,7 +207,12 @@ const RecurringPage = () => {
           <DialogHeader>
             <DialogTitle className="pr-10">{selected?.description}</DialogTitle>
             <DialogDescription>
-              {selected && `${formatCurrency(minorToMajor(selected.amountMinor))} · ${t(`recurring.every.${selected.frequency}`)}`}
+              {selected && (
+                <>
+                  <span data-amount="true">{formatCurrency(minorToMajor(selected.amountMinor))}</span>
+                  {` · ${t(`recurring.every.${selected.frequency}`)}`}
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           {selected && (
