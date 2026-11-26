@@ -21,7 +21,7 @@ export const canCheckForUpdates = () => isDesktop() && !isStoreBuild();
 export const formatReleaseHistoryNotes = (body) => {
   if (typeof body !== "string") return "";
   return body.replace(/\r\n/g, "\n").replace(
-    /(?:\r?\n)*---\r?\n\r?\nDesktop build for version `[^`]+` · commit `[^`]+`\.\r?\n\r?\nChoose the installer for your operating system and architecture\. The macOS and Windows installers are not signed or notarized\.\r?\nOn Linux, the AppImage supports built-in updates; \.deb, \.rpm and pacman packages are updated with the package manager\.(?:\r?\n|$)/,
+    /(?:\r?\n)*---\r?\n\r?\nDesktop build for version `[^`]+` · commit `[^`]+`\.\r?\n\r?\nChoose the installer for your operating system and architecture\. The macOS and Windows installers are not signed or notarized\.(?:\r?\nOn Linux, the AppImage supports built-in updates; \.deb, \.rpm and pacman packages are updated with the package manager\.)?(?:\r?\n|$)/,
     "\n",
   ).trim();
 };
