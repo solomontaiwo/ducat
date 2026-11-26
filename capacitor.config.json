@@ -3,7 +3,7 @@
   "appName": "Ducat",
   "webDir": "dist",
   "ios": {
-    "scheme": "Ducat",
+    "scheme": "App",
     "contentInset": "never",
     "preferredContentMode": "mobile"
   },

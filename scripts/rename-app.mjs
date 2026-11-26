@@ -94,7 +94,10 @@ const escapeHtml = (value) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const previousName = JSON.parse(readFileSync(join(ROOT, "src-tauri", "tauri.conf.json"), "utf8")).productName;
-const previousScheme = JSON.parse(readFileSync(join(ROOT, "capacitor.config.json"), "utf8")).ios?.scheme;
+// The custom URL scheme (ducat://) is declared in Info.plist. `ios.scheme` in
+// capacitor.config.json is the Xcode scheme used by `cap run` and stays "App".
+const previousScheme = readFileSync(join(ROOT, "ios", "App", "App", "Info.plist"), "utf8")
+  .match(/<key>CFBundleURLSchemes<\/key>\s*<array>\s*<string>([^<]+)<\/string>/)?.[1];
 
 if (name) {
   const scheme = name.replace(/[^A-Za-z0-9]+/g, "");
@@ -105,7 +108,6 @@ if (name) {
   });
   editJson("capacitor.config.json", (data) => {
     data.appName = name;
-    if (data.ios) data.ios.scheme = scheme;
     if (bundleId) data.appId = bundleId;
   });
   editJson("public/manifest.json", (data) => {

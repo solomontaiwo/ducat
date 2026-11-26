@@ -169,8 +169,17 @@ describe("iOS submission requirements", () => {
     expect(privacy).toMatch(/<key>NSPrivacyTracking<\/key>\s*<false\/>/);
   });
 
-  it("registers the deep-link scheme", () => {
-    expect(infoPlist).toContain(capacitor.ios.scheme);
+  it("registers the deep-link scheme the app handles", () => {
+    const urlScheme = infoPlist.match(/<key>CFBundleURLSchemes<\/key>\s*<array>\s*<string>([^<]+)<\/string>/)?.[1];
+    // URL schemes are case-insensitive; src/platform/deepLinks.js matches `ducat:`.
+    expect(urlScheme?.toLowerCase()).toBe("ducat");
+  });
+
+  it("points Capacitor at the shared Xcode scheme and names the product Ducat", () => {
+    expect(existsSync(join(root, `ios/App/App.xcodeproj/xcshareddata/xcschemes/${capacitor.ios.scheme}.xcscheme`))).toBe(true);
+    expect(pbxproj.match(/PRODUCT_NAME = Ducat;/g)).toHaveLength(2);
+    expect(infoPlist).toMatch(/<key>CFBundleDisplayName<\/key>\s*<string>Ducat<\/string>/);
+    expect(infoPlist).toContain("$(PRODUCT_MODULE_NAME).SceneDelegate");
   });
 
   it("wires Universal Links to the web domain", () => {
