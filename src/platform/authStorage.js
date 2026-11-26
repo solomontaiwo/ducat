@@ -9,27 +9,19 @@
  * The adapter is asynchronous, which Supabase accepts for every storage call.
  */
 
+import { Preferences } from "@capacitor/preferences";
 import { MOBILE, runtime } from "./index.js";
 import { readLocalValue } from "../utils/storage.js";
 
-let preferencesPromise = null;
-const preferences = () => {
-  preferencesPromise ??= import("@capacitor/preferences").then((module) => module.Preferences);
-  return preferencesPromise;
-};
-
 export const nativeAuthStorage = {
   async getItem(key) {
-    const Preferences = await preferences();
     const { value } = await Preferences.get({ key });
     return value ?? null;
   },
   async setItem(key, value) {
-    const Preferences = await preferences();
     await Preferences.set({ key, value });
   },
   async removeItem(key) {
-    const Preferences = await preferences();
     await Preferences.remove({ key });
   },
 };

@@ -13,11 +13,11 @@ const writeTauriFileMock = vi.fn(async () => undefined);
 const browserOpenMock = vi.fn(async () => undefined);
 const impactMock = vi.fn(async () => undefined);
 const notificationHapticMock = vi.fn(async () => undefined);
-const preferencesMock = {
+const preferencesMock = vi.hoisted(() => ({
   get: vi.fn(async () => ({ value: "stored" })),
   set: vi.fn(async () => undefined),
   remove: vi.fn(async () => undefined),
-};
+}));
 
 vi.mock("@capacitor/share", () => ({ Share: { share: shareMock } }));
 vi.mock("@capacitor/filesystem", () => ({
