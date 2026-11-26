@@ -15,10 +15,16 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@capacitor/core", () => ({ registerPlugin: (...args) => mocks.registerPlugin(...args) }));
 
+// Like Capacitor's plugin proxy, it answers every property, `then` included,
+// which rejects as an unimplemented native method.
+const asCapacitorProxy = (target) => new Proxy(target, {
+  get: (object, prop) => (prop in object ? object[prop] : () => Promise.reject({ code: "UNIMPLEMENTED" })),
+});
+
 const fakePlugin = ({ available = true, getStateError = null } = {}) => {
   const listeners = {};
   const removed = [];
-  return {
+  return asCapacitorProxy({
     listeners,
     removed,
     addListener: vi.fn(async (event, handler) => {
@@ -30,7 +36,7 @@ const fakePlugin = ({ available = true, getStateError = null } = {}) => {
       return { available };
     }),
     update: vi.fn(async () => undefined),
-  };
+  });
 };
 
 const loadModule = async () => {

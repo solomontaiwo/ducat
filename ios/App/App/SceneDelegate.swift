@@ -63,7 +63,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     @available(iOS 27.1, *)
     private func installVerticalBarNavigationIfNeeded(_ windowScene: UIWindowScene) {
         guard NativeNavigationPlugin.controller == nil,
-              windowScene.traitCollection.verticalBarEdge != .unspecified,
+              windowScene.traitCollection.verticalBarEdge != .unspecified || VerticalBarTabController.debugForced,
               let window, let main = window.rootViewController as? MainViewController else { return }
         let tabController = VerticalBarTabController(content: main)
         NativeNavigationPlugin.controller = tabController

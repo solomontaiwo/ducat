@@ -26,6 +26,17 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
     ]
     private static let addIdentifier = "add"
 
+    /// Debug builds only: launch with `-DucatForceVerticalBar YES` to install
+    /// and show the native tab bar on any simulator, without a vertical bar.
+    static var debugForced: Bool {
+        #if DEBUG
+        return UserDefaults.standard.bool(forKey: "DucatForceVerticalBar")
+            || ProcessInfo.processInfo.arguments.contains("-DucatForceVerticalBar")
+        #else
+        return false
+        #endif
+    }
+
     /// The Capacitor bridge: one WebView, moved into the host of the selected tab.
     private let content: UIViewController
     private var hosts: [String: UIViewController] = [:]
@@ -48,6 +59,7 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
         let addHost = UIViewController()
         tabs.append(UITab(title: "Add", image: UIImage(systemName: "plus"), identifier: Self.addIdentifier) { _ in addHost })
         self.tabs = tabs
+        self.selectedTab = tabs.first
         self.prominentTabIdentifier = Self.addIdentifier
         self.delegate = self
         self.isTabBarHidden = true
@@ -61,18 +73,34 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
-        if let host = selectedTab.flatMap({ hosts[$0.identifier] }) {
-            attachContent(to: host)
-        }
+        attachContentToSelectedTab()
         registerForTraitChanges(UITraitCollection.systemTraitsAffectingVerticalBarEdge) { (controller: VerticalBarTabController, _) in
             controller.refreshVisibility()
         }
         refreshVisibility()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        attachContentToSelectedTab()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // Defensive: the web app must always be on screen inside a tab host.
+        if content.viewIfLoaded?.window == nil { attachContentToSelectedTab() }
+    }
+
+    private func attachContentToSelectedTab() {
+        let identifier = selectedTab?.identifier ?? Self.destinations[0].identifier
+        if let host = hosts[identifier] ?? hosts[Self.destinations[0].identifier] {
+            attachContent(to: host)
+        }
+    }
+
     // MARK: - Web app state
 
-    var hasVerticalBar: Bool { traitCollection.verticalBarEdge != .unspecified }
+    var hasVerticalBar: Bool { traitCollection.verticalBarEdge != .unspecified || Self.debugForced }
 
     /// Applies the state sent by the web app: whether its navigation is showing
     /// (signed in or demo, no modal open), the current page, the demo badge,
@@ -120,7 +148,13 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
     /// Moves the WebView's view controller into the given tab host, so every
     /// tab shows the same web app without reloading it.
     private func attachContent(to host: UIViewController) {
-        guard content.parent !== host else { return }
+        if content.parent === host {
+            if content.view.superview !== host.view {
+                content.view.frame = host.view.bounds
+                host.view.addSubview(content.view)
+            }
+            return
+        }
         if content.parent != nil {
             content.willMove(toParent: nil)
             content.view.removeFromSuperview()

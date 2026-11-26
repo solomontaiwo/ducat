@@ -15,7 +15,9 @@ let pluginPromise = null;
 const getPlugin = () => {
   if (runtime() !== MOBILE) return null;
   // Loaded on demand so @capacitor/core stays out of the initial web bundle.
-  pluginPromise ??= import("@capacitor/core").then(({ registerPlugin }) => registerPlugin("NativeNavigation"));
+  // The plugin proxy answers every property, `then` included: wrap it, or the
+  // promise would treat it as a thenable and call a native `then()`.
+  pluginPromise ??= import("@capacitor/core").then(({ registerPlugin }) => ({ plugin: registerPlugin("NativeNavigation") }));
   return pluginPromise;
 };
 
@@ -28,7 +30,7 @@ export const subscribeNativeNavigation = ({ onAvailability, onSelect, onAdd }) =
   if (!pending) return () => {};
   let active = true;
   const handles = [];
-  pending.then(async (plugin) => {
+  pending.then(async ({ plugin }) => {
     const listen = async (event, handler) => {
       const handle = await plugin.addListener(event, handler);
       if (active) handles.push(handle);
@@ -55,5 +57,5 @@ export const subscribeNativeNavigation = ({ onAvailability, onSelect, onAdd }) =
 export const updateNativeNavigation = (state) => {
   const pending = getPlugin();
   if (!pending) return Promise.resolve();
-  return pending.then((plugin) => plugin.update(state)).catch(() => {});
+  return pending.then(({ plugin }) => plugin.update(state)).catch(() => {});
 };
