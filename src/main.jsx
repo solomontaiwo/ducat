@@ -18,6 +18,10 @@ import { isWeb } from "./platform/index.js";
 
 installGlobalErrorReporting();
 
+if (import.meta.env.MODE === "desktop" && navigator.platform.startsWith("Mac")) {
+  document.documentElement.dataset.host = "macos";
+}
+
 // WebKit exposes the preferred Apple body size through a system font shorthand.
 if (CSS.supports("font", "-apple-system-body")) {
   const sample = document.getElementById("system-text-size");

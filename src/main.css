@@ -112,8 +112,20 @@
     height: 0;
     font: -apple-system-body;
   }
-  html[data-mode="desktop"] {
+  html[data-mode="desktop"],
+  html[data-host="macos"] {
     font-size: max(112.5%, var(--system-text-size, 0px));
+  }
+  @media (min-width: 1024px) {
+    html[data-host="macos"] {
+      font-size: max(125%, calc(var(--system-text-size, 0px) * 1.25));
+    }
+  }
+  @media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+    html:not([data-mode="desktop"], [data-mode="mobile"]) {
+      font-size: max(93.75%, var(--system-text-size, 0px));
+      --workspace-max: max(96rem, 1536px);
+    }
   }
   body {
     @apply bg-background font-sans text-foreground antialiased min-h-screen;
@@ -227,7 +239,7 @@
   }
   .workspace-width {
     @apply mx-auto w-full;
-    max-width: 96rem;
+    max-width: var(--workspace-max, 96rem);
   }
   .dashboard-page, .recent-card {
     container-type: inline-size;
@@ -269,6 +281,11 @@
   :root {
     --sidebar-width: clamp(12rem, 18vw, 17rem);
     --workspace-gutter: clamp(1rem, 2vw, 2.5rem);
+  }
+  html[data-host="macos"] {
+    --workspace-max: none;
+    --sidebar-width: clamp(12rem, 17vw, 14rem);
+    --workspace-gutter: clamp(1rem, 1.5vw, 1.5rem);
   }
   .app-sidebar {
     width: var(--sidebar-width);

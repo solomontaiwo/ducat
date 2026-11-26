@@ -205,6 +205,7 @@ test("desktop dashboard uses the window and keeps quick entry fields separate", 
   for (const width of [1920, 1200, 1024]) {
     await page.setViewportSize({ width, height: 600 });
     await expect(form).toBeVisible();
+    await expect(form.locator("input").first()).toHaveCSS("font-size", "15px");
     if (width === 1920) expect((await form.boundingBox()).width).toBeGreaterThan(1200);
     const fields = await form.locator("input, select, button").evaluateAll(elements =>
       elements.map(el => el.getBoundingClientRect().toJSON())
@@ -219,6 +220,30 @@ test("desktop dashboard uses the window and keeps quick entry fields separate", 
   await form.getByRole("textbox", { name: /descrizione|description/i }).fill("Caffè in stazione");
   await form.getByRole("button").click();
   await expect(page.getByRole("button", { name: /Caffè in stazione/ })).toBeVisible();
+});
+
+test("a wide Mac workspace fills the space beside the sidebar and scales with preferred text", async ({ page, isMobile }) => {
+  test.skip(isMobile, "Mac window layout");
+  await page.setViewportSize({ width: 2560, height: 1200 });
+  await page.goto(".");
+  await page.evaluate(() => localStorage.setItem("ducat-demo-enabled", "true"));
+  await page.goto("dashboard");
+  const dashboard = page.locator(".dashboard-page");
+  await expect(dashboard).toBeVisible();
+  for (const mode of ["desktop", "mobile"]) {
+    // Both native shells supply the host independently of the layout viewport.
+    await page.locator("html").evaluate((html, mode) => {
+      html.dataset.mode = mode;
+      html.dataset.host = "macos";
+    }, mode);
+    await expect(dashboard).toHaveCSS("font-size", "20px");
+    const sidebar = await page.locator(".app-sidebar").boundingBox();
+    const content = await dashboard.boundingBox();
+    expect(content.x - sidebar.x - sidebar.width).toBeCloseTo(30);
+    expect(2560 - content.x - content.width).toBeCloseTo(30);
+  }
+  await page.locator("html").evaluate(html => html.style.setProperty("--system-text-size", "24px"));
+  await expect(dashboard).toHaveCSS("font-size", "30px");
 });
 
 // iPhone Duo: outer screen, and the inner screen in landscape and portrait.
