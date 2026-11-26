@@ -287,6 +287,23 @@
   }
 }
 
+/*
+ * Switching between the main tabs: a short cross-fade (View Transitions), so
+ * the content does not jump from one frame to the next. Off with reduced motion.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 140ms;
+  animation-timing-function: ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 @layer utilities {
   .app-content-safe-mobile {
     padding-bottom: calc(var(--mobile-nav-height, 76px) + env(safe-area-inset-bottom) + 1.5rem);

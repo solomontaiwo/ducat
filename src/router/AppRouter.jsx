@@ -1,11 +1,12 @@
-import { lazy, Suspense, useEffect, useLayoutEffect } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthProvider";
 import { useUnifiedTransactions } from "../context/UnifiedTransactionProvider";
 import AppLayout from "../components/Layout/AppLayout";
 import { Button } from "../components/ui/button";
-import { Navigate, useLocation } from "./RouterProvider";
+import { Navigate, RouteLocationScope, useLocation, useRememberedScroll } from "./RouterProvider";
 import { resolveRouteAccess } from "./accessPolicy";
+import { TAB_PATHS, isTabPath } from "./tabs.js";
 
 const loaders = {
   dashboard: () => import("../components/Dashboard/Dashboard"),
@@ -38,12 +39,19 @@ const PageLoader = () => {
   );
 };
 
-const ScrollToTop = () => {
+/** New pages start at the top; the main tabs come back where they were left. */
+const ScrollManager = () => {
   const { pathname } = useLocation();
+  const getRememberedScroll = useRememberedScroll();
   useLayoutEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    window.scrollTo(0, isTabPath(pathname) ? getRememberedScroll(pathname) ?? 0 : 0);
+  }, [pathname, getRememberedScroll]);
   return null;
+};
+
+const slowConnection = () => {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  return Boolean(connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType));
 };
 
 /** Shown when the auth client cannot be reached, instead of a public-page flash. */
@@ -84,9 +92,13 @@ const AppRouter = () => {
   const { isDemo, loading: transactionLoading } = useUnifiedTransactions();
   const location = useLocation();
 
+  // Main tabs kept mounted once opened, per signed-in account (or the demo).
+  const session = currentUser?.emailVerified ? currentUser.uid : isDemo ? "demo" : null;
+  const [kept, setKept] = useState({ session: null, paths: [] });
+  const keptPaths = useMemo(() => (kept.session === session ? kept.paths : []), [kept, session]);
+
   useEffect(() => {
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType)) return undefined;
+    if (slowConnection()) return undefined;
 
     const likelyLoader = currentUser?.emailVerified
       ? loaders.dashboard
@@ -108,31 +120,80 @@ const AppRouter = () => {
     return () => window.clearTimeout(timeoutId);
   }, [currentUser]);
 
-  if (authStalled && !currentUser) return <AuthUnavailable />;
-  if (authLoading || transactionLoading) return <PageLoader />;
-
   const route = routeDefinitions.find((candidate) => candidate.path === location.pathname);
-  if (!route) return <Navigate to="/" replace />;
-
-  const redirect = resolveRouteAccess({
+  const redirect = route ? resolveRouteAccess({
     access: route.access,
     currentUser,
     isDemo,
     pathname: location.pathname,
-  });
+  }) : null;
+  const ready = !authLoading && !transactionLoading && !(authStalled && !currentUser);
+  const activeTab = ready && route && !redirect && session && isTabPath(route.path) ? route.path : null;
+  // Pages inside the app shell keep the opened tabs alive; leaving the app
+  // (sign-out, public pages) releases them.
+  const inApp = ready && route && !redirect && session && ["app", "authenticated"].includes(route.access);
+
+  useEffect(() => {
+    if (activeTab && !keptPaths.includes(activeTab)) {
+      setKept({ session, paths: [...keptPaths, activeTab] });
+    } else if (!inApp && ready && keptPaths.length) {
+      setKept({ session: null, paths: [] });
+    }
+  }, [activeTab, inApp, keptPaths, ready, session]);
+
+  // Warm up the other tabs once the first one is on screen: their code and
+  // data load in the background, so the first switch is instant too.
+  useEffect(() => {
+    if (!activeTab || keptPaths.length >= TAB_PATHS.length || slowConnection()) return undefined;
+    const warm = () => setKept((previous) => {
+      if (previous.session !== session) return previous;
+      const paths = [...previous.paths];
+      for (const path of TAB_PATHS) if (!paths.includes(path)) paths.push(path);
+      return { session, paths };
+    });
+    const timer = window.setTimeout(() => {
+      if ("requestIdleCallback" in window) window.requestIdleCallback(warm, { timeout: 4000 });
+      else warm();
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, keptPaths.length, session]);
+
+  if (authStalled && !currentUser) return <AuthUnavailable />;
+  if (authLoading || transactionLoading) return <PageLoader />;
+
+  if (!route) return <Navigate to="/" replace />;
   if (redirect) {
     return <Navigate to={redirect} replace state={{ from: location.pathname }} />;
   }
 
+  const visibleTabs = activeTab && !keptPaths.includes(activeTab) ? [...keptPaths, activeTab] : inApp ? keptPaths : [];
+  const tabPages = visibleTabs.map((path) => {
+    const definition = routeDefinitions.find((candidate) => candidate.path === path);
+    const TabPage = pages[definition.page];
+    const active = path === activeTab;
+    return (
+      <div key={path} hidden={!active} data-tab-page={path} style={{ width: "100%", minHeight: active ? "100vh" : undefined }}>
+        <RouteLocationScope active={active}>
+          <Suspense fallback={active ? <PageLoader /> : null}>
+            <TabPage />
+          </Suspense>
+        </RouteLocationScope>
+      </div>
+    );
+  });
+
   const Page = pages[route.page];
   return (
     <AppLayout>
-      <ScrollToTop />
-      <Suspense fallback={<PageLoader />}>
-        <div style={{ width: "100%", minHeight: "100vh" }}>
-          <Page />
-        </div>
-      </Suspense>
+      <ScrollManager />
+      {tabPages}
+      {!activeTab && (
+        <Suspense fallback={<PageLoader />}>
+          <div style={{ width: "100%", minHeight: "100vh" }}>
+            <Page />
+          </div>
+        </Suspense>
+      )}
     </AppLayout>
   );
 };

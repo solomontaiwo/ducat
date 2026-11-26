@@ -39,6 +39,16 @@ const getGreetingKey = (hour) => {
   return "greetingEvening";
 };
 
+// Months already seen in this session, shown at once when the user comes back
+// to them and refreshed in the background.
+const monthCache = new Map();
+const MONTH_CACHE_LIMIT = 12;
+const rememberMonth = (key, data) => {
+  monthCache.delete(key);
+  monthCache.set(key, data);
+  if (monthCache.size > MONTH_CACHE_LIMIT) monthCache.delete(monthCache.keys().next().value);
+};
+
 const Dashboard = () => {
   const { currentUser, profileName, profileNameLoading } = useAuth();
   const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions, syncOfflineQueue, deleteTransaction } = useUnifiedTransactions();
@@ -66,8 +76,11 @@ const Dashboard = () => {
         setLoadError("");
       } else if (currentUser) {
         setLoadError("");
+        const cached = monthCache.get(monthKey);
+        if (cached) setMonthResult((previous) => (previous.key === monthKey ? previous : { key: monthKey, data: cached }));
         try {
           const data = await fetchAllTransactions({ startDate, endDate });
+          rememberMonth(monthKey, data);
           if (requestId === requestIdRef.current) setMonthResult({ key: monthKey, data });
         } catch (error) {
           if (requestId === requestIdRef.current) {

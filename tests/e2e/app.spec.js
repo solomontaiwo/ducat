@@ -231,12 +231,52 @@ for (const [name, viewport, columns] of [
   });
 }
 
+test("main tabs stay as they were left and switch without skeletons", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "Uses the mobile tab bar");
+  await page.goto(".");
+  await page.evaluate(() => {
+    const today = new Date();
+    const items = Array.from({ length: 10 }, (_, index) => {
+      const day = new Date(today.getFullYear(), today.getMonth(), Math.max(1, today.getDate() - index));
+      const dateKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+      return { id: `keep-${index}`, type: index % 4 ? "expense" : "income", amountMinor: 1000 + index, currency: "EUR", description: `Movimento ${index}`, category: index % 4 ? "altro" : "stipendio", dateKey, isSample: false };
+    });
+    localStorage.setItem("ducat-demo-enabled", "true");
+    localStorage.setItem("ducat-demo-transactions", JSON.stringify(items));
+  });
+  await page.goto("dashboard");
+  const tabBar = page.getByRole("navigation", { name: /navigazione principale|main navigation/i });
+  await tabBar.getByRole("button", { name: /^(movimenti|transactions)/i }).click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  await page.getByRole("button", { name: /^(uscite|expenses)$/i }).click();
+  const target = await page.evaluate(() => Math.min(300, document.documentElement.scrollHeight - window.innerHeight));
+  await page.evaluate((y) => window.scrollTo(0, y), target);
+  await page.waitForFunction((y) => Math.abs(window.scrollY - y) < 2, target);
+  const scrolled = await page.evaluate(() => window.scrollY);
+
+  await tabBar.getByRole("button", { name: /^(panoramica|overview)/i }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await tabBar.getByRole("button", { name: /^(movimenti|transactions)/i }).click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  // Same filter and same position, with no loading placeholders.
+  await expect(page.getByRole("button", { name: /^(uscite|expenses)$/i })).toHaveAttribute("aria-pressed", "true");
+  expect(Math.abs(await page.evaluate(() => window.scrollY) - scrolled)).toBeLessThan(4);
+  await expect(page.locator(".react-loading-skeleton:visible")).toHaveCount(0);
+
+  // Insights was warmed up in the background: it opens without a skeleton.
+  await page.waitForFunction(() => document.querySelector('[data-tab-page="/analytics"]') !== null);
+  await tabBar.getByRole("button", { name: /^(analisi|insights)/i }).click();
+  await expect(page).toHaveURL(/\/analytics$/);
+  await expect(page.getByRole("heading", { level: 1, name: /analisi|insights/i })).toBeVisible();
+  await expect(page.locator(".react-loading-skeleton:visible")).toHaveCount(0);
+});
+
 test("a horizontal swipe does not change page on mobile", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Touch gesture regression");
   await page.goto(".");
   await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
   await expect(page).toHaveURL(/\/transactions$/);
-  await page.locator("main h1").evaluate((element) => {
+  await page.locator("main h1:visible").evaluate((element) => {
     const touch = (x) => new Touch({ identifier: 1, target: element, clientX: x, clientY: 200 });
     element.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [touch(320)], changedTouches: [touch(320)] }));
     element.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [], changedTouches: [touch(40)] }));

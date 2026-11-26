@@ -1,6 +1,9 @@
-import { format, parse } from "date-fns";
-
 export const DATE_KEY_FORMAT = "yyyy-MM-dd";
+
+// Plain local-calendar formatting: date-fns' parse/format would pull their
+// whole parser into the initial bundle just for `yyyy-MM-dd`.
+const pad = (value, length = 2) => String(value).padStart(length, "0");
+const localDateKey = (date) => `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
 export const isDateKey = (value) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
@@ -11,11 +14,13 @@ export const isDateKey = (value) => {
 
 export const dateKeyToDate = (dateKey) => {
   if (!isDateKey(dateKey)) throw new Error("Data giorno non valida");
-  const parsed = parse(dateKey, DATE_KEY_FORMAT, new Date());
-  if (Number.isNaN(parsed.getTime()) || format(parsed, DATE_KEY_FORMAT) !== dateKey) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  // setFullYear, not the constructor: new Date(50, …) would mean 1950.
+  const parsed = new Date(2000, 0, 1, 12, 0, 0, 0);
+  parsed.setFullYear(year, month - 1, day);
+  if (Number.isNaN(parsed.getTime()) || localDateKey(parsed) !== dateKey) {
     throw new Error("Data giorno non valida");
   }
-  parsed.setHours(12, 0, 0, 0);
   return parsed;
 };
 
@@ -44,8 +49,8 @@ export const dateToDateKey = (input) => {
   ) {
     return [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, "0"), String(date.getUTCDate()).padStart(2, "0")].join("-");
   }
-  return format(date, DATE_KEY_FORMAT);
+  return localDateKey(date);
 };
 
 export const coerceDateKey = (value) => isDateKey(value) ? value : dateToDateKey(value);
-export const todayDateKey = () => format(new Date(), DATE_KEY_FORMAT);
+export const todayDateKey = () => localDateKey(new Date());

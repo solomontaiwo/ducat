@@ -72,7 +72,15 @@ const KpiTile = ({ label, value, note, tone, delta, maskNote = false }) => {
   );
 };
 
+// The trend chart grows in only the first time it appears in a session (and
+// never with reduced motion): coming back to the tab shows it already drawn.
+let chartAlreadyAnimated = false;
+const shouldAnimateChart = () => !chartAlreadyAnimated
+  && !(typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+
 const TransactionAnalytics = () => {
+  const [animateChart] = useState(shouldAnimateChart);
+  useEffect(() => { chartAlreadyAnimated = true; }, []);
   const { isDemo, transactions: recentTransactions, maxTransactions, loading: contextLoading, fetchAllTransactions, syncOfflineQueue } = useUnifiedTransactions();
   const { currentUser } = useAuth();
   const { expenseCategories, incomeCategories } = useCategories();
@@ -390,8 +398,8 @@ const TransactionAnalytics = () => {
                     width={72}
                   />
                   <Tooltip cursor={{ fill: chart.grid, opacity: 0.5 }} content={<SeriesTooltip colors={chart.tooltip} />} />
-                  <Bar dataKey="income" name={t("dashboard.income")} fill={chart.income} radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="expense" name={t("dashboard.expenses")} fill={chart.expense} radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="income" name={t("dashboard.income")} fill={chart.income} radius={[6, 6, 0, 0]} isAnimationActive={animateChart} />
+                  <Bar dataKey="expense" name={t("dashboard.expenses")} fill={chart.expense} radius={[6, 6, 0, 0]} isAnimationActive={animateChart} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -2,9 +2,7 @@ import { useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { subscribeNativeNavigation, updateNativeNavigation } from "../../platform/nativeNavigation.js";
-
-// Destinations of the native tab bar (iPhone Duo vertical bar).
-const NATIVE_TAB_PATHS = ["/dashboard", "/transactions", "/analytics"];
+import { isTabPath } from "../../router/tabs.js";
 
 /**
  * Keeps the native tab bar in the iPhone Duo vertical bar in sync with the web
@@ -18,7 +16,7 @@ const NativeNavigationBridge = ({ onAvailabilityChange, visible, layout, path, b
 
   useEffect(() => subscribeNativeNavigation({
     onAvailability: (value) => callbacks.current.onAvailabilityChange(value),
-    onSelect: (target) => { if (NATIVE_TAB_PATHS.includes(target)) callbacks.current.onNavigate(target); },
+    onSelect: (target) => { if (isTabPath(target)) callbacks.current.onNavigate(target); },
     onAdd: () => callbacks.current.onAdd(),
   }), []);
 
