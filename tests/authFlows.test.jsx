@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   markPendingVerification: vi.fn(),
   currentUser: { email: "ada@example.com" },
   authLoading: false,
+  isDemo: false,
+  startDemo: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key, values) => (values ? `${key}|${JSON.stringify(values)}` : key) }) }));
@@ -42,6 +44,10 @@ vi.mock("../src/context/AuthProvider", () => ({
   }),
 }));
 
+vi.mock("../src/context/UnifiedTransactionProvider", () => ({
+  useUnifiedTransactions: () => ({ isDemo: mocks.isDemo, startDemo: mocks.startDemo }),
+}));
+
 import Login from "../src/components/Auth/Login.jsx";
 import Register from "../src/components/Auth/Register.jsx";
 import ForgotPassword from "../src/components/Auth/ForgotPassword.jsx";
@@ -54,6 +60,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.currentUser = { email: "ada@example.com" };
   mocks.authLoading = false;
+  mocks.isDemo = false;
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -199,6 +206,31 @@ describe("VerifyEmail", () => {
       await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/login", { replace: true }));
       expect(mocks.logout).toHaveBeenCalled();
     }
+  });
+
+  it("lets a user waiting for the confirmation try the app with local data", () => {
+    mocks.currentUser = { email: "ada@example.com", pending: true };
+    render(<VerifyEmail />);
+    expect(screen.getByText("auth.verifyEmail.tryHint")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "auth.verifyEmail.tryWhileWaiting" }));
+    expect(mocks.startDemo).toHaveBeenCalledTimes(1);
+    expect(mocks.navigate).toHaveBeenCalledWith("/dashboard", { replace: true });
+    expect(mocks.logout).not.toHaveBeenCalled();
+  });
+
+  it("resumes an ongoing trial without seeding it again", () => {
+    mocks.currentUser = { email: "ada@example.com", pending: true };
+    mocks.isDemo = true;
+    render(<VerifyEmail />);
+    fireEvent.click(screen.getByRole("button", { name: "auth.verifyEmail.continueTrial" }));
+    expect(mocks.startDemo).not.toHaveBeenCalled();
+    expect(mocks.navigate).toHaveBeenCalledWith("/dashboard", { replace: true });
+  });
+
+  it("does not offer the local trial to a signed-in account", () => {
+    mocks.currentUser = { uid: "u1", email: "ada@example.com", emailVerified: false };
+    render(<VerifyEmail />);
+    expect(screen.queryByRole("button", { name: "auth.verifyEmail.tryWhileWaiting" })).toBeNull();
   });
 
   it("navigates to the dashboard once the email is verified", async () => {

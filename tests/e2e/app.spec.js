@@ -62,6 +62,25 @@ test("auth pages load the account client without errors", async ({ page }) => {
 
 const ADD_BUTTON = /^(nuovo movimento|new transaction)$/i;
 
+test("a sign-up waiting for the confirmation can try the app with local data", async ({ page }) => {
+  await page.goto(".");
+  await page.evaluate(() => localStorage.setItem("ducat-pending-verification", "ada@example.com"));
+  await page.goto("verify-email");
+  await page.getByRole("button", { name: /esplora ducat mentre aspetti|explore ducat while you wait/i }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole("status").filter({ hasText: "ada@example.com" })).toBeVisible();
+  // The account pages stay closed until the email is confirmed.
+  await page.goto("profile");
+  await expect(page).toHaveURL(/\/verify-email$/);
+  await page.getByRole("button", { name: /continua la prova|continue the trial/i }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.reload();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole("status").filter({ hasText: "ada@example.com" })).toBeVisible();
+  await page.getByRole("button", { name: /^(conferma email|confirm email)$/i }).first().click();
+  await expect(page).toHaveURL(/\/verify-email$/);
+});
+
 test("transaction fields remain readable on mobile before and after focus", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Mobile form regression");
   await page.goto(".");

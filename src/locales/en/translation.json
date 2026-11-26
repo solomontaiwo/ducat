@@ -463,7 +463,23 @@
     "sampleGroceries": "Groceries",
     "sampleFuel": "Fuel",
     "sampleTransactionsAdded": "Sample transactions have been added!",
-    "deleteError": "Unable to save your changes. Check the available storage."
+    "deleteError": "Unable to save your changes. Check the available storage.",
+    "pendingTrialNotice": "You are trying Ducat while you wait to confirm {{email}}: your data stays on this device only. Once you confirm and sign in, you can import it into your account.",
+    "confirmEmail": "Confirm email",
+    "import": {
+      "title": "Import your trial movements",
+      "description": "This device holds {{count}} movements you entered during the trial. Add them to your account? Samples, recurring rules and budgets from the trial are not imported.",
+      "action": "Import into my account",
+      "importing": "Importing…",
+      "discard": "Delete from this device",
+      "later": "Later",
+      "discardConfirm": "The trial movements will be deleted from this device and cannot be recovered. Continue?",
+      "discarded": "Trial movements deleted from this device.",
+      "done": "Movements imported into your account: {{count}}.",
+      "partial": "Imported {{imported}} movements; {{remaining}} remain on this device. Try again later.",
+      "failed": "Import failed. The movements are still on this device: try again.",
+      "offline": "You are offline. Connect to the Internet to import the movements."
+    }
   },
   "notifications": {
     "addSuccess": "Transaction added successfully!",
@@ -576,7 +592,10 @@
       "tooManyRequests": "Too many attempts. Please wait before trying again.",
       "sendFailed": "Sending failed. Please try again later.",
       "desktopHint": "After confirming your email in the browser, return here and sign in with your email and password.",
-      "desktopLogin": "Go to sign in"
+      "desktopLogin": "Go to sign in",
+      "tryHint": "Meanwhile you can try Ducat: your data stays on this device only until you confirm the email, sign in and import it into your account.",
+      "tryWhileWaiting": "Explore Ducat while you wait",
+      "continueTrial": "Continue the trial"
     },
     "resetPassword": {
       "title": "New password",

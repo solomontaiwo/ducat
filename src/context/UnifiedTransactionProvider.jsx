@@ -15,6 +15,7 @@ import PropTypes from "prop-types";
 import { useTranslation } from 'react-i18next';
 import { getTransactionAmountMinor, minorToMajor } from "../utils/money.js";
 import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/storage.js";
+import { DEMO_FLAG_KEY } from "../utils/demoStorage.js";
 
 const OFFLINE_QUEUE_PREFIX = "ducat-offline-queue:";
 const hasStoredOfflineQueue = (userId) => Boolean(userId && readLocalValue(`${OFFLINE_QUEUE_PREFIX}${userId}`));
@@ -63,10 +64,9 @@ const INERT_VALUE = Object.freeze({
 const UnifiedTransactionContext = createContext({ ...INERT_VALUE, loading: true });
 
 export const useUnifiedTransactions = () => useContext(UnifiedTransactionContext);
-const DEMO_FLAG_KEY = "ducat-demo-enabled";
 
 // Wrapper for the signed-in (Supabase) provider
-const AccountTransactionWrapper = ({ children }) => {
+const AccountTransactionWrapper = ({ children, stopDemo }) => {
   const { currentUser } = useAuth();
   const {
     transactions: serverTransactions,
@@ -386,13 +386,15 @@ const AccountTransactionWrapper = ({ children }) => {
     maxTransactions: Infinity,
     getStats,
     isAuthenticated: true,
+    // Lets the demo import end the local trial once its data reached the account.
+    stopDemo,
     pendingOfflineCount: pendingTransactions.length,
     syncingOfflineQueue,
     syncOfflineQueue,
   }), [
     transactions, loading, isProcessing, addTransaction, updateTransaction, deleteTransaction,
     fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals,
-    getFirstTransactionDate, recentRevision, getStats, pendingTransactions.length, syncingOfflineQueue, syncOfflineQueue,
+    getFirstTransactionDate, recentRevision, getStats, stopDemo, pendingTransactions.length, syncingOfflineQueue, syncOfflineQueue,
   ]);
 
   return (
@@ -511,15 +513,17 @@ export const UnifiedTransactionProvider = ({ children }) => {
   if (isReady && currentUser?.emailVerified) {
     return (
       <TransactionProvider>
-        <AccountTransactionWrapper>
+        <AccountTransactionWrapper stopDemo={stopDemo}>
           {children}
         </AccountTransactionWrapper>
       </TransactionProvider>
     );
   }
 
-  // If the user is not authenticated but demo is enabled, use Demo
-  if (isReady && !currentUser && demoEnabled) {
+  // Demo for signed-out visitors, and the local trial for someone who signed
+  // up and is waiting for the confirmation email (there is no session yet, so
+  // nothing can reach the account until the user confirms and signs in).
+  if (isReady && (!currentUser || currentUser.pending) && demoEnabled) {
     return (
       <DemoProvider seedOnMount={seedDemo}>
         <DemoTransactionWrapper startDemo={startDemo} seedDemo={seedDemo} stopDemo={stopDemo}>
@@ -538,6 +542,7 @@ export const UnifiedTransactionProvider = ({ children }) => {
 
 AccountTransactionWrapper.propTypes = {
   children: PropTypes.node.isRequired,
+  stopDemo: PropTypes.func.isRequired,
 };
 
 DemoTransactionWrapper.propTypes = {

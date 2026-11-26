@@ -463,7 +463,23 @@
     "sampleGroceries": "Spesa alimentare",
     "sampleFuel": "Benzina",
     "sampleTransactionsAdded": "Sono stati aggiunti alcuni movimenti di esempio!",
-    "deleteError": "Impossibile salvare le modifiche. Controlla lo spazio disponibile."
+    "deleteError": "Impossibile salvare le modifiche. Controlla lo spazio disponibile.",
+    "pendingTrialNotice": "Stai provando Ducat mentre aspetti la conferma di {{email}}: i dati restano solo su questo dispositivo. Dopo la conferma e l’accesso potrai importarli nel tuo account.",
+    "confirmEmail": "Conferma email",
+    "import": {
+      "title": "Importa i movimenti della prova",
+      "description": "Su questo dispositivo ci sono {{count}} movimenti inseriti durante la prova. Vuoi aggiungerli al tuo account? Gli esempi, le ricorrenze e i budget della prova non vengono importati.",
+      "action": "Importa nel mio account",
+      "importing": "Importazione…",
+      "discard": "Elimina dal dispositivo",
+      "later": "Più tardi",
+      "discardConfirm": "I movimenti della prova verranno eliminati da questo dispositivo e non potranno essere recuperati. Continuare?",
+      "discarded": "Movimenti della prova eliminati dal dispositivo.",
+      "done": "Movimenti importati nel tuo account: {{count}}.",
+      "partial": "Importati {{imported}} movimenti; {{remaining}} restano su questo dispositivo. Riprova più tardi.",
+      "failed": "Importazione non riuscita. I movimenti restano su questo dispositivo: riprova.",
+      "offline": "Sei offline. Collegati a Internet per importare i movimenti."
+    }
   },
   "notifications": {
     "addSuccess": "Movimento aggiunto con successo!",
@@ -576,7 +592,10 @@
       "tooManyRequests": "Troppi tentativi. Attendi prima di riprovare.",
       "sendFailed": "Invio non riuscito. Riprova più tardi.",
       "desktopHint": "Dopo aver confermato l’indirizzo nel browser, torna qui e accedi con email e password.",
-      "desktopLogin": "Vai al login"
+      "desktopLogin": "Vai al login",
+      "tryHint": "Nel frattempo puoi provare Ducat: i dati restano solo su questo dispositivo finché non confermi l’email, accedi e li importi nel tuo account.",
+      "tryWhileWaiting": "Esplora Ducat mentre aspetti",
+      "continueTrial": "Continua la prova"
     },
     "resetPassword": {
       "title": "Nuova password",

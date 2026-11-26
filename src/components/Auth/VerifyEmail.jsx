@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../context/AuthProvider";
+import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider";
 import { useNavigate } from "../../router/RouterProvider";
 import { useNotification } from "../../utils/notificationUtils";
 import { Button } from "../ui/button";
@@ -10,6 +11,7 @@ const RESEND_COOLDOWN_MS = 60_000;
 
 const VerifyEmail = () => {
   const { currentUser, refreshCurrentUser, logout } = useAuth();
+  const { isDemo, startDemo } = useUnifiedTransactions();
   const navigate = useNavigate();
   const notification = useNotification();
   const { t } = useTranslation();
@@ -64,6 +66,14 @@ const VerifyEmail = () => {
     navigate("/login", { replace: true });
   };
 
+  // Lets someone who just signed up try the app on this device while the
+  // confirmation email arrives. Nothing is sent to the account until the user
+  // confirms, signs in and chooses to import what was entered here.
+  const exploreWhileWaiting = () => {
+    if (!isDemo) startDemo();
+    navigate("/dashboard", { replace: true });
+  };
+
   const exit = async () => {
     await logout();
     navigate("/", { replace: true });
@@ -91,6 +101,14 @@ const VerifyEmail = () => {
           <Button className="w-full" variant="outline" onClick={resend} disabled={sending || cooldownSeconds > 0}>
             {sending ? t("auth.verifyEmail.sending") : cooldownSeconds > 0 ? t("auth.verifyEmail.resendIn", { seconds: cooldownSeconds }) : t("auth.verifyEmail.resend")}
           </Button>
+          {currentUser?.pending && (
+            <div className="space-y-2 border-t border-border pt-4">
+              <p className="text-sm text-muted-foreground">{t("auth.verifyEmail.tryHint")}</p>
+              <Button className="w-full" variant="secondary" onClick={exploreWhileWaiting}>
+                {isDemo ? t("auth.verifyEmail.continueTrial") : t("auth.verifyEmail.tryWhileWaiting")}
+              </Button>
+            </div>
+          )}
           <Button className="w-full" variant="ghost" onClick={exit}>{t("auth.verifyEmail.exit")}</Button>
         </CardContent>
       </Card>

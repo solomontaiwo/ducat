@@ -16,6 +16,7 @@ const TransactionModal = lazy(() => import("../Transaction/TransactionModal"));
 const AppLockOverlay = lazy(() => import("./AppLockOverlay"));
 const OfflineNotice = lazy(() => import("./OfflineNotice"));
 const ShortcutsDialog = lazy(() => import("./ShortcutsDialog"));
+const DemoImportPrompt = lazy(() => import("./DemoImportPrompt"));
 
 const PUBLIC_ROUTES = ["/", "/landing", "/login", "/register", "/forgot-password", "/verify-email", "/privacy", "/terms"];
 const isEditableTarget = (el) => Boolean(el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)));
@@ -38,6 +39,10 @@ const AppLayout = ({ children }) => {
   const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
   const showNavigation = !isPublicRoute && (currentUser || isDemo);
   const addDisabled = isDemo && !canAddMoreTransactions;
+  // Signed up, email not confirmed yet, trying the app with local data only.
+  const pendingTrial = isDemo && Boolean(currentUser?.pending);
+  // A real, verified account (the demo never runs for one).
+  const hasAccount = Boolean(currentUser) && !isDemo;
 
   const openAddTransaction = useCallback((draft = null) => {
     if (addDisabled) return;
@@ -86,12 +91,12 @@ const AppLayout = ({ children }) => {
       else if (key === "1") navigate("/dashboard");
       else if (key === "2") navigate("/transactions");
       else if (key === "3") navigate("/analytics");
-      else if (key === "4" && currentUser) navigate("/profile");
+      else if (key === "4" && hasAccount) navigate("/profile");
       else if (event.key === "?") { event.preventDefault(); setShowShortcuts(true); }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showNavigation, locked, location.pathname, navigate, openAddTransaction, toggleHideAmounts, currentUser]);
+  }, [showNavigation, locked, location.pathname, navigate, openAddTransaction, toggleHideAmounts, hasAccount]);
 
   const sendVerificationEmail = async () => {
     if (!currentUser?.email) return;
@@ -138,7 +143,24 @@ const AppLayout = ({ children }) => {
                 <button type="button" onClick={retryPlanning} className="rounded-xl border border-warning/50 px-3 py-2 font-semibold">{t("planning.retry")}</button>
               </div>
             )}
-            {showNavigation && currentUser && !currentUser.emailVerified && (
+            {showNavigation && pendingTrial && (
+              <div role="status" className="mx-auto flex max-w-6xl flex-col gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <p>{t("demo.pendingTrialNotice", { email: currentUser.email })}</p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/verify-email")}
+                  className="shrink-0 rounded-xl border border-warning/50 px-3 py-2 font-semibold"
+                >
+                  {t("demo.confirmEmail")}
+                </button>
+              </div>
+            )}
+            {showNavigation && hasAccount && currentUser.emailVerified && (
+              <Suspense fallback={null}>
+                <DemoImportPrompt />
+              </Suspense>
+            )}
+            {showNavigation && hasAccount && !currentUser.emailVerified && (
               <div className="mx-auto flex max-w-6xl flex-col gap-3 rounded-2xl border border-warning/50 bg-warning/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <p>{t("security.emailVerificationRequired")}</p>
                 <button
@@ -167,7 +189,7 @@ const AppLayout = ({ children }) => {
             <ShortcutsDialog open={showShortcuts} onClose={() => setShowShortcuts(false)} />
           </Suspense>
         )}
-        {showNavigation && currentUser && locked && (
+        {showNavigation && hasAccount && locked && (
           <Suspense fallback={null}>
             <AppLockOverlay />
           </Suspense>

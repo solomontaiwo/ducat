@@ -10,10 +10,8 @@ import { minorToMajor } from "../utils/money.js";
 import { dueOccurrences, nextOccurrence, occurrenceRequestId } from "../utils/recurrence.js";
 import { DEFAULT_PREFERENCES, budgetLimitsSchema, normalizePreferences, preferencesSchema, recurringInputSchema } from "../schemas/planning.js";
 import { onLocalChange } from "../services/changeEvents.js";
+import { DEMO_BUDGETS_KEY, DEMO_PREFERENCES_KEY, DEMO_RECURRING_KEY } from "../utils/demoStorage.js";
 
-const DEMO_RECURRING_KEY = "ducat-demo-recurring";
-const DEMO_BUDGETS_KEY = "ducat-demo-budgets";
-const DEMO_PREFERENCES_KEY = "ducat-demo-preferences";
 
 const INERT = Object.freeze({
   recurring: [],

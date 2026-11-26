@@ -113,17 +113,19 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
         </Link>
       )}
 
-      {isDemo && !currentUser && (
+      {isDemo && (
         <div className="space-y-3 rounded-2xl bg-foreground/5 p-4">
           <p className="text-sm font-semibold">
             {t("navbar.demoBadge", { count: demoCount, max: maxTransactions })}
           </p>
-          <Button className="w-full" onClick={() => navigate("/register")}>{t("navbar.register")}</Button>
+          {currentUser?.pending
+            ? <Button className="w-full" onClick={() => navigate("/verify-email")}>{t("demo.confirmEmail")}</Button>
+            : <Button className="w-full" onClick={() => navigate("/register")}>{t("navbar.register")}</Button>}
           <Button variant="ghost" className="w-full" onClick={handleExitDemo}>{t("navbar.backToHome")}</Button>
         </div>
       )}
 
-      {currentUser && (
+      {currentUser && !isDemo && (
         <div className="flex items-center gap-1">
           <Link
             to="/profile"

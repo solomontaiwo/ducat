@@ -18,13 +18,12 @@ import {
 import { recurringDraftSchema, recurringInputSchema } from "../schemas/planning.js";
 import { occurrenceDateKey, occurrenceRequestId } from "../utils/recurrence.js";
 import { emitLocalChange } from "../services/changeEvents.js";
+import { DEMO_RECURRING_KEY, DEMO_TRANSACTIONS_KEY as DEMO_STORAGE_KEY } from "../utils/demoStorage.js";
 
-const DEMO_RECURRING_KEY = "ducat-demo-recurring";
 const DemoContext = createContext();
 
 export const useDemo = () => useContext(DemoContext);
 
-const DEMO_STORAGE_KEY = "ducat-demo-transactions";
 export const MAX_DEMO_TRANSACTIONS = 10;
 
 const normalizeDemoTransaction = (transaction) => {
