@@ -125,6 +125,7 @@ describe("app layout with the native tab bar", () => {
     }));
     vi.doMock("../src/components/Transaction/TransactionModal", () => ({ default: () => <div data-testid="add-modal" /> }));
     vi.doMock("../src/components/Layout/DemoImportPrompt", () => ({ default: () => null }));
+    vi.doMock("../src/components/Layout/Sidebar", () => ({ default: () => <aside data-testid="web-sidebar" /> }));
     const { default: AppLayout } = await import("../src/components/Layout/AppLayout.jsx");
     const view = render(<AppLayout><p>page</p></AppLayout>);
     // The bridge is loaded lazily, only in the iOS build.
@@ -152,13 +153,15 @@ describe("app layout with the native tab bar", () => {
     const { container } = await renderLayout();
     expect(screen.getByTestId("web-tab-bar")).toBeInTheDocument();
     expect(container.querySelector("main")).toHaveClass("app-content-safe-mobile");
-    expect(mocks.native.update).not.toHaveBeenCalled();
+    // The layout is sent even before the native bar exists.
+    expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ layout: "phone", visible: true }));
 
     act(() => mocks.native.subscribe.onAvailability(true));
     expect(screen.queryByTestId("web-tab-bar")).toBeNull();
     expect(container.querySelector("main")).toHaveClass("app-content-safe-bottom");
     expect(mocks.native.update).toHaveBeenLastCalledWith({
       visible: true,
+      layout: "phone",
       path: "/dashboard",
       badge: null,
       addEnabled: true,
@@ -194,6 +197,16 @@ describe("app layout with the native tab bar", () => {
     expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ badge: "1/10", addEnabled: false }));
     act(() => mocks.native.subscribe.onAdd());
     expect(screen.queryByTestId("add-modal")).toBeNull();
+  });
+
+  it("keeps the web sidebar and turns the vertical bar off in the wide layout", async () => {
+    mocks.mobileLayout = false;
+    const { container } = await renderLayout();
+    act(() => mocks.native.subscribe.onAvailability(true));
+    expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ layout: "sidebar", visible: false }));
+    expect(screen.queryByTestId("web-tab-bar")).toBeNull();
+    expect(await screen.findByTestId("web-sidebar")).toBeInTheDocument();
+    expect(container.querySelector("main")).not.toHaveClass("app-content-safe-bottom");
   });
 
   it("hides the native bar on public pages", async () => {

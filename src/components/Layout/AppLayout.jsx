@@ -187,9 +187,9 @@ const AppLayout = ({ children }) => {
         {isMobileApp() && (
           <Suspense fallback={null}>
             <NativeNavigationBridge
-              available={nativeNavigation}
               onAvailabilityChange={setNativeNavigation}
-              visible={Boolean(showNavigation && !showAddModal && !(hasAccount && locked))}
+              visible={Boolean(showNavigation && isMobile && !showAddModal && !(hasAccount && locked))}
+              layout={isMobile ? "phone" : "sidebar"}
               path={location.pathname}
               badge={isDemo ? `${transactions.filter((item) => !item.isSample).length}/${maxTransactions}` : null}
               addEnabled={!addDisabled}

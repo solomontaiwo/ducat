@@ -41,6 +41,10 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
     private let content: UIViewController
     private var hosts: [String: UIViewController] = [:]
     private var webWantsBar = false
+    /// The web app shows its own sidebar (wide layout, e.g. the Duo inner
+    /// screen in landscape): the vertical bar is then turned off, so there is
+    /// a single navigation and the content gets the column's width back.
+    private var webUsesSidebar = false
 
     init(content: UIViewController) {
         self.content = content
@@ -105,7 +109,13 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
     /// Applies the state sent by the web app: whether its navigation is showing
     /// (signed in or demo, no modal open), the current page, the demo badge,
     /// whether a movement can be added, and the translated labels.
-    func apply(visible: Bool, path: String?, badge: String?, addEnabled: Bool, labels: [String: String]) {
+    override var childForPreferredVerticalBarBehavior: UIViewController? { nil }
+
+    override var preferredVerticalBarBehavior: UIVerticalBarBehavior {
+        webUsesSidebar ? .disabled : .automatic
+    }
+
+    func apply(visible: Bool, path: String?, badge: String?, addEnabled: Bool, sidebar: Bool, labels: [String: String]) {
         for tab in tabs {
             if let label = labels[tab.identifier], !label.isEmpty, tab.title != label { tab.title = label }
         }
@@ -121,11 +131,16 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
             attachContent(to: host)
         }
         webWantsBar = visible
+        if webUsesSidebar != sidebar {
+            // Changes only when the layout switches (fold, unfold, rotation).
+            webUsesSidebar = sidebar
+            setNeedsUpdateOfVerticalBarConfiguration()
+        }
         refreshVisibility()
     }
 
     private func refreshVisibility() {
-        let show = hasVerticalBar && webWantsBar
+        let show = hasVerticalBar && webWantsBar && !webUsesSidebar
         if isTabBarHidden == show { setTabBarHidden(!show, animated: viewIfLoaded?.window != nil) }
         NativeNavigationPlugin.updateAvailability(hasVerticalBar)
     }
@@ -214,10 +229,11 @@ public class NativeNavigationPlugin: CAPPlugin, CAPBridgedPlugin {
         let path = call.getString("path")
         let badge = call.getString("badge")
         let addEnabled = call.getBool("addEnabled") ?? true
+        let sidebar = call.getString("layout") == "sidebar"
         let labels = (call.getObject("labels") ?? [:]).compactMapValues { $0 as? String }
         DispatchQueue.main.async {
             if #available(iOS 27.1, *), let controller = Self.controller as? VerticalBarTabController {
-                controller.apply(visible: visible, path: path, badge: badge, addEnabled: addEnabled, labels: labels)
+                controller.apply(visible: visible, path: path, badge: badge, addEnabled: addEnabled, sidebar: sidebar, labels: labels)
             }
             call.resolve()
         }

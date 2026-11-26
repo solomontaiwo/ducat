@@ -10,7 +10,7 @@ const NATIVE_TAB_PATHS = ["/dashboard", "/transactions", "/analytics"];
  * Keeps the native tab bar in the iPhone Duo vertical bar in sync with the web
  * app. Loaded only in the iOS build; renders nothing.
  */
-const NativeNavigationBridge = ({ available, onAvailabilityChange, visible, path, badge, addEnabled, onNavigate, onAdd }) => {
+const NativeNavigationBridge = ({ onAvailabilityChange, visible, layout, path, badge, addEnabled, onNavigate, onAdd }) => {
   const { t } = useTranslation();
   // Listeners are registered once and read the latest callbacks through refs.
   const callbacks = useRef({ onAvailabilityChange, onNavigate, onAdd });
@@ -22,10 +22,12 @@ const NativeNavigationBridge = ({ available, onAvailabilityChange, visible, path
     onAdd: () => callbacks.current.onAdd(),
   }), []);
 
+  // Always sent, also before the native bar exists: on the iPhone Duo the
+  // layout decides whether iOS shows the vertical bar at all.
   useEffect(() => {
-    if (!available) return;
     updateNativeNavigation({
       visible,
+      layout,
       path,
       badge,
       addEnabled,
@@ -36,15 +38,15 @@ const NativeNavigationBridge = ({ available, onAvailabilityChange, visible, path
         add: t("navbar.add"),
       },
     });
-  }, [available, visible, path, badge, addEnabled, t]);
+  }, [visible, layout, path, badge, addEnabled, t]);
 
   return null;
 };
 
 NativeNavigationBridge.propTypes = {
-  available: PropTypes.bool.isRequired,
   onAvailabilityChange: PropTypes.func.isRequired,
   visible: PropTypes.bool.isRequired,
+  layout: PropTypes.oneOf(["phone", "sidebar"]).isRequired,
   path: PropTypes.string.isRequired,
   badge: PropTypes.string,
   addEnabled: PropTypes.bool.isRequired,
