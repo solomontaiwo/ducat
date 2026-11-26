@@ -42,8 +42,9 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
     private var hosts: [String: UIViewController] = [:]
     private var webWantsBar = false
     /// The web app shows its own sidebar (wide layout, e.g. the Duo inner
-    /// screen in landscape): the vertical bar is then turned off, so there is
-    /// a single navigation and the content gets the column's width back.
+    /// screen in landscape): the native tab bar stays hidden so there is a
+    /// single navigation. The vertical bar itself stays on, keeping the status
+    /// bar in the side column instead of a full-width strip at the top.
     private var webUsesSidebar = false
 
     init(content: UIViewController) {
@@ -109,12 +110,6 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
     /// Applies the state sent by the web app: whether its navigation is showing
     /// (signed in or demo, no modal open), the current page, the demo badge,
     /// whether a movement can be added, and the translated labels.
-    override var childForPreferredVerticalBarBehavior: UIViewController? { nil }
-
-    override var preferredVerticalBarBehavior: UIVerticalBarBehavior {
-        webUsesSidebar ? .disabled : .automatic
-    }
-
     func apply(visible: Bool, path: String?, badge: String?, addEnabled: Bool, sidebar: Bool, labels: [String: String]) {
         for tab in tabs {
             if let label = labels[tab.identifier], !label.isEmpty, tab.title != label { tab.title = label }
@@ -131,11 +126,7 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
             attachContent(to: host)
         }
         webWantsBar = visible
-        if webUsesSidebar != sidebar {
-            // Changes only when the layout switches (fold, unfold, rotation).
-            webUsesSidebar = sidebar
-            setNeedsUpdateOfVerticalBarConfiguration()
-        }
+        webUsesSidebar = sidebar
         refreshVisibility()
     }
 

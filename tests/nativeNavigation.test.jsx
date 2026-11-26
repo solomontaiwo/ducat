@@ -199,7 +199,7 @@ describe("app layout with the native tab bar", () => {
     expect(screen.queryByTestId("add-modal")).toBeNull();
   });
 
-  it("keeps the web sidebar and turns the vertical bar off in the wide layout", async () => {
+  it("keeps only the web sidebar in the wide layout", async () => {
     mocks.mobileLayout = false;
     const { container } = await renderLayout();
     act(() => mocks.native.subscribe.onAvailability(true));

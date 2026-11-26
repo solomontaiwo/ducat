@@ -18,6 +18,8 @@ import { FREQUENCIES, occurrenceDateKey } from "../../utils/recurrence.js";
 import { enUS, it as itLocale } from "date-fns/locale";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { Select } from "../ui/select";
+import { useMediaQuery } from "react-responsive";
 import { hapticSuccess } from "../../platform/haptics.js";
 
 const QUICK_ADD_PREF_KEY = "ducat-quick-add-preferences";
@@ -88,6 +90,9 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
   const { visibleExpenseCategories: expenseCategories, visibleIncomeCategories: incomeCategories, expenseCategories: allExpense, incomeCategories: allIncome } = useCategories();
   const { preferences, ready: planningReady } = usePlanning();
   const notification = useNotification();
+  // Short phone screens (iPhone Duo outer screen): a denser form, with the
+  // category in a menu instead of a grid of chips.
+  const compact = useMediaQuery({ maxWidth: 767, maxHeight: 740 });
   const { t, i18n } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const requestIdRef = useRef(crypto.randomUUID());
@@ -261,7 +266,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
 
   return (
     <form onSubmit={handleSubmit} className={cn("flex min-h-0 flex-1 flex-col", className)} noValidate>
-      <div className="flex-1 space-y-6 overflow-y-auto px-5 pb-6 pt-1">
+      <div className="flex-1 space-y-6 overflow-y-auto px-5 pb-6 pt-1 short:space-y-4 short:pb-4">
         <div
           role="radiogroup"
           aria-label={t("transactionModal.type")}
@@ -281,8 +286,8 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
           ))}
         </div>
 
-        <div className="flex flex-col items-center gap-3">
-          <label htmlFor={`${idPrefix}-amount`} className="text-sm font-semibold text-muted-foreground">
+        <div className="flex flex-col items-center gap-3 short:gap-2">
+          <label htmlFor={`${idPrefix}-amount`} className="text-sm font-semibold text-muted-foreground short:sr-only">
             {t("transactionModal.amount")}
           </label>
           <div className="flex items-baseline justify-center gap-2 border-b-2 border-primary px-2 pb-1">
@@ -311,7 +316,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
                 "amount min-w-0 bg-transparent text-right font-extrabold tracking-tight text-foreground outline-none placeholder:text-muted-foreground/50 focus-visible:outline-none",
                 isExpression ? "w-[11ch] text-3xl" : "w-[7.5ch] text-5xl"
               )}
-              style={{ fontSize: isExpression ? "2rem" : "3rem" }}
+              style={{ fontSize: isExpression ? "2rem" : compact ? "2.25rem" : "3rem" }}
             />
             <span className="font-display text-3xl font-bold text-muted-foreground" aria-hidden="true">€</span>
           </div>
@@ -369,7 +374,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
         </div>
 
         <fieldset className="space-y-3">
-          <legend className="mb-3 text-sm font-bold">{t("transactionModal.category")}</legend>
+          <legend className="mb-3 text-sm font-bold short:mb-2">{t("transactionModal.category")}</legend>
           {showSuggestionHint && (
             <p className="flex items-center gap-2 rounded-xl bg-accent px-3 py-2 text-[13px] text-accent-foreground" data-testid="category-suggestion">
               <span className="font-bold">{t("transactionModal.suggested")}</span>
@@ -380,6 +385,18 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
               </span>
             </p>
           )}
+          {compact ? (
+            <Select
+              id={`${idPrefix}-category`}
+              aria-label={t("transactionModal.category")}
+              value={formData.category}
+              onChange={(event) => { setCategoryTouched(true); setField("category", event.target.value); }}
+            >
+              {categories.map((category) => (
+                <option key={category.value} value={category.value}>{category.label}</option>
+              ))}
+            </Select>
+          ) : (
           <div
             role="radiogroup"
             aria-label={t("transactionModal.category")}
@@ -404,10 +421,11 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
               </button>
             ))}
           </div>
+          )}
         </fieldset>
 
         <fieldset className="space-y-3">
-          <legend className="mb-3 text-sm font-bold">{t("transactionModal.date")}</legend>
+          <legend className="mb-3 text-sm font-bold short:mb-2">{t("transactionModal.date")}</legend>
           <div
             role="radiogroup"
             aria-label={t("transactionModal.date")}
@@ -513,16 +531,16 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
         )}
       </div>
 
-      <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:flex-row sm:justify-end sm:pb-4">
+      <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 short:flex-row short:pb-[calc(0.75rem+env(safe-area-inset-bottom))] short:pt-3 sm:flex-row sm:justify-end sm:pb-4">
         {onCancel && (
-          <Button type="button" variant="ghost" onClick={onCancel} className="sm:w-auto">
+          <Button type="button" variant="ghost" onClick={onCancel} className="short:w-auto sm:w-auto">
             {t("transactionModal.cancel")}
           </Button>
         )}
         <Button
           type="submit"
           size="lg"
-          className="w-full sm:w-auto sm:min-w-[14rem]"
+          className="w-full short:w-auto short:min-w-0 short:flex-1 sm:w-auto sm:min-w-[14rem] sm:flex-none"
           disabled={submitting || !formData.amount || !formData.category}
         >
           {submitting ? (isEdit ? t("transactionModal.saving") : t("transactionModal.adding")) : submitLabel}
