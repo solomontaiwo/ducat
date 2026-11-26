@@ -14,19 +14,18 @@ fare richiede credenziali Apple e Xcode su una macchina tua o sul runner CI.
 | Hosting con header personalizzati | la AASA deve rispondere `application/json` |
 | Testi privacy e termini | già in `src/content/legal.js`, da rileggere |
 
-Il bundle id è **`app.ducat`** e il nome è **Ducat**. Il bundle id non si cambia
-più dopo il primo upload: se compri un dominio diverso da `ducat.app`, decidilo
-ora.
-
-```bash
-node scripts/rename-app.mjs --name "Ducat" --id app.il-tuo-dominio
-npm run ios:sync
-```
-
-Lo script aggiorna Tauri, Capacitor, il progetto Xcode, il manifest PWA, le
-traduzioni, i test e la documentazione.
+Il nome è **Ducat**. Il bundle id iOS è **`com.ducatapp.ducat`**, registrato
+su Apple Developer; la versione desktop Tauri mantiene **`app.ducat`**. I due
+identificativi sono distinti: `scripts/rename-app.mjs --id` cambia entrambi e
+non va usato per modificare soltanto iOS. Il bundle id di una scheda App Store
+non si può cambiare dopo il primo upload.
 
 ## 2. Build locale iOS
+
+La versione iOS è gestita separatamente in `ios/version.json` (inizialmente
+`1.0.0`) e viene riportata in Xcode da `scripts/sync-ios-version.mjs`. Le release
+web e desktop non la incrementano. Aggiornarla esplicitamente per ogni nuova
+versione iOS e usare un numero di build crescente per ogni caricamento.
 
 ```bash
 npm run ios:sync        # build web (mode mobile) + cap sync + versione allineata
@@ -140,7 +139,8 @@ Coperte:
   un banner avvisa che le modifiche richiedono la connessione. La cache si
   svuota quando elimini l'account.
 - **Universal Links**: `ios/App/App/App.entitlements` dichiara
-  `applinks:ducat.app`, `scripts/generate-aasa.mjs` scrive
+  `applinks:ducatapp.com` e `applinks:www.ducatapp.com`;
+  `scripts/generate-aasa.mjs` legge il bundle id da `capacitor.config.json` e scrive
   `.well-known/apple-app-site-association` in `dist/` e
   `src/platform/deepLinks.js` apre la rotta giusta nell'app (anche con
   `#access_token` per conferma email e reset password).

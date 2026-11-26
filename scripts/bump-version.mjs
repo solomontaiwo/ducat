@@ -16,7 +16,6 @@ const PKG = "package.json";
 const LOCK = "package-lock.json";
 const CARGO = "src-tauri/Cargo.toml";
 const CARGO_LOCK = "src-tauri/Cargo.lock";
-const PBXPROJ = "ios/App/App.xcodeproj/project.pbxproj";
 
 /** 4.0.0 -> 4.0.1 ; 4.0.0-beta.1 -> 4.0.1 (prerelease is dropped on patch). */
 function bumpPatch(version) {
@@ -52,10 +51,5 @@ if (!cargoEntry.test(cargoLock)) {
   throw new Error(`Could not find the ${crateName} entry in ${CARGO_LOCK}`);
 }
 writeFileSync(CARGO_LOCK, cargoLock.replace(cargoEntry, `$1${next}$2`));
-
-// Xcode reads MARKETING_VERSION (CFBundleShortVersionString): the App Store
-// rejects an upload whose version does not match the release.
-const pbxproj = readFileSync(PBXPROJ, "utf8");
-writeFileSync(PBXPROJ, pbxproj.replace(/(MARKETING_VERSION = )[^;]+;/g, `$1${next};`));
 
 console.log(next);

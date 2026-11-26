@@ -1,7 +1,8 @@
 import { version } from "../../package.json";
+import { version as iosVersion } from "../../ios/version.json";
+import { isMobile } from "../platform/index.js";
 
 /**
- * Current app version, read from package.json — the same value Tauri uses for
- * the bundled app (tauri.conf.json points at "../package.json").
+ * iOS has an independent App Store version; web and desktop use package.json.
  */
-export const APP_VERSION = version;
+export const APP_VERSION = isMobile() ? iosVersion : version;

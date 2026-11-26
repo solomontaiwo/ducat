@@ -5,7 +5,7 @@
 	<!--
 	  Universal Links. The web app must serve
 	  https://<domain>/.well-known/apple-app-site-association with the matching
-	  appID (TEAMID.app.ducat); scripts/generate-aasa.mjs writes it at build time.
+	  appID (TEAMID.com.ducatapp.ducat); scripts/generate-aasa.mjs writes it at build time.
 	  Custom scheme links keep working as a fallback during TestFlight.
 	-->
 	<key>com.apple.developer.associated-domains</key>

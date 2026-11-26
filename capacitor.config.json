@@ -1,5 +1,5 @@
 {
-  "appId": "app.ducat",
+  "appId": "com.ducatapp.ducat",
   "appName": "Ducat",
   "webDir": "dist",
   "ios": {

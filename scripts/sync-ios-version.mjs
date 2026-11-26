@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Keeps the Xcode project version in sync with the repository version.
+ * Keeps the Xcode project version in sync with the iOS release version.
  *
  * App Store Connect requires CFBundleShortVersionString (MARKETING_VERSION) to
  * match the release and CFBundleVersion (CURRENT_PROJECT_VERSION) to grow with
- * every upload. The marketing version comes from package.json; the build number
+ * every upload. The marketing version comes from ios/version.json; the build number
  * comes from IOS_BUILD_NUMBER when set (CI uses the run number) and defaults to
  * the previous value locally.
  *
@@ -19,7 +19,10 @@ import { dirname, join, resolve } from "node:path";
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), "..");
 const PROJECT = join(ROOT, "ios", "App", "App.xcodeproj", "project.pbxproj");
 
-const { version } = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+const { version } = JSON.parse(readFileSync(join(ROOT, "ios", "version.json"), "utf8"));
+if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version)) {
+  throw new Error("ios/version.json must contain a valid iOS version");
+}
 const buildNumber = process.env.IOS_BUILD_NUMBER;
 
 const current = readFileSync(PROJECT, "utf8");

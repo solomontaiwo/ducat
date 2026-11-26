@@ -43,8 +43,10 @@ export const buildAasa = ({ teamId, bundleId }) => ({
   webcredentials: { apps: [`${teamId}.${bundleId}`] },
 });
 
+export const readIosBundleId = () => JSON.parse(readFileSync(join(ROOT, "capacitor.config.json"), "utf8")).appId;
+
 const main = () => {
-  const { identifier } = JSON.parse(readFileSync(join(ROOT, "src-tauri", "tauri.conf.json"), "utf8"));
+  const identifier = readIosBundleId();
   const teamId = process.env.APPLE_TEAM_ID || "TEAMID";
   const publicBase = process.env.VITE_DESKTOP_WEB_URL || "https://ducatapp.com/";
   const domain = process.env.AASA_DOMAIN || (() => {

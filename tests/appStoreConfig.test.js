@@ -1,14 +1,16 @@
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import process from "node:process";
+import { describe, expect, it, vi } from "vitest";
+import { buildAasa, readIosBundleId } from "../scripts/generate-aasa.mjs";
 
 /**
- * Guards the values that must stay aligned across the two native shells.
+ * Guards the app identity values used by the native shells.
  *
- * The name and the bundle id live in several files (Tauri, Capacitor, Xcode,
- * the PWA manifest). `scripts/rename-app.mjs` updates them together; these
- * tests fail when a rename or a hand edit leaves one of them behind, because a
- * mismatch only shows up at upload time otherwise.
+ * iOS and desktop have separate bundle identifiers. The iOS identifier must
+ * remain aligned across Capacitor, Xcode and the Universal Links configuration.
  */
 
 /* eslint-disable no-undef -- __dirname is provided by the Vitest transform */
@@ -20,7 +22,8 @@ const readJson = (path) => JSON.parse(read(path));
 const tauri = readJson("src-tauri/tauri.conf.json");
 const capacitor = readJson("capacitor.config.json");
 const manifest = readJson("public/manifest.json");
-const pkg = readJson("package.json");
+const iosVersion = readJson("ios/version.json").version;
+const desktopVersion = readJson("package.json").version;
 const pbxproj = read("ios/App/App.xcodeproj/project.pbxproj");
 const infoPlist = read("ios/App/App/Info.plist");
 
@@ -30,11 +33,17 @@ const plistValue = (key) => {
 };
 
 describe("app identity", () => {
-  it("uses one bundle id across Tauri, Capacitor and Xcode", () => {
-    expect(capacitor.appId).toBe(tauri.identifier);
+  it("keeps the iOS bundle id aligned without changing the desktop identifier", () => {
+    expect(capacitor.appId).toBe("com.ducatapp.ducat");
+    expect(tauri.identifier).toBe("app.ducat");
     const identifiers = [...pbxproj.matchAll(/PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g)].map((match) => match[1]);
     expect(identifiers.length).toBeGreaterThan(0);
-    for (const identifier of identifiers) expect(identifier).toBe(tauri.identifier);
+    for (const identifier of identifiers) expect(identifier).toBe(capacitor.appId);
+    expect(readIosBundleId()).toBe(capacitor.appId);
+    const appId = `TESTTEAM123.${capacitor.appId}`;
+    const aasa = buildAasa({ teamId: "TESTTEAM123", bundleId: readIosBundleId() });
+    expect(aasa.applinks.details[0].appIDs).toContain(appId);
+    expect(aasa.webcredentials.apps).toContain(appId);
   });
 
   it("uses one display name everywhere", () => {
@@ -45,11 +54,62 @@ describe("app identity", () => {
     expect(tauri.app.windows[0].title).toBe(tauri.productName);
   });
 
-  it("keeps the Xcode marketing version aligned with package.json", () => {
+  it("keeps the Xcode marketing version aligned with the independent iOS version", () => {
     const versions = [...pbxproj.matchAll(/MARKETING_VERSION = ([^;]+);/g)].map((match) => match[1]);
     expect(versions.length).toBeGreaterThan(0);
-    for (const version of versions) expect(version).toBe(pkg.version);
+    expect(iosVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    for (const version of versions) expect(version).toBe(iosVersion);
   });
+});
+
+describe("iOS version automation", () => {
+  it("syncs iOS independently and leaves it unchanged when the desktop version bumps", () => {
+    const temp = mkdtempSync(join(tmpdir(), "ducat-versions-"));
+    try {
+      for (const file of [
+        "scripts/sync-ios-version.mjs", "scripts/bump-version.mjs", "ios/version.json",
+        "ios/App/App.xcodeproj/project.pbxproj", "package.json", "package-lock.json",
+        "src-tauri/Cargo.toml", "src-tauri/Cargo.lock",
+      ]) {
+        const target = join(temp, file);
+        mkdirSync(dirname(target), { recursive: true });
+        copyFileSync(join(root, file), target);
+      }
+      const project = join(temp, "ios/App/App.xcodeproj/project.pbxproj");
+      const stale = readFileSync(project, "utf8").replace(/(MARKETING_VERSION = )[^;]+;/g, (_, prefix) => `${prefix}9.8.7;`);
+      writeFileSync(project, stale);
+      execFileSync(process.execPath, [join(temp, "scripts/sync-ios-version.mjs")], {
+        cwd: temp,
+        env: { ...process.env, IOS_BUILD_NUMBER: "42" },
+      });
+      const synced = readFileSync(project, "utf8");
+      expect(synced).toContain(`MARKETING_VERSION = ${iosVersion};`);
+      expect(synced).toContain("CURRENT_PROJECT_VERSION = 42;");
+
+      const previousVersion = JSON.parse(readFileSync(join(temp, "package.json"), "utf8")).version;
+      execFileSync(process.execPath, [join(temp, "scripts/bump-version.mjs")], { cwd: temp });
+      expect(JSON.parse(readFileSync(join(temp, "package.json"), "utf8")).version).not.toBe(previousVersion);
+      expect(readFileSync(project, "utf8")).toBe(synced);
+      expect(JSON.parse(readFileSync(join(temp, "ios/version.json"), "utf8")).version).toBe(iosVersion);
+    } finally {
+      rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
+  it.each([["mobile", iosVersion], ["desktop", desktopVersion], ["production", desktopVersion]])(
+    "shows the correct version in %s mode",
+    async (mode, expected) => {
+      vi.stubEnv("MODE", mode);
+      vi.resetModules();
+      try {
+        const { APP_VERSION } = await import("../src/utils/appVersion.js");
+        expect(APP_VERSION).toBe(expected);
+      } finally {
+        vi.unstubAllEnvs();
+        vi.resetModules();
+      }
+    }
+  );
 });
 
 describe("iOS submission requirements", () => {
