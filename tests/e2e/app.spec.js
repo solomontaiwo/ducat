@@ -492,3 +492,74 @@ test("quick-add deep link, sorting, bulk recategorization, annual recap and shor
     await expect(page.locator("html")).not.toHaveClass(/privacy-masked/);
   }
 });
+
+test("table preference survives the detail panel and falls back to cards on a phone", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "Controls its own window size");
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(".");
+  await page.getByRole("button", { name: /prova (la )?demo/i }).first().click();
+  await page.getByRole("button", { name: /vista tabella/i }).click();
+  const table = page.getByRole("table");
+  await expect(table.getByRole("columnheader")).toHaveCount(4);
+  await table.getByRole("button").first().click();
+  const editor = page.getByRole("complementary", { name: /modifica movimento/i });
+  await expect(editor).toBeVisible();
+  await expect(table).toBeHidden();
+  await editor.getByRole("button", { name: /chiudi/i }).click();
+  await expect(table).toBeVisible();
+  await page.getByTestId("toggle-bulk-select").click();
+  const first = table.getByRole("button").first();
+  await first.focus();
+  await first.press("Space");
+  await expect(first).toHaveAttribute("aria-pressed", "true");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(table).toBeHidden();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.reload();
+  await expect(table).toBeVisible();
+});
+
+test("transaction modal opens centered on desktop and animates open and close", async ({ page }) => {
+  await page.goto(".");
+  await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  await page.getByRole("button", { name: ADD_BUTTON }).first().click();
+
+  const viewport = page.viewportSize();
+  const isPhone = viewport.width < 640;
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const openAnimation = await dialog.evaluate((el) => getComputedStyle(el).animationName);
+  expect(openAnimation).toBe(isPhone ? "dialog-sheet-in" : "dialog-pop-in");
+
+  // Wait for the opening animation to settle, then check placement.
+  await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+  const box = await dialog.boundingBox();
+  expect(box).not.toBeNull();
+  if (isPhone) {
+    expect(Math.abs(box.x)).toBeLessThanOrEqual(2);
+    expect(Math.abs(box.width - viewport.width)).toBeLessThanOrEqual(2);
+  } else {
+    expect(Math.abs((box.x + box.width / 2) - viewport.width / 2)).toBeLessThanOrEqual(2);
+    expect(Math.abs((box.y + box.height / 2) - viewport.height / 2)).toBeLessThanOrEqual(2);
+  }
+
+  // Trigger close and verify the closing animation runs before unmounting.
+  const closeAnimationPromise = dialog.evaluate((el) => new Promise((resolve) => {
+    const check = () => {
+      if (el.getAttribute("data-state") === "closed") {
+        resolve(getComputedStyle(el).animationName);
+        return true;
+      }
+      return false;
+    };
+    if (check()) return;
+    const observer = new MutationObserver(() => {
+      if (check()) observer.disconnect();
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ["data-state"] });
+  }));
+  await page.keyboard.press("Escape");
+  expect(await closeAnimationPromise).toBe(isPhone ? "dialog-sheet-out" : "dialog-pop-out");
+  await expect(dialog).toBeHidden();
+});

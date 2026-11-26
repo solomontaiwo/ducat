@@ -27,6 +27,8 @@ describe("computeMonthProjection", () => {
     // Remaining recurring: +2000 income, -20 expense
     // Projected expense: 900 + 20 + 200 = 1120; projected income: 2000; balance: +880
     expect(result.dailyVariableExpense).toBe(10);
+    expect(result.remainingVariableExpense).toBe(200);
+    expect(stats.balance + result.remainingRecurringIncome - result.remainingRecurringExpense - result.remainingVariableExpense).toBe(result.projectedBalance);
     expect(result.remainingRecurringIncome).toBe(2000);
     expect(result.remainingRecurringExpense).toBe(20);
     expect(result.projectedExpense).toBe(1120);

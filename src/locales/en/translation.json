@@ -110,6 +110,12 @@
     "sendingVerification": "Sending..."
   },
   "dashboard": {
+    "forecast": {
+      "current": "Period balance so far",
+      "income": "Expected recurring income",
+      "expense": "Expected recurring expenses",
+      "variable": "Estimated variable expenses over the next {{days}} days"
+    },
     "title": "Overview",
     "addTransaction": "Add Transaction",
     "greetingMorning": "Good morning, {{name}}",
@@ -333,6 +339,7 @@
     "calcOp": "Operator {{op}}"
   },
   "transactions": {
+    "tableView": "Table view",
     "title": "Transactions",
     "loadingTransactions": "Loading transactions...",
     "accessRequired": "Access required",
@@ -980,6 +987,12 @@
     "help": "This help"
   },
   "csvImport": {
+    "retryFailed": "Retry ({{count}})",
+    "checking": "Checking existing transactions…",
+    "historyError": "Could not check for duplicates. Select the file again to retry.",
+    "limit": "Only the first {{count}} records are included. {{extra}} more exceed the limit.",
+    "outcome": "{{imported}} imported · {{duplicates}} already present · {{skipped}} skipped · {{failed}} to retry",
+    "record": "Record {{number}}",
     "title": "Import CSV",
     "summary": "From bank or spreadsheet",
     "description": "Pick a CSV file, verify columns and import without duplicates.",

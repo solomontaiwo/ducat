@@ -11,7 +11,7 @@
 
 import { DEFAULT_CURRENCY, MAX_AMOUNT_MINOR, getTransactionAmountMinor, minorToMajor, parseMoneyToMinor } from "./money.js";
 import { coerceDateKey, dateKeyToDate, isDateKey } from "./dateUtils.js";
-import { compareTransactions } from "./transactionOrder.js";
+import { transactionComparator } from "./transactionOrder.js";
 
 const PREFIX = "ducat-offline-queue:";
 const VERSION = 1;
@@ -216,22 +216,23 @@ export const queuedItemToTransaction = (userId, item) => {
 };
 
 /** Merges optimistic pending items ahead of remote rows, filtered and deduplicated by id. */
-export const mergePendingTransactions = (remote, pending, { type = "all", startDate, endDate } = {}) => {
+export const mergePendingTransactions = (remote, pending, { type = "all", category = "all", startDate, endDate, sortBy } = {}) => {
   if (!pending?.length) return remote;
   const startKey = startDate ? coerceDateKey(startDate) : null;
   const endKey = endDate ? coerceDateKey(endDate) : null;
   const seen = new Set(remote.map((item) => item.id));
   const extras = pending.filter((item) => (
     !seen.has(item.id)
+    && (category === "all" || item.category === category)
     && (type === "all" || item.type === type)
     && (!startKey || item.dateKey >= startKey)
     && (!endKey || item.dateKey <= endKey)
   ));
-  return extras.length ? [...extras, ...remote].sort(compareTransactions) : remote;
+  return extras.length ? [...extras, ...remote].sort(transactionComparator(sortBy)) : remote;
 };
 
-const matchesOfflineFilters = (item, { type = "all", startKey, endKey }) => {
-  if (!item) return false;
+const matchesOfflineFilters = (item, { type = "all", category, startKey, endKey }) => {
+  if (!item || (category !== "all" && item.category !== category)) return false;
   if (type !== "all" && item.type !== type) return false;
   const key = item.dateKey || coerceDateKey(item.date);
   if (startKey && key < startKey) return false;
@@ -240,10 +241,10 @@ const matchesOfflineFilters = (item, { type = "all", startKey, endKey }) => {
 };
 
 /** Combines cached server transactions and pending offline writes matching filters, newest first. */
-export const filterOfflineTransactions = (remote = [], pending = [], { type = "all", startDate, endDate } = {}) => {
+export const filterOfflineTransactions = (remote = [], pending = [], { type = "all", category = "all", startDate, endDate, sortBy } = {}) => {
   const startKey = startDate ? coerceDateKey(startDate) : null;
   const endKey = endDate ? coerceDateKey(endDate) : null;
-  const filters = { type, startKey, endKey };
+  const filters = { type, category, startKey, endKey };
   const merged = new Map();
   for (const item of remote) {
     if (matchesOfflineFilters(item, filters)) merged.set(item.id, item);
@@ -251,12 +252,12 @@ export const filterOfflineTransactions = (remote = [], pending = [], { type = "a
   for (const item of pending) {
     if (!merged.has(item.id) && matchesOfflineFilters(item, filters)) merged.set(item.id, item);
   }
-  return Array.from(merged.values()).sort(compareTransactions);
+  return Array.from(merged.values()).sort(transactionComparator(sortBy));
 };
 
 /** Builds a paginated slice from local + pending transactions when the device is offline. */
-export const buildOfflinePage = (remote = [], pending = [], { pageSize = 40, cursor = null, type = "all", startDate, endDate } = {}) => {
-  const rows = filterOfflineTransactions(remote, pending, { type, startDate, endDate });
+export const buildOfflinePage = (remote = [], pending = [], { pageSize = 40, cursor = null, type = "all", category = "all", sortBy, startDate, endDate } = {}) => {
+  const rows = filterOfflineTransactions(remote, pending, { type, category, sortBy, startDate, endDate });
   const offset = typeof cursor === "number" && cursor >= 0 ? cursor : 0;
   const items = rows.slice(offset, offset + pageSize);
   const nextOffset = offset + items.length;
@@ -269,8 +270,8 @@ export const buildOfflinePage = (remote = [], pending = [], { pageSize = 40, cur
 };
 
 /** Computes count and income/expense minor totals locally when offline (or for pending deltas). */
-export const computeOfflineTotals = (remote = [], pending = [], { type = "all", startDate, endDate } = {}) => {
-  const rows = filterOfflineTransactions(remote, pending, { type, startDate, endDate });
+export const computeOfflineTotals = (remote = [], pending = [], { type = "all", category = "all", startDate, endDate, sortBy } = {}) => {
+  const rows = filterOfflineTransactions(remote, pending, { type, category, sortBy, startDate, endDate });
   let incomeMinor = 0;
   let expenseMinor = 0;
   for (const item of rows) {

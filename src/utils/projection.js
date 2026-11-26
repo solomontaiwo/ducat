@@ -95,6 +95,7 @@ export const computeMonthProjection = ({
     projectedBalance: minorToMajor(projectedBalanceMinor),
     remainingRecurringExpense: minorToMajor(remainingRecurring.expenseMinor),
     remainingRecurringIncome: minorToMajor(remainingRecurring.incomeMinor),
+    remainingVariableExpense: minorToMajor(projectedVariableRemainingMinor),
     dailyVariableExpense: minorToMajor(Math.round(dailyVariableMinor)),
   };
 };

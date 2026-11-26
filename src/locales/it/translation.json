@@ -110,6 +110,12 @@
     "sendingVerification": "Invio..."
   },
   "dashboard": {
+    "forecast": {
+      "current": "Saldo del periodo finora",
+      "income": "Entrate ricorrenti attese",
+      "expense": "Addebiti ricorrenti attesi",
+      "variable": "Spese variabili stimate per i prossimi {{days}} giorni"
+    },
     "title": "Panoramica",
     "addTransaction": "Aggiungi movimento",
     "greetingMorning": "Buongiorno, {{name}}",
@@ -333,6 +339,7 @@
     "calcOp": "Operatore {{op}}"
   },
   "transactions": {
+    "tableView": "Vista tabella",
     "title": "Movimenti",
     "loadingTransactions": "Caricamento movimenti...",
     "accessRequired": "Accesso richiesto",
@@ -980,6 +987,12 @@
     "help": "Questa guida"
   },
   "csvImport": {
+    "retryFailed": "Riprova ({{count}})",
+    "checking": "Controllo dei movimenti già presenti…",
+    "historyError": "Impossibile verificare i duplicati. Seleziona di nuovo il file per riprovare.",
+    "limit": "Sono considerate le prime {{count}} righe. Altre {{extra}} sono fuori dal limite.",
+    "outcome": "{{imported}} importati · {{duplicates}} già presenti · {{skipped}} ignorati · {{failed}} da riprovare",
+    "record": "Movimento {{number}}",
     "title": "Importa CSV",
     "summary": "Da banca o foglio di calcolo",
     "description": "Scegli un CSV, verifica le colonne e importa senza duplicati.",

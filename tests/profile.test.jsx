@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
       monthStartDay: 1, defaultType: "last", defaultCategory: null, quickAmounts: [5, 10, 20, 50, 100],
       hiddenCategories: [], categoryOrder: { expense: [], income: [] }, lastBackupAt: null,
     },
+    addTransaction: vi.fn(),
     savePreferences: vi.fn(async () => true),
     notification: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
     navigate: vi.fn(),
@@ -47,6 +48,7 @@ const stable = vi.hoisted(() => ({}));
 vi.mock("../src/context/UnifiedTransactionProvider.jsx", () => {
   const value = {
     isDemo: true, loading: false, transactions: mocks.transactions, recentRevision: 1,
+    addTransaction: mocks.addTransaction,
     fetchAllTransactions: async () => mocks.transactions,
     getTotalTransactionCount: async () => 0, getTransactionTotals: async () => ({}), getFirstTransactionDate: async () => null,
   };
@@ -83,6 +85,7 @@ vi.mock("../src/context/PrivacyProvider.jsx", () => ({
   }),
 }));
 
+import ImportCsvSheet from "../src/components/Profile/ImportCsvSheet.jsx";
 import Profile from "../src/components/Profile/Profile.jsx";
 
 beforeEach(() => {
@@ -185,4 +188,21 @@ describe("Profile", () => {
     fireEvent.click(screen.getByTestId("row-feedback"));
     await waitFor(() => expect(mocks.openExternal).toHaveBeenCalledWith(expect.stringMatching(/^mailto:/)));
   });
+});
+
+it("keeps partial CSV results and retries only failed records with their original IDs", async () => {
+  mocks.addTransaction.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+    .mockRejectedValueOnce(new Error("offline")).mockResolvedValue(true);
+  render(<ImportCsvSheet onClose={vi.fn()} />);
+  const file = new File([""], "movimenti.csv", { type: "text/csv" });
+  file.text = async () => "Data;Descrizione;Importo\n2026-11-03;A;-1\n2026-11-04;B;-2\n2026-11-05;C;-3\ninvalid;D;-4";
+  fireEvent.change(screen.getByLabelText("csvImport.file"), { target: { files: [file] } });
+  fireEvent.click(await screen.findByRole("button", { name: /csvImport.importAction:.*3/ }));
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent('"imported":1'));
+  expect(screen.getByRole("status")).toHaveTextContent('"skipped":1,"failed":2');
+  const initial = mocks.addTransaction.mock.calls.map(([item]) => item);
+  fireEvent.click(screen.getByRole("button", { name: /csvImport.retryFailed/ }));
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent('"imported":3'));
+  expect(mocks.addTransaction.mock.calls.slice(3).map(([item]) => item)).toEqual(initial.slice(1));
+  expect(screen.queryByRole("button", { name: /csvImport.retryFailed/ })).toBeNull();
 });

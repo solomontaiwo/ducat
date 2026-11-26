@@ -21,6 +21,18 @@ const isCount = (call) => call.options?.head === true;
 describe("transaction cache freshness", () => {
   beforeEach(() => { vi.restoreAllMocks(); supabase.reset(); service.invalidateCache(); });
 
+  it("counts matching categories beyond the first 1000 matches and isolates cached totals", async () => {
+    supabase.respond = ({ columns, filters }) => {
+      expect(columns).toBe("type,amount_minor");
+      const category = filters.find(([method, field]) => method === "eq" && field === "category")[2];
+      const offset = filters.find(([method]) => method === "range")[1];
+      if (category === "casa" && !offset) return { data: Array(1000).fill({ type: "expense", amount_minor: 150 }) };
+      return { data: [{ type: "income", amount_minor: 99 }] };
+    };
+    expect(await service.getTotals("owner", { category: "casa" })).toEqual({ count: 1001, incomeMinor: 99, expenseMinor: 150000 });
+    expect(await service.getTotals("owner", { category: "altro" })).toEqual({ count: 1, incomeMinor: 99, expenseMinor: 0 });
+  });
+
   it("orders transactions with the same civil date by a stable secondary key", () => {
     const sameDay = (id) => ({ id, date: new Date("2026-09-06T00:00:00Z") });
     expect([sameDay("b"), sameDay("a")].sort(compareTransactions).map((item) => item.id)).toEqual(["b", "a"]);

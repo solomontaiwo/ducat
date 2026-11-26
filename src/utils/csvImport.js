@@ -223,10 +223,11 @@ export const mapCsvRowsToTransactions = (
 
   const seenInBatch = new Map();
   const valid = [];
+  const recordNumbers = new Map();
   let skipped = 0;
   let duplicates = 0;
 
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
     const dateKey = mapping.date >= 0 ? parseFlexibleDateKey(row[mapping.date]) : null;
     if (!dateKey) { skipped += 1; continue; }
 
@@ -282,6 +283,8 @@ export const mapCsvRowsToTransactions = (
       continue;
     }
 
+    const clientRequestId = `csv-${dateKey}-${slugHash(`${sig}#${seenCount}`)}`;
+    recordNumbers.set(clientRequestId, index + 1);
     valid.push({
       type: resolvedType,
       amountMinor: amountInfo.amountMinor,
@@ -290,9 +293,9 @@ export const mapCsvRowsToTransactions = (
       category: suggested,
       dateKey,
       date: dateKeyToDate(dateKey),
-      clientRequestId: `csv-${dateKey}-${slugHash(`${sig}#${seenCount}`)}`,
+      clientRequestId,
     });
   }
 
-  return { valid, skipped, duplicates };
+  return { valid, skipped, duplicates, recordNumbers };
 };

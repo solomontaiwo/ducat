@@ -280,17 +280,26 @@ const Dashboard = () => {
                 </div>
               </dl>
               {projection && (
-                <p
-                  data-testid="month-projection"
-                  className="flex items-center justify-between gap-2 border-t border-white/15 pt-3 text-xs font-semibold text-hero-muted"
-                >
-                  <span>{t("dashboard.projectionLabel")}</span>
-                  <span data-amount="true" className="tabular-nums text-hero-foreground">
-                    {projection.projectedBalance < 0
-                      ? formatSignedAmount(projection.projectedBalance, "expense")
-                      : formatCurrency(projection.projectedBalance)}
-                  </span>
-                </p>
+                <details data-testid="month-projection" className="group border-t border-white/15 pt-3 text-sm text-hero-muted">
+                  <summary className="flex cursor-pointer list-none items-center gap-2 rounded font-semibold">
+                    <span className="flex-1">{t("dashboard.projectionLabel")}</span>
+                    <span data-amount="true" className="tabular-nums text-hero-foreground">{formatCurrency(projection.projectedBalance)}</span>
+                    <FiChevronRight aria-hidden="true" className="group-open:rotate-90" />
+                  </summary>
+                  <dl className="mt-3 space-y-2">
+                    {[
+                      ["current", formatCurrency(balance)],
+                      ["income", formatSignedAmount(projection.remainingRecurringIncome, "income")],
+                      ["expense", formatSignedAmount(projection.remainingRecurringExpense, "expense")],
+                      ["variable", formatSignedAmount(projection.remainingVariableExpense, "expense")],
+                    ].map(([key, value]) => (
+                      <div key={key} className="flex flex-wrap justify-between gap-x-2">
+                        <dt>{t(`dashboard.forecast.${key}`, { days: projection.remainingDays })}</dt>
+                        <dd data-amount="true" className="tabular-nums">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </details>
               )}
             </>
           )}
@@ -372,19 +381,22 @@ const Dashboard = () => {
         />
       </section>
 
+      <TransactionModal
+        show={Boolean(editing)}
+        transaction={editing}
+        onClose={() => setEditing(null)}
+        onDelete={() => setDeleteConfirm(true)}
+      />
       {editing && (
-        <>
-          <TransactionModal show transaction={editing} onClose={() => setEditing(null)} onDelete={() => setDeleteConfirm(true)} />
-          <DeleteTransactionDialog
-            open={deleteConfirm}
-            transaction={editing}
-            formatDate={(date) => formatGroupDate(date, i18n.language, t)}
-            getCategoryLabel={(category) => t(`categories.${category}`, { defaultValue: category })}
-            onCancel={() => setDeleteConfirm(false)}
-            onConfirm={confirmDelete}
-            busy={deleting}
-          />
-        </>
+        <DeleteTransactionDialog
+          open={deleteConfirm}
+          transaction={editing}
+          formatDate={(date) => formatGroupDate(date, i18n.language, t)}
+          getCategoryLabel={(category) => t(`categories.${category}`, { defaultValue: category })}
+          onCancel={() => setDeleteConfirm(false)}
+          onConfirm={confirmDelete}
+          busy={deleting}
+        />
       )}
     </div>
     </PullToRefresh>

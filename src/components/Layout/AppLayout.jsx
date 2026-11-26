@@ -34,6 +34,7 @@ const AppLayout = ({ children }) => {
   const { t } = useTranslation();
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const [showAddModal, setShowAddModal] = useState(false);
+  const [hasOpenedAddModal, setHasOpenedAddModal] = useState(false);
   const [addDraft, setAddDraft] = useState(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isSendingVerification, setIsSendingVerification] = useState(false);
@@ -51,6 +52,7 @@ const AppLayout = ({ children }) => {
   const openAddTransaction = useCallback((draft = null) => {
     if (addDisabled) return;
     setAddDraft(draft && typeof draft === "object" && !("nativeEvent" in draft) ? draft : null);
+    setHasOpenedAddModal(true);
     setShowAddModal(true);
   }, [addDisabled]);
   const closeAddModal = useCallback(() => {
@@ -199,9 +201,9 @@ const AppLayout = ({ children }) => {
           </Suspense>
         )}
 
-        {showNavigation && showAddModal && (
+        {showNavigation && hasOpenedAddModal && (
           <Suspense fallback={null}>
-            <TransactionModal show initialDraft={addDraft} onClose={closeAddModal} />
+            <TransactionModal show={showAddModal} initialDraft={addDraft} onClose={closeAddModal} />
           </Suspense>
         )}
         {showNavigation && showShortcuts && (

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { isWithinInterval } from 'date-fns';
+import { transactionComparator } from '../utils/transactionOrder.js';
 import { matchesSearch, MIN_SEARCH_LENGTH } from '../utils/transactionSearch.js';
 
 /**
@@ -19,7 +20,7 @@ export const useTransactionFilter = (
   const isSearching = searchTerm.trim().length >= MIN_SEARCH_LENGTH;
 
   const filteredTransactions = useMemo(() => {
-    const source = isSearching && searchSource ? searchSource : transactions;
+    const source = searchTerm.trim() && searchSource ? searchSource : transactions;
     if (!source || source.length === 0) return [];
 
     const { startDate, endDate } = dateRange;
@@ -35,13 +36,7 @@ export const useTransactionFilter = (
       return true;
     });
 
-    if (sortBy === "amount-desc") {
-      return [...filtered].sort((a, b) => (b.amount - a.amount) || (b.date - a.date));
-    }
-    if (sortBy === "amount-asc") {
-      return [...filtered].sort((a, b) => (a.amount - b.amount) || (b.date - a.date));
-    }
-    return [...filtered].sort((a, b) => b.date - a.date);
+    return filtered.sort(transactionComparator(sortBy));
   }, [transactions, searchSource, isSearching, dateRange, searchTerm, selectedCategory, selectedType, sortBy, getCategoryLabel]);
 
   return {

@@ -15,3 +15,15 @@ it('preserves the complete recurring transaction ID in pagination cursors',async
 it.each(['bad,filter', 'x'.repeat(201), '', 'x)'])('rejects invalid cursor IDs: %s', async (id) => {
  await expect(TransactionService.fetchPage('owner', {cursor:{dateKey:'2026-10-01',id}})).rejects.toMatchObject({code:'invalid-argument'});
 });
+
+it.each([["amount-desc", "lt"], ["amount-asc", "gt"]])("continues %s on amount, date and id within the category", async (sortBy, op) => {
+  const row = { id: "a", date_key: "2026-10-01", type: "expense", amount_minor: 105 };
+  supabase.respond = () => ({ data: [row] });
+  const options = { sortBy, category: "casa", pageSize: 1 };
+  const first = await TransactionService.fetchPage("owner", options);
+  await TransactionService.fetchPage("owner", { ...options, cursor: first.nextCursor });
+  const { filters } = supabase.calls.at(-1);
+  expect(filters).toContainEqual(["eq", "category", "casa"]);
+  expect(filters.filter(([method]) => method === "order").map(([, field]) => field)).toEqual(["amount_minor", "date_key", "id"]);
+  expect(filters).toContainEqual(["or", `amount_minor.${op}.105,and(amount_minor.eq.105,or(date_key.lt.2026-10-01,and(date_key.eq.2026-10-01,id.lt.a)))`]);
+});

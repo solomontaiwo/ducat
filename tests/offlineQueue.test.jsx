@@ -38,6 +38,8 @@ vi.mock("../src/services/transactionService.jsx", () => ({
 }));
 
 import {
+  buildOfflinePage,
+  computeOfflineTotals,
   clearAllOfflineQueues,
   enqueueOfflineTransaction,
   queuedItemToTransaction,
@@ -264,4 +266,15 @@ describe("OfflineNotice", () => {
 
     await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
   });
+});
+
+it("applies the category and amount order to cached and pending rows before offline pagination", () => {
+  const item = (id, category, amount) => ({ id, category, amount, amountMinor: amount * 100, type: "expense", date: new Date(2026, 0, 1) });
+  const cached = [item("small", "casa", 5), item("other", "altro", 200)];
+  const pending = [item("large", "casa", 100), cached[0]];
+  const filters = { category: "casa", sortBy: "amount-desc", pageSize: 1 };
+  const first = buildOfflinePage(cached, pending, filters);
+  expect(first.items.map(row => row.id)).toEqual(["large"]);
+  expect(buildOfflinePage(cached, pending, { ...filters, cursor: first.nextCursor }).items.map(row => row.id)).toEqual(["small"]);
+  expect(computeOfflineTotals(cached, pending, filters)).toEqual({ count: 2, expenseMinor: 10500, incomeMinor: 0 });
 });

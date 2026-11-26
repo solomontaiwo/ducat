@@ -3,7 +3,7 @@ import { emitLocalChange, watchTable } from "./changeEvents.js";
 import { readOffline, writeOffline } from "../utils/offlineCache.js";
 import { transactionV2InputSchema, transactionV2PatchSchema } from "../schemas/transaction.jsx";
 import { DEFAULT_CURRENCY, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
-import { compareTransactions } from "../utils/transactionOrder.js";
+import { compareTransactions, transactionComparator } from "../utils/transactionOrder.js";
 import { coerceDateKey, dateKeyToDate, isDateKey } from "../utils/dateUtils.js";
 import { recurringDraftSchema } from "../schemas/planning.js";
 
@@ -51,17 +51,18 @@ const normalizeRow = (row) => {
   };
 };
 
-const normalizeRows = (rows, onInvalid) => rows.flatMap((row) => {
+const normalizeRows = (rows, onInvalid, compare = compareTransactions) => rows.flatMap((row) => {
   try {
     return [normalizeRow(row)];
   } catch (error) {
     onInvalid?.({ id: row.id, code: "invalid-transaction", error });
     return [];
   }
-}).sort(compareTransactions);
+}).sort(compare);
 
-const applyFilters = (builder, { userId, type = "all", startDate, endDate }) => {
+const applyFilters = (builder, { userId, type = "all", category = "all", startDate, endDate }) => {
   let query = builder.eq("user_id", userId);
+  if (category !== "all") query = query.eq("category", category);
   if (type !== "all") query = query.eq("type", type);
   if (startDate) query = query.gte("date_key", coerceDateKey(startDate));
   if (endDate) query = query.lte("date_key", coerceDateKey(endDate));
@@ -70,9 +71,10 @@ const applyFilters = (builder, { userId, type = "all", startDate, endDate }) => 
 
 const orderNewestFirst = (query) => query.order("date_key", { ascending: false }).order("id", { ascending: false });
 
-const queryKey = ({ userId, type = "all", startDate, endDate }) => [
+const queryKey = ({ userId, type = "all", category = "all", startDate, endDate }) => [
   userId,
   type,
+  category,
   startDate ? coerceDateKey(startDate) : "start",
   endDate ? coerceDateKey(endDate) : "end",
 ].join(":");
@@ -100,10 +102,10 @@ const afterWrite = () => {
 };
 
 /** Every row of a query, fetched in batches. */
-const selectAll = async (filters) => {
+const selectAll = async (filters, columns = COLUMNS) => {
   const rows = [];
   for (let from = 0; ; from += BATCH_SIZE) {
-    const batch = unwrap(await orderNewestFirst(applyFilters(supabase.from(TABLE).select(COLUMNS), filters))
+    const batch = unwrap(await orderNewestFirst(applyFilters(supabase.from(TABLE).select(columns), filters))
       .range(from, from + BATCH_SIZE - 1));
     rows.push(...batch);
     if (batch.length < BATCH_SIZE) return rows;
@@ -206,48 +208,67 @@ export const TransactionService = {
 
   fetchAll: (userId, options = {}) => TransactionService.fetchRange(userId, options),
 
-  /** Keyset pagination, newest first. The cursor is the last row returned. */
-  fetchPage: async (userId, { pageSize = DEFAULT_PAGE_SIZE, cursor = null, onInvalid, type = "all", startDate, endDate } = {}) => {
-    let query = orderNewestFirst(applyFilters(supabase.from(TABLE).select(COLUMNS), { userId, type, startDate, endDate }));
+  /** Keyset pagination, with date and id as deterministic tie breakers. The cursor is the last row returned. */
+  fetchPage: async (userId, { pageSize = DEFAULT_PAGE_SIZE, cursor = null, onInvalid, type = "all", category = "all", sortBy = "date-desc", startDate, endDate } = {}) => {
+    const byAmount = sortBy === "amount-asc" || sortBy === "amount-desc";
+    let query = applyFilters(supabase.from(TABLE).select(COLUMNS), { userId, type, category, startDate, endDate });
+    if (byAmount) query = query.order("amount_minor", { ascending: sortBy === "amount-asc" });
+    query = orderNewestFirst(query);
     if (cursor !== null) {
       if (!isDateKey(cursor?.dateKey)) throw Object.assign(new Error("Invalid cursor date"), { code: "invalid-argument" });
       const dateKey = cursor.dateKey;
       const id = cursorId(cursor.id);
-      query = query.or(`date_key.lt.${dateKey},and(date_key.eq.${dateKey},id.lt.${id})`);
+      const older = `date_key.lt.${dateKey},and(date_key.eq.${dateKey},id.lt.${id})`;
+      if (byAmount) {
+        const amount = cursor.amountMinor;
+        if (!Number.isSafeInteger(amount) || amount <= 0) throw Object.assign(new Error("Invalid cursor amount"), { code: "invalid-argument" });
+        const op = sortBy === "amount-asc" ? "gt" : "lt";
+        query = query.or(`amount_minor.${op}.${amount},and(amount_minor.eq.${amount},or(${older}))`);
+      } else {
+        query = query.or(older);
+      }
     }
     const rows = unwrap(await query.limit(pageSize));
     const last = rows.at(-1);
     return {
-      items: normalizeRows(rows, onInvalid),
-      nextCursor: last ? { dateKey: String(last.date_key).slice(0, 10), id: last.id } : null,
+      items: normalizeRows(rows, onInvalid, transactionComparator(sortBy)),
+      nextCursor: last ? { dateKey: String(last.date_key).slice(0, 10), id: last.id, ...(byAmount && { amountMinor: Number(last.amount_minor) }) } : null,
       hasMore: rows.length === pageSize,
     };
   },
 
   /**
-   * Count and sums for a period computed by the database, so the summary is
+   * Count and sums for the complete filtered period, so the summary is
    * right even when only the first page is loaded.
    */
   getTotals: async (userId, options = {}) => {
-    const { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, type = "all", startDate, endDate } = options;
-    const key = queryKey({ userId, type, startDate, endDate });
+    const { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, type = "all", category = "all", startDate, endDate } = options;
+    const key = queryKey({ userId, type, category, startDate, endDate });
     const cached = totalsCache.get(key);
     if (!forceRefresh && cached && Date.now() - cached.cachedAt < ttlMs) return cached.totals;
 
     const load = () => dedupe(`totals:${key}`, async () => {
       const revision = cacheRevision;
-      const rows = unwrap(await supabase.rpc("transaction_totals", {
-        p_type: type,
-        p_start: startDate ? coerceDateKey(startDate) : null,
-        p_end: endDate ? coerceDateKey(endDate) : null,
-      }));
+      let totals;
+      if (category === "all") {
+        const rows = unwrap(await supabase.rpc("transaction_totals", {
+          p_type: type,
+          p_start: startDate ? coerceDateKey(startDate) : null,
+          p_end: endDate ? coerceDateKey(endDate) : null,
+        }));
+        const row = (Array.isArray(rows) ? rows[0] : rows) || {};
+        totals = { count: Number(row.count || 0), incomeMinor: Number(row.income_minor || 0), expenseMinor: Number(row.expense_minor || 0) };
+      } else {
+        // The installed totals RPC has no category argument. Read only the
+        // two accounting columns, including matches beyond the first page.
+        const rows = await selectAll({ userId, type, category, startDate, endDate }, "type,amount_minor");
+        totals = { count: rows.length, incomeMinor: 0, expenseMinor: 0 };
+        for (const row of rows) {
+          if (row.type === "income") totals.incomeMinor += Number(row.amount_minor);
+          else totals.expenseMinor += Number(row.amount_minor);
+        }
+      }
       if (revision !== cacheRevision) return load();
-      const row = (Array.isArray(rows) ? rows[0] : rows) || {};
-      const totals = {
-        count: Number(row.count || 0),
-        incomeMinor: Number(row.income_minor || 0),
-        expenseMinor: Number(row.expense_minor || 0),
-      };
       totalsCache.set(key, { totals, cachedAt: Date.now() });
       return totals;
     });
@@ -255,8 +276,8 @@ export const TransactionService = {
   },
 
   getTotalCount: async (userId, options = {}) => {
-    const { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, type = "all", startDate, endDate } = options;
-    const key = queryKey({ userId, type, startDate, endDate });
+    const { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, type = "all", category = "all", startDate, endDate } = options;
+    const key = queryKey({ userId, type, category, startDate, endDate });
     const cached = countCache.get(key);
     if (!forceRefresh && cached && Date.now() - cached.cachedAt < ttlMs) return cached.count;
 
@@ -264,7 +285,7 @@ export const TransactionService = {
       const revision = cacheRevision;
       const response = await applyFilters(
         supabase.from(TABLE).select("id", { count: "exact", head: true }),
-        { userId, type, startDate, endDate }
+        { userId, type, category, startDate, endDate }
       );
       if (response.error) throw toDataError(response.error);
       if (revision !== cacheRevision) return load();

@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { useCategories } from "../../utils/categories.jsx";
-import { useNotification } from "../../utils/notificationUtils.jsx";
 import { detectCsvColumns, mapCsvRowsToTransactions, parseCsvText } from "../../utils/csvImport.js";
 import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { Button } from "../ui/button";
@@ -17,20 +16,24 @@ const MAX_IMPORT_ROWS = 500;
 
 const ImportCsvSheet = ({ onClose }) => {
   const { t } = useTranslation();
-  const { addTransaction, fetchAllTransactions, transactions: recent } = useUnifiedTransactions();
+  const { addTransaction, fetchAllTransactions } = useUnifiedTransactions();
   const { expenseCategories, incomeCategories } = useCategories();
-  const notification = useNotification();
   const [csv, setCsv] = useState(null);
   const [mapping, setMapping] = useState({ date: -1, description: -1, amount: -1, debit: -1, credit: -1, category: -1, type: -1 });
-  const [existing, setExisting] = useState(recent);
+  const [existing, setExisting] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState(null);
+  const [checking, setChecking] = useState(false);
+  const saving = useRef(false);
   const requestRef = useRef(0);
 
   const chooseFile = async (event) => {
     const req = ++requestRef.current;
     const file = event.target.files?.[0];
+    setResult(null);
+    setChecking(false);
     setCsv(null);
     setError("");
     if (!file) return;
@@ -43,13 +46,23 @@ const ImportCsvSheet = ({ onClose }) => {
         setError(t("csvImport.empty"));
         return;
       }
-      setCsv(parsed);
-      setMapping(detectCsvColumns(parsed.headers));
-      fetchAllTransactions().then((all) => {
-        if (req === requestRef.current && Array.isArray(all)) setExisting(all);
-      }).catch(() => {});
+      setChecking(true);
+      try {
+        const history = await fetchAllTransactions();
+        if (req !== requestRef.current) return;
+        setExisting(history);
+        setCsv(parsed);
+        setMapping(detectCsvColumns(parsed.headers));
+      } catch {
+        if (req === requestRef.current) {
+          event.target.value = "";
+          setError(t("csvImport.historyError"));
+        }
+      }
     } catch {
       if (req === requestRef.current) setError(t("csvImport.invalid"));
+    } finally {
+      if (req === requestRef.current) setChecking(false);
     }
   };
 
@@ -65,22 +78,24 @@ const ImportCsvSheet = ({ onClose }) => {
   const setCol = (field, value) => setMapping((prev) => ({ ...prev, [field]: Number(value) }));
 
   const runImport = async () => {
-    if (!preview?.valid.length || busy) return;
+    const batch = result?.failed ?? preview?.valid;
+    if (!batch?.length || saving.current) return;
+    saving.current = true;
     setBusy(true);
     setProgress(0);
-    let imported = 0;
+    const failed = [];
     try {
-      for (let i = 0; i < preview.valid.length; i += 1) {
-        const ok = await addTransaction(preview.valid[i], { silent: true });
-        if (ok) imported += 1;
-        setProgress(Math.round(((i + 1) / preview.valid.length) * 100));
+      for (const [index, item] of batch.entries()) {
+        try {
+          if (!await addTransaction(item, { silent: true })) failed.push(item);
+        } catch {
+          failed.push(item);
+        }
+        setProgress(Math.round(((index + 1) / batch.length) * 100));
       }
-      notification.success(t("csvImport.success", { count: imported }));
-      onClose();
-    } catch (err) {
-      console.error("CSV import failed", err);
-      notification.error(t("csvImport.failed"));
+      setResult({ imported: (result?.imported ?? 0) + batch.length - failed.length, failed });
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
@@ -88,7 +103,7 @@ const ImportCsvSheet = ({ onClose }) => {
   const renderColumnPicker = (field, label) => (
     <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
       {label}
-      <Select value={String(mapping[field])} onChange={(event) => setCol(field, event.target.value)} disabled={busy}>
+      <Select value={String(mapping[field])} onChange={(event) => setCol(field, event.target.value)} disabled={busy || Boolean(result)}>
         <option value="-1">—</option>
         {(csv?.headers || []).map((header, index) => (
           <option key={`${header}-${index}`} value={String(index)}>{header || `#${index + 1}`}</option>
@@ -104,9 +119,11 @@ const ImportCsvSheet = ({ onClose }) => {
       title={t("csvImport.title")}
       description={t("csvImport.description")}
       footer={(
-        <Button size="lg" className="w-full" onClick={runImport} disabled={!preview?.valid.length || busy}>
-          {busy ? t("csvImport.importing", { progress }) : t("csvImport.importAction", { count: preview?.valid.length || 0 })}
-        </Button>
+        result && !result.failed.length
+          ? <Button size="lg" className="w-full" onClick={onClose}>{t("common.close")}</Button>
+          : <Button size="lg" className="w-full" onClick={runImport} disabled={!preview?.valid.length || busy}>
+              {busy ? t("csvImport.importing", { progress }) : result ? t("csvImport.retryFailed", { count: result.failed.length }) : t("csvImport.importAction", { count: preview?.valid.length || 0 })}
+            </Button>
       )}
     >
       <div className="space-y-4">
@@ -115,7 +132,8 @@ const ImportCsvSheet = ({ onClose }) => {
           <Input id="csv-import-file" type="file" accept=".csv,text/csv,text/plain" onChange={chooseFile} disabled={busy} />
         </div>
 
-        {csv && (
+        {checking && <p role="status">{t("csvImport.checking")}</p>}
+        {csv && !result && (
           <div className="grid grid-cols-2 gap-3">
             {renderColumnPicker("date", t("transactionModal.date"))}
             {renderColumnPicker("description", t("transactionModal.description"))}
@@ -124,7 +142,20 @@ const ImportCsvSheet = ({ onClose }) => {
           </div>
         )}
 
-        {preview && (
+        {csv?.rows.length > MAX_IMPORT_ROWS && <p className="text-sm">{t("csvImport.limit", { count: MAX_IMPORT_ROWS, extra: csv.rows.length - MAX_IMPORT_ROWS })}</p>}
+        {result && (
+          <div className="space-y-3 text-sm">
+            <p role="status" className="font-semibold">{t("csvImport.outcome", { imported: result.imported, duplicates: preview.duplicates, skipped: preview.skipped, failed: result.failed.length })}</p>
+            {result.failed.length > 0 && <ul className="divide-y divide-border">
+              {result.failed.map(item => (
+                <li key={item.clientRequestId} className="py-2">
+                  {t("csvImport.record", { number: preview.recordNumbers.get(item.clientRequestId) })} · {item.dateKey} · {item.description} · {formatSignedAmount(item.amount, item.type)}
+                </li>
+              ))}
+            </ul>}
+          </div>
+        )}
+        {preview && !result && (
           <div className="space-y-2 rounded-2xl border border-border p-3.5 text-sm">
             <p className="font-semibold" role="status">
               {t("csvImport.readySummary", { ready: preview.valid.length, duplicates: preview.duplicates, skipped: preview.skipped })}

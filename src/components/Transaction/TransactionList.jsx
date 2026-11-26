@@ -7,7 +7,8 @@ import TransactionForm from "./TransactionForm.jsx";
 import SwipeableTransactionCard from "./SwipeableTransactionCard.jsx";
 import TransactionActionsDialog from "./TransactionActionsDialog.jsx";
 import DeleteTransactionDialog from "./DeleteTransactionDialog.jsx";
-import { compareTransactions } from "../../utils/transactionOrder.js";
+import { readLocalValue, writeLocalValue } from "../../utils/storage.js";
+import { transactionComparator } from "../../utils/transactionOrder.js";
 import { formatGroupDate as formatGroupDateLabel, formatRowDate, groupNetAmount, groupTransactionsByDate } from "../../utils/transactionGrouping.js";
 import { groupTransactionsByMonth, mergeTransactions } from "../../utils/transactionSearch.js";
 import { FiCheckSquare, FiChevronDown, FiCopy, FiSearch, FiTrash2, FiX } from "react-icons/fi";
@@ -27,6 +28,7 @@ import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
 import PullToRefresh from "../ui/PullToRefresh.jsx";
 import { useOptionalLocation } from "../../router/RouterProvider";
 
+const EMPTY_ROWS = [];
 const TYPE_FILTERS = ["all", "expense", "income"];
 
 const parseMonthParam = (value) => {
@@ -74,6 +76,18 @@ const TransactionList = () => {
   const [actionTransaction, setActionTransaction] = useState(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const hasSidebar = useMediaQuery({ minWidth: 768 });
+  const [preferTable, setPreferTable] = useState(() => readLocalValue("ducat-transaction-view") === "table");
+  const [tableFits, setTableFits] = useState(false);
+  const measureList = useCallback((node) => {
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      const fontSize = parseFloat(getComputedStyle(node).fontSize);
+      setTableFits(entry.contentRect.width >= 40 * fontSize);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
   const [bulkBusy, setBulkBusy] = useState(false);
 
   const [allLoadedTransactions, setAllLoadedTransactions] = useState([]);
@@ -88,7 +102,7 @@ const TransactionList = () => {
   const [reloadKey, setReloadKey] = useState(0);
   const pageRevisionRef = useRef(0);
   const loadingMoreRef = useRef(false);
-  const hasLoadedPageRef = useRef(false);
+  const loadedPageKey = useRef(null);
 
   const routerLocation = useOptionalLocation();
   const routeSearch = routerLocation ? routerLocation.search : (typeof window !== "undefined" ? window.location.search : "");
@@ -110,13 +124,14 @@ const TransactionList = () => {
   // Refresh the full-history search snapshot after every transaction revision.
   const [historyIndex, setHistoryIndex] = useState(null);
   const [historyRevision, setHistoryRevision] = useState(null);
+  const [historyScope, setHistoryScope] = useState(null);
   const [historyOwner, setHistoryOwner] = useState(null);
   const userId = currentUser?.uid;
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [removedIds, setRemovedIds] = useState(() => new Set());
   // Deletes are optimistic: an id stays here while the undo toast is open, so
   // it must be hidden from the list source too (not only from the merged history).
-  const baseTransactions = isDemo || (!hasLoadedPageRef.current && allLoadedTransactions.length === 0)
+  const baseTransactions = isDemo || (!loadedPageKey.current && allLoadedTransactions.length === 0)
     ? transactions
     : allLoadedTransactions;
   const visibleTransactions = useMemo(
@@ -129,7 +144,7 @@ const TransactionList = () => {
   }, [isDemo, visibleTransactions, historyIndex, historyOwner, userId, historyRevision, recentRevision, transactions, removedIds]);
 
   const {
-    filteredTransactions,
+    filteredTransactions: matchingTransactions,
     searchTerm,
     setSearchTerm,
     isSearching,
@@ -150,6 +165,18 @@ const TransactionList = () => {
     }
   );
 
+  const hasSearch = Boolean(searchTerm.trim());
+  const searchScope = isSearching ? "history" : `${startDate.getTime()}:${endDate.getTime()}`;
+  const historyReady = historyOwner === userId && historyRevision === recentRevision && historyScope === searchScope;
+  const pageFilters = useMemo(() => ({
+    startDate, endDate, category: selectedCategory, type: selectedType,
+  }), [startDate, endDate, selectedCategory, selectedType]);
+
+  const pageKey = JSON.stringify([userId, +startDate, +endDate, selectedType, selectedCategory, sortBy]);
+  const pageReady = loadedPageKey.current === pageKey;
+  const resultsReady = isDemo || (hasSearch ? historyReady : pageReady);
+  const filteredTransactions = resultsReady ? matchingTransactions : EMPTY_ROWS;
+
   // Apply drill-down query parameters if the user navigates here again with new filters.
   const appliedSearchRef = useRef(routeSearch);
   const setMonth = monthRange.setMonth;
@@ -164,17 +191,22 @@ const TransactionList = () => {
   }, [routeSearch, setSelectedType, setSelectedCategory, setMonth]);
 
   useEffect(() => {
-    if (!isSearching || isDemo || !userId) {
+    if (!hasSearch || isDemo || !userId) {
       setIsLoadingHistory(false);
       return undefined;
     }
-    if (historyIndex && historyOwner === userId && historyRevision === recentRevision) return undefined;
+    if (historyIndex && historyReady) {
+      setIsLoadingHistory(false);
+      return undefined;
+    }
     let cancelled = false;
     setIsLoadingHistory(true);
-    fetchAllTransactions({ forceRefresh: true })
+    setLoadError("");
+    fetchAllTransactions({ forceRefresh: true, ...(!isSearching && { startDate, endDate }) })
       .then((data) => {
         if (!cancelled) {
           setHistoryIndex(data);
+          setHistoryScope(searchScope);
           setHistoryOwner(userId);
           setHistoryRevision(recentRevision);
           setIsLoadingHistory(false);
@@ -183,14 +215,14 @@ const TransactionList = () => {
       .catch(() => { if (!cancelled) setLoadError(t("transactions.loadError")); })
       .finally(() => { if (!cancelled) setIsLoadingHistory(false); });
     return () => { cancelled = true; };
-  }, [isSearching, isDemo, userId, historyIndex, historyOwner, historyRevision, recentRevision, reloadKey, fetchAllTransactions, t]);
+  }, [hasSearch, isSearching, isDemo, userId, historyIndex, historyReady, searchScope, startDate, endDate, recentRevision, reloadKey, fetchAllTransactions, t]);
 
   useEffect(() => {
     let cancelled = false;
     const fetchCount = async () => {
       try {
         if (currentUser && !isDemo) {
-          const count = await getTotalTransactionCount({ startDate, endDate, type: selectedType });
+          const count = await getTotalTransactionCount(pageFilters);
           if (!cancelled) setTotalTransactionCount(count);
         } else if (isDemo) {
           setTotalTransactionCount(transactions.length);
@@ -201,20 +233,20 @@ const TransactionList = () => {
     };
     fetchCount();
     return () => { cancelled = true; };
-  }, [currentUser, isDemo, getTotalTransactionCount, transactions, startDate, endDate, selectedType, recentRevision, reloadKey, t]);
+  }, [currentUser, isDemo, getTotalTransactionCount, transactions, pageFilters, recentRevision, reloadKey, t]);
 
-  // Exact totals for the whole period, computed by the database.
+  // Keep totals attached to the filters that produced them while the next request runs.
   useEffect(() => {
     let cancelled = false;
     setServerTotals(null);
     if (!currentUser || isDemo || !getTransactionTotals) return undefined;
-    getTransactionTotals({ startDate, endDate, type: selectedType })
-      .then((totals) => { if (!cancelled) setServerTotals(totals); })
-      .catch(() => { if (!cancelled) setServerTotals(null); });
+    getTransactionTotals(pageFilters)
+      .then((totals) => { if (!cancelled) setServerTotals({ owner: userId, filters: pageFilters, values: totals }); })
+      .catch(() => { if (!cancelled) setLoadError(t("transactions.countLoadError")); });
     return () => { cancelled = true; };
-  }, [currentUser, isDemo, getTransactionTotals, startDate, endDate, selectedType, recentRevision, reloadKey]);
+  }, [currentUser, isDemo, getTransactionTotals, pageFilters, recentRevision, reloadKey, t, userId]);
 
-  // Reset to the first deterministic date-ordered page whenever the realtime
+  // Reset to the first page in the selected order whenever the realtime
   // stream changes. This prevents stale cross-device deletions from surviving
   // in an independently merged history.
   useEffect(() => {
@@ -222,12 +254,13 @@ const TransactionList = () => {
     pageRevisionRef.current += 1;
     loadingMoreRef.current = false;
     setIsLoadingMore(false);
+    setIsLoadingAll(false);
     setHasMore(false);
     setPageCursor(null);
     const loadFirstPage = async () => {
       if (isDemo) {
         setAllLoadedTransactions(transactions);
-        hasLoadedPageRef.current = true;
+        loadedPageKey.current = pageKey;
         setHasMore(false);
         return;
       }
@@ -238,10 +271,10 @@ const TransactionList = () => {
       setIsLoadingInitial(true);
       setLoadError("");
       try {
-        const page = await fetchTransactionPage({ pageSize: 40, startDate, endDate, type: selectedType });
+        const page = await fetchTransactionPage({ pageSize: 40, ...pageFilters, sortBy });
         if (cancelled) return;
         setAllLoadedTransactions(page.items);
-        hasLoadedPageRef.current = true;
+        loadedPageKey.current = pageKey;
         setPageCursor(page.nextCursor);
         setHasMore(page.hasMore);
       } catch (error) {
@@ -254,21 +287,21 @@ const TransactionList = () => {
     };
     loadFirstPage();
     return () => { cancelled = true; pageRevisionRef.current += 1; };
-  }, [currentUser, fetchTransactionPage, isDemo, recentRevision, reloadKey, transactions, startDate, endDate, selectedType, t]);
+  }, [currentUser, fetchTransactionPage, isDemo, recentRevision, reloadKey, transactions, pageFilters, pageKey, sortBy, t]);
 
   const handleLoadMore = useCallback(async () => {
-    if (loadingMoreRef.current || isLoadingInitial || !hasMore) return;
+    if (!pageReady || loadingMoreRef.current || isLoadingInitial || !hasMore) return;
     const revision = pageRevisionRef.current;
     loadingMoreRef.current = true;
     setIsLoadingMore(true);
     setLoadError("");
     try {
-      const page = await fetchTransactionPage({ pageSize: 40, cursor: pageCursor, startDate, endDate, type: selectedType });
+      const page = await fetchTransactionPage({ pageSize: 40, cursor: pageCursor, ...pageFilters, sortBy });
       if (revision !== pageRevisionRef.current) return;
       setAllLoadedTransactions((previous) => {
         const merged = new Map(previous.map((item) => [item.id, item]));
         page.items.forEach((item) => merged.set(item.id, item));
-        return Array.from(merged.values()).sort(compareTransactions);
+        return Array.from(merged.values()).sort(transactionComparator(sortBy));
       });
       setPageCursor(page.nextCursor);
       setHasMore(page.hasMore);
@@ -280,11 +313,11 @@ const TransactionList = () => {
         setIsLoadingMore(false);
       }
     }
-  }, [fetchTransactionPage, hasMore, isLoadingInitial, pageCursor, startDate, endDate, selectedType, t]);
+  }, [fetchTransactionPage, hasMore, isLoadingInitial, pageReady, pageCursor, pageFilters, sortBy, t]);
 
-  /** Loads every remaining page of the current period (search and category filters need them). */
+  /** Loads the remaining pages using the active filters and ordering. */
   const handleLoadAll = useCallback(async () => {
-    if (loadingMoreRef.current || isLoadingInitial || !hasMore) return;
+    if (!pageReady || loadingMoreRef.current || isLoadingInitial || !hasMore) return;
     const revision = pageRevisionRef.current;
     loadingMoreRef.current = true;
     setIsLoadingAll(true);
@@ -292,12 +325,12 @@ const TransactionList = () => {
     let cursor = pageCursor;
     try {
       for (;;) {
-        const page = await fetchTransactionPage({ pageSize: 200, cursor, startDate, endDate, type: selectedType });
+        const page = await fetchTransactionPage({ pageSize: 200, cursor, ...pageFilters, sortBy });
         if (revision !== pageRevisionRef.current) return;
         setAllLoadedTransactions((previous) => {
           const merged = new Map(previous.map((item) => [item.id, item]));
           page.items.forEach((item) => merged.set(item.id, item));
-          return Array.from(merged.values()).sort(compareTransactions);
+          return Array.from(merged.values()).sort(transactionComparator(sortBy));
         });
         cursor = page.nextCursor;
         setPageCursor(page.nextCursor);
@@ -312,7 +345,7 @@ const TransactionList = () => {
         setIsLoadingAll(false);
       }
     }
-  }, [fetchTransactionPage, hasMore, isLoadingInitial, pageCursor, startDate, endDate, selectedType, t]);
+  }, [fetchTransactionPage, hasMore, isLoadingInitial, pageReady, pageCursor, pageFilters, sortBy, t]);
 
   const sentinelRef = useRef(null);
 
@@ -330,16 +363,16 @@ const TransactionList = () => {
     return () => {
       if (currentRef) observer.unobserve(currentRef);
     };
-  }, [hasMore, isLoadingMore, isDemo, allLoadedTransactions.length, handleLoadMore]);
+  }, [hasSearch, hasMore, isLoadingMore, isDemo, allLoadedTransactions.length, handleLoadMore]);
 
   // Keep the side panel in sync with the list (edits, deletions, period changes).
   useEffect(() => {
     if (!selectedTransaction) return;
-    if (isSearching && !isDemo && historyOwner === userId && historyRevision !== recentRevision) return;
-    const fresh = (isSearching ? searchSource : allLoadedTransactions).find((item) => item.id === selectedTransaction.id);
+    if (hasSearch && !isDemo && !historyReady) return;
+    const fresh = (hasSearch ? searchSource : allLoadedTransactions).find((item) => item.id === selectedTransaction.id);
     if (!fresh) setSelectedTransaction(null);
     else if (fresh !== selectedTransaction) setSelectedTransaction(fresh);
-  }, [allLoadedTransactions, isSearching, isDemo, searchSource, selectedTransaction, historyOwner, userId, historyRevision, recentRevision]);
+  }, [allLoadedTransactions, hasSearch, isDemo, searchSource, selectedTransaction, historyReady]);
 
   const loading = authLoading || (isLoadingInitial && allLoadedTransactions.length === 0 && transactions.length === 0);
 
@@ -422,11 +455,12 @@ const TransactionList = () => {
 
   const categories = useMemo(() => {
     const source = allLoadedTransactions.length > 0 ? allLoadedTransactions : transactions;
-    const values = new Set(source.map((item) => item.category));
+    const values = new Set([...expenseCategories, ...incomeCategories].map((item) => item.value));
+    source.forEach((item) => values.add(item.category));
     if (selectedCategory && selectedCategory !== "all") values.add(selectedCategory);
     return [...values].sort((first, second) =>
       getCategoryLabel(first).localeCompare(getCategoryLabel(second)));
-  }, [allLoadedTransactions, transactions, selectedCategory, getCategoryLabel]);
+  }, [allLoadedTransactions, transactions, selectedCategory, getCategoryLabel, expenseCategories, incomeCategories]);
 
   const saveEdit = useCallback(async (target, payload) => {
     const success = await updateTransaction(target.id, payload);
@@ -518,12 +552,11 @@ const TransactionList = () => {
     },
     { income: 0, expense: 0 }
   ), [filteredTransactions]);
-  // Server totals cover the whole period; local ones are needed when text or
-  // category filters narrow the list (applied on the loaded rows).
-  const useServerTotals = !isDemo && serverTotals && !searchTerm && selectedCategory === "all";
-  const totals = useServerTotals
-    ? { count: serverTotals.count, income: serverTotals.incomeMinor / 100, expense: serverTotals.expenseMinor / 100 }
-    : { count: filteredTransactions.length, ...loadedTotals };
+  const completeLocalRows = isDemo || (hasSearch ? historyReady : !hasMore && !isLoadingInitial && pageReady && !loadError);
+  const exact = serverTotals?.filters === pageFilters && serverTotals.owner === userId ? serverTotals.values : null;
+  const totals = !isDemo && !hasSearch && exact
+    ? { count: exact.count, income: exact.incomeMinor / 100, expense: exact.expenseMinor / 100 }
+    : completeLocalRows ? { count: filteredTransactions.length, ...loadedTotals } : null;
 
   const handleRefresh = useCallback(async () => {
     if (isDemo || !currentUser) return;
@@ -572,7 +605,7 @@ const TransactionList = () => {
   return (
     <PullToRefresh onRefresh={handleRefresh} disabled={loading} className="workspace-width">
     <div className="flex w-full gap-6">
-      <div className="min-w-0 flex-1 space-y-4">
+      <div ref={measureList} className="min-w-0 flex-1 space-y-4">
         {loadError && (
           <div role="alert" className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
             <span>{loadError}</span>
@@ -670,6 +703,12 @@ const TransactionList = () => {
               <FiCheckSquare className="h-3.5 w-3.5" aria-hidden="true" />
               {t("transactions.bulk.select")}
             </button>
+            {tableFits && (
+              <button type="button" className="chip hidden md:inline-flex" aria-pressed={preferTable} onClick={() => {
+                setPreferTable(!preferTable);
+                writeLocalValue("ducat-transaction-view", preferTable ? "list" : "table");
+              }}>{t("transactions.tableView")}</button>
+            )}
             {hasFilters && (
               <button
                 type="button"
@@ -732,23 +771,23 @@ const TransactionList = () => {
         <div className="surface grid grid-cols-3 divide-x divide-border py-3 text-center">
           <div className="px-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("transactions.summary.label")}</p>
-            <p className="amount text-base sm:text-lg">{totals.count}</p>
+            <p className="amount text-base sm:text-lg">{totals?.count ?? "—"}</p>
           </div>
           <div className="px-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("dashboard.income")}</p>
-            <p className="amount truncate text-base text-income sm:text-lg">{formatSignedAmount(totals.income, "income")}</p>
+            <p className="amount truncate text-base text-income sm:text-lg">{totals ? formatSignedAmount(totals.income, "income") : "—"}</p>
           </div>
           <div className="px-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("dashboard.expenses")}</p>
-            <p className="amount truncate text-base sm:text-lg">{formatSignedAmount(totals.expense, "expense")}</p>
+            <p className="amount truncate text-base sm:text-lg">{totals ? formatSignedAmount(totals.expense, "expense") : "—"}</p>
           </div>
         </div>
-        {!isSearching && (isDemo || (totalTransactionCount > 0 && allLoadedTransactions.length < totalTransactionCount)) && (
+        {!hasSearch && (isDemo || (totalTransactionCount > 0 && allLoadedTransactions.length < totalTransactionCount)) && (
           <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs font-medium text-muted-foreground">
             <p>
               {isDemo
                 ? t("navbar.demoBadge", { count: demoCount, max: maxTransactions })
-                : (searchTerm || selectedCategory !== "all") ? t("transactions.partialResults") : t("transactions.loadedOfTotal")}
+                : t("transactions.loadedOfTotal")}
               {!isDemo && <span className="ml-1 tabular-nums">{allLoadedTransactions.length} / {totalTransactionCount}</span>}
             </p>
             {!isDemo && hasMore && (
@@ -760,7 +799,33 @@ const TransactionList = () => {
         )}
 
         <div className="space-y-5 pb-6">
-          {filteredTransactions.length > 0 && isAmountSorted ? (
+          {hasSidebar && tableFits && preferTable && filteredTransactions.length > 0 ? (
+            <div className="surface overflow-hidden">
+              <table className="w-full text-left text-sm">
+                <caption className="sr-only">{t("transactions.title")}</caption>
+                <thead className="bg-muted text-muted-foreground"><tr>
+                  {["date", "description", "category", "amount"].map(key => (
+                    <th key={key} scope="col" className={cn("px-3 py-2", key === "amount" && "text-right")}>{t(`transactionModal.${key}`)}</th>
+                  ))}
+                </tr></thead>
+                <tbody className="divide-y divide-border">
+                  {filteredTransactions.map(item => {
+                    const selected = selectionMode ? selectedIds.has(item.id) : selectedTransaction?.id === item.id;
+                    return (
+                      <tr key={item.id} className={cn("cursor-pointer hover:bg-muted/60", selected && "bg-accent")} onClick={() => handleSelect(item)}>
+                        <td className="whitespace-nowrap px-3 py-2">{item.date.toLocaleDateString(i18n.language)}</td>
+                        <td className="px-3 py-2"><button type="button" className="text-left font-semibold [overflow-wrap:anywhere]" aria-pressed={Boolean(selected)}>{item.description}</button>
+                          {item.pendingSync && <span className="block text-xs text-warning-strong">{t("offline.pendingBadge")}</span>}
+                        </td>
+                        <td className="px-3 py-2">{getCategoryLabel(item.category)}</td>
+                        <td className={cn("amount whitespace-nowrap px-3 py-2 text-right", item.type === "income" && "text-income")}>{formatSignedAmount(item.amount, item.type)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : filteredTransactions.length > 0 && isAmountSorted ? (
             <section aria-label={t("transactions.sort.label")} className="surface divide-y divide-border overflow-hidden px-2">
               {filteredTransactions.map((transaction) => (
                 <SwipeableTransactionCard
@@ -799,6 +864,8 @@ const TransactionList = () => {
                 </section>
               );
             })
+          ) : !resultsReady ? (
+            !loadError && <p role="status" className="py-6 text-center text-sm text-muted-foreground">{t("loading")}</p>
           ) : (
             <div className="surface px-6 py-12 text-center">
               <h2 className="text-lg font-bold">{t("transactions.empty.title")}</h2>
@@ -808,7 +875,7 @@ const TransactionList = () => {
             </div>
           )}
 
-          {!isSearching && hasMore && !isDemo && allLoadedTransactions.length > 0 && (
+          {!hasSearch && hasMore && !isDemo && allLoadedTransactions.length > 0 && (
             <div ref={sentinelRef} className="flex justify-center py-6">
               {isLoadingMore && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

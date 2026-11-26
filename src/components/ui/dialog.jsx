@@ -12,7 +12,7 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-40 bg-foreground/30 dark:bg-black/60 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-100 motion-reduce:animate-none",
+      "dialog-overlay fixed inset-0 z-40 bg-foreground/30 dark:bg-black/60 backdrop-blur-[2px] motion-reduce:animate-none",
       className
     )}
     {...props}
@@ -23,9 +23,9 @@ DialogOverlay.propTypes = { className: PropTypes.string };
 
 /**
  * DialogContent supports an optional `variant` prop:
- *   - "default" – centered modal (existing behaviour)
- *   - "sheet"    – full-screen on mobile (fixed inset-0), centered modal on sm+
- *   - "bottom"   – bottom sheet on mobile, centered modal on sm+
+ *   - "default" – centered modal
+ *   - "sheet"   – full-screen sheet on mobile, centered modal on sm+
+ *   - "bottom"  – bottom sheet on mobile, centered modal on sm+
  */
 const DialogContent = React.forwardRef(({ className, children, variant = "default", ...props }, ref) => {
   const { t } = useTranslation();
@@ -35,29 +35,25 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "text-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-150 motion-reduce:animate-none",
+        "text-foreground motion-reduce:animate-none",
         // ── bottom sheet variant ───────────────────────────────────────────
         variant === "bottom" && [
-          "glass-thick fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-[30px] border-0 outline-none",
+          "dialog-motion-sheet glass-thick fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-[30px] border-0 outline-none",
           "pb-[env(safe-area-inset-bottom)] dialog-safe-x",
-          "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-[92vw] sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[28px] sm:pb-0",
+          "sm:inset-0 sm:m-auto sm:h-fit sm:max-h-[85vh] sm:w-[92vw] sm:max-w-md sm:rounded-[28px] sm:pb-0",
         ],
         // ── sheet variant ──────────────────────────────────────────────────
         variant === "sheet" && [
-          // Mobile: full-screen modal covering the entire viewport; pad top for iOS notch/status bar
-          "fixed inset-0 z-50 w-full rounded-none border-0 outline-none",
+          // Mobile: full-screen modal sliding up from the bottom; pad top for iOS notch/status bar
+          "dialog-motion-sheet fixed inset-0 z-50 w-full rounded-none border-0 outline-none",
           "[padding-top:env(safe-area-inset-top)] sm:pt-0 dialog-safe-x",
           "glass-thick",
-          // Keep the full form visible immediately; only the backdrop fades.
-          // Desktop (sm+): switch to centred modal
-          "sm:inset-x-auto sm:inset-y-auto sm:left-1/2 sm:top-1/2",
-          "sm:-translate-x-1/2 sm:-translate-y-1/2",
-          "sm:w-[92vw] sm:max-w-lg",
-          "sm:rounded-[28px]",
+          // Desktop (sm+): centred via inset-0 + margin:auto so transform stays free for animations
+          "sm:m-auto sm:h-fit sm:w-[92vw] sm:max-w-lg sm:rounded-[28px]",
         ],
         // ── default variant ────────────────────────────────────────────────
         variant === "default" && [
-          "fixed left-1/2 top-1/2 z-50 grid w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 gap-4",
+          "dialog-motion-center fixed inset-0 z-50 m-auto grid h-fit max-h-[90vh] w-[92vw] max-w-2xl gap-4 overflow-y-auto",
           "glass-thick p-5 sm:p-6",
           "rounded-[28px]",
         ],
