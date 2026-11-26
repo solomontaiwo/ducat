@@ -8,6 +8,15 @@ export default {
   ],
   theme: {
     extend: {
+      screens: {
+        // Content wide enough for two dashboard columns but below `lg`: a
+        // phone layout from 600px (iPhone Duo inner screen in portrait) and the
+        // sidebar layout from 900px (inner screen in landscape).
+        cols2: { raw: "(min-width: 600px) and (max-width: 767.98px), (min-width: 900px) and (max-width: 1023.98px)" },
+        // Short phone-class screens (iPhone Duo outer and inner landscape,
+        // phones in landscape): tighter vertical rhythm. Listed last so it wins.
+        short: { raw: "(max-height: 740px) and (max-width: 1023.98px)" },
+      },
       fontFamily: {
         sans: ["Figtree Variable", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
         display: ["Bricolage Grotesque Variable", "Figtree Variable", "ui-sans-serif", "system-ui", "sans-serif"],

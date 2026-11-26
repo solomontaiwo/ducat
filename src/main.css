@@ -203,7 +203,37 @@
       radial-gradient(50vmax 50vmax at 115% 45%, hsl(var(--ambient-2)), transparent 60%);
   }
   .page-shell {
-    @apply mx-auto w-full max-w-6xl space-y-5 md:space-y-6;
+    @apply mx-auto w-full max-w-6xl space-y-5 md:space-y-6 short:space-y-4;
+  }
+  /*
+   * App frame. Every edge honours the safe area: besides the notch and the
+   * home indicator, the iPhone Duo keeps its camera and status cluster in the
+   * top-right corner, and phones in landscape inset the sides.
+   */
+  .app-main {
+    padding-top: calc(env(safe-area-inset-top) + 1rem);
+    padding-left: max(1rem, calc(env(safe-area-inset-left) + 0.5rem));
+    padding-right: max(1rem, calc(env(safe-area-inset-right) + 0.5rem));
+  }
+  .app-sidebar {
+    top: max(1rem, calc(env(safe-area-inset-top) + 0.5rem));
+    bottom: max(1rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+    left: calc(1rem + env(safe-area-inset-left));
+  }
+  @media (min-width: 768px) {
+    .app-main {
+      /* Sidebar: 232px wide, 16px from the edge, plus the side safe area. */
+      padding-top: max(2rem, calc(env(safe-area-inset-top) + 1rem));
+      padding-left: calc(248px + 2.5rem + env(safe-area-inset-left));
+      padding-right: max(2.5rem, calc(env(safe-area-inset-right) + 1rem));
+      padding-bottom: max(3rem, calc(env(safe-area-inset-bottom) + 1.5rem));
+    }
+  }
+  @media (min-width: 768px) and (max-height: 740px) and (max-width: 1023.98px) {
+    .app-main {
+      padding-top: max(1.25rem, calc(env(safe-area-inset-top) + 0.75rem));
+      padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem));
+    }
   }
   /* Amounts: display face with tabular figures so columns line up. */
   .amount {

@@ -196,6 +196,41 @@ test("pages never scroll horizontally on mobile, even with long descriptions", a
   }
 });
 
+// iPhone Duo: outer screen, and the inner screen in landscape and portrait.
+for (const [name, viewport, columns] of [
+  ["outer screen", { width: 466, height: 678 }, 1],
+  ["inner screen in landscape", { width: 951, height: 669 }, 2],
+  ["inner screen in portrait", { width: 669, height: 951 }, 2],
+]) {
+  test(`iPhone Duo ${name} uses the space without overflowing`, async ({ browser }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "Sets its own viewport: one project is enough");
+    const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true, locale: "it-IT" });
+    const page = await context.newPage();
+    await page.goto(".");
+    await page.evaluate(() => {
+      localStorage.setItem("ducat-demo-enabled", "true");
+      localStorage.setItem("ducat-demo-transactions", JSON.stringify([{
+        id: "duo-income", type: "income", amountMinor: 1263000, currency: "EUR", description: "Stipendio",
+        category: "stipendio", dateKey: new Date().toISOString().slice(0, 10), isSample: false,
+      }]));
+    });
+    await page.goto("dashboard");
+    const summary = page.getByRole("region", { name: /riepilogo|summary/i });
+    await expect(summary).toBeVisible();
+    const money = page.locator("section[aria-labelledby='where-money-goes']");
+    const [a, b] = await Promise.all([summary.boundingBox(), money.boundingBox()]);
+    // Two columns: the cards share a row; one column: they are stacked.
+    expect(Math.abs(a.y - b.y) < 2).toBe(columns === 2);
+    const overflow = await page.evaluate(() => Math.max(0, ...[...document.querySelectorAll("main section, main .surface, .amount")]
+      .map((element) => Math.ceil(element.getBoundingClientRect().right - window.innerWidth))));
+    expect(overflow).toBeLessThanOrEqual(0);
+    // The balance never runs under the privacy toggle next to it.
+    const amount = await summary.locator(".amount").first().evaluate((element) => element.scrollWidth - element.parentElement.clientWidth);
+    expect(amount).toBeLessThanOrEqual(0);
+    await context.close();
+  });
+}
+
 test("a horizontal swipe does not change page on mobile", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Touch gesture regression");
   await page.goto(".");

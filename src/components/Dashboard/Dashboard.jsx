@@ -213,10 +213,10 @@ const Dashboard = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-5">
+      <div className="grid grid-cols-1 gap-4 cols2:grid-cols-2 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-5">
         <section
           aria-label={t("dashboard.summary")}
-          className="flex flex-col gap-5 rounded-3xl bg-hero p-6 text-hero-foreground shadow-[0_12px_32px_rgb(29_78_216/0.25)] dark:border dark:border-white/10 dark:shadow-none sm:p-7"
+          className="flex flex-col gap-5 rounded-3xl bg-hero p-6 text-hero-foreground shadow-[0_12px_32px_rgb(29_78_216/0.25)] dark:border dark:border-white/10 dark:shadow-none sm:p-7 cols2:p-6 short:gap-4 short:p-5"
         >
           {isLoading ? (
             <Skeleton height={150} baseColor="rgba(255,255,255,0.14)" highlightColor="rgba(255,255,255,0.26)" borderRadius={16} />
@@ -225,7 +225,7 @@ const Dashboard = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-1.5">
                   <p className="text-sm font-semibold text-hero-muted">{balanceLabel}</p>
-                  <p className="amount text-[2.75rem] leading-none sm:text-5xl lg:text-[3.5rem]">
+                  <p className="amount text-[2.75rem] leading-none sm:text-5xl lg:text-[3.5rem] cols2:text-[2.25rem] short:text-[2.25rem]">
                     {balance < 0 ? formatSignedAmount(balance, "expense") : formatCurrency(balance)}
                   </p>
                 </div>
@@ -285,7 +285,7 @@ const Dashboard = () => {
 
         <section className="surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="where-money-goes">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 id="where-money-goes" className="text-lg font-bold">{t("dashboard.whereMoneyGoes")}</h2>
+            <h2 id="where-money-goes" className="text-lg font-bold cols2:text-base">{t("dashboard.whereMoneyGoes")}</h2>
             <Link to="/analytics" className="text-sm font-semibold text-primary hover:underline">{t("navbar.analytics")}</Link>
           </div>
           {isLoading ? (
@@ -338,7 +338,7 @@ const Dashboard = () => {
       </div>
 
       {(showUpcoming || hasBudgets) && !isLoading && (
-        <div className={showUpcoming && hasBudgets ? "grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5" : "grid grid-cols-1 gap-4"}>
+        <div className={showUpcoming && hasBudgets ? "grid grid-cols-1 gap-4 cols2:grid-cols-2 lg:grid-cols-2 lg:gap-5" : "grid grid-cols-1 gap-4"}>
           {showUpcoming && <UpcomingCard />}
           {hasBudgets && <BudgetCard breakdown={stats?.categoryBreakdown || {}} isCurrentMonth={isCurrentMonth} startDate={startDate} endDate={endDate} monthParam={monthParam} />}
         </div>

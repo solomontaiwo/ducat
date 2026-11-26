@@ -127,7 +127,7 @@ const AppLayout = ({ children }) => {
         <main
           className={
             showNavigation
-              ? `relative flex-1 overflow-x-clip px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:pl-[calc(248px+2.5rem)] md:pr-10 md:pt-8 md:pb-12 ${isMobile ? "app-content-safe-mobile" : ""}`
+              ? `app-main relative flex-1 overflow-x-clip ${isMobile ? "app-content-safe-mobile" : ""}`
               : "relative flex-1 overflow-x-clip p-0"
           }
         >

@@ -44,7 +44,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
   const demoCount = transactions.filter((item) => !item.isSample).length;
 
   return (
-    <aside className="glass fixed bottom-4 left-4 top-4 z-30 flex w-[232px] flex-col gap-6 rounded-[28px] px-3.5 pb-4 pt-5">
+    <aside className="app-sidebar glass fixed z-30 flex w-[232px] flex-col gap-6 rounded-[28px] px-3.5 pb-4 pt-5 short:gap-4 short:pt-4">
       <Link to="/" className="flex items-center gap-2.5 rounded-xl px-2 py-1">
         <img src={logo} alt="" width="34" height="34" className="h-[34px] w-[34px] rounded-[11px]" />
         <span className="font-display text-[19px] font-extrabold tracking-tight">{t("appName")}</span>

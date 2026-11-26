@@ -30,7 +30,7 @@ const BottomNavigation = ({ onAdd, addDisabled = false }) => {
   return (
     <nav
       aria-label={t("navbar.mainNavigation")}
-      className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(env(safe-area-inset-bottom),12px)]"
+      className="fixed inset-x-0 bottom-0 z-40 pb-[max(env(safe-area-inset-bottom),12px)] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
     >
       <div className="mx-auto flex max-w-md items-center gap-2.5">
         <div
