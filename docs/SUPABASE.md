@@ -70,17 +70,17 @@ L'app desktop e quella iOS usano gli stessi link web (`VITE_DESKTOP_WEB_URL`, pr
 
 **Authentication → Emails → SMTP Settings**
 
-Il servizio email incluso consegna solo agli indirizzi del team del progetto e con un limite molto basso: per gli utenti veri serve un SMTP proprio (Ducat usa Resend con il dominio `ducatapp.com`). Dopo averlo configurato, alza il limite in **Authentication → Rate Limits** (es. 30 email/ora).
+Il servizio email incluso consegna solo agli indirizzi del team del progetto e con un limite molto basso: per gli utenti veri serve un SMTP proprio (Ducat usa Resend con il sottodominio `mail.ducatapp.com`, ad esempio `noreply@mail.ducatapp.com`, così da non confliggere con Cloudflare Email Routing su `ducatapp.com`). Dopo averlo configurato, alza il limite in **Authentication → Rate Limits** (es. 30 email/ora).
 
 **Authentication → Emails → Templates**
 
-I modelli sono in `supabase/templates/`, in italiano e inglese: l'app salva la lingua dell'utente in `user_metadata.lang` e il modello sceglie il testo (italiano se manca). Copia il contenuto di ogni file nel campo "Message body" (Source):
+I modelli sono in `supabase/templates/`, in italiano e inglese: l'app salva la lingua dell'utente in `user_metadata.lang` e il modello sceglie il testo (italiano se manca). Sia il campo **Subject** sia **Message body (Source)** supportano le variabili Go di Supabase:
 
-| Template | File | Oggetto |
+| Template | File | Oggetto (`Subject`) |
 |---|---|---|
-| Confirm signup | `confirm-signup.html` | `Conferma il tuo account · Confirm your account` |
-| Reset password | `reset-password.html` | `Reimposta la password · Reset your password` |
-| Change email address | `change-email.html` | `Conferma il nuovo indirizzo · Confirm your new email` |
+| Confirm signup | `confirm-signup.html` | `{{ if and .Data.lang (eq .Data.lang "en") }}Confirm your Ducat account{{ else }}Conferma il tuo account Ducat{{ end }}` |
+| Reset password | `reset-password.html` | `{{ if and .Data.lang (eq .Data.lang "en") }}Reset your Ducat password{{ else }}Reimposta la password di Ducat{{ end }}` |
+| Change email address | `change-email.html` | `{{ if and .Data.lang (eq .Data.lang "en") }}Confirm your new Ducat email{{ else }}Conferma il nuovo indirizzo email di Ducat{{ end }}` |
 
 ## 4. Chiavi
 

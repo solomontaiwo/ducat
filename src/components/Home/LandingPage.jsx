@@ -1,12 +1,14 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
-import { FiAward, FiCalendar, FiCheck, FiFileText, FiMinus, FiMoon, FiSearch } from "react-icons/fi";
+import { FiAward, FiCalendar, FiCheck, FiDownload, FiExternalLink, FiFileText, FiMinus, FiMonitor, FiMoon, FiSearch, FiSmartphone } from "react-icons/fi";
 import { Link, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { Button } from "../ui/button";
 import { CategoryBadge } from "../Transaction/TransactionRow.jsx";
+import { useAppDownloads } from "../../utils/appDownloads.js";
+import { useInstallPrompt } from "../../utils/installPrompt.js";
 import { cn } from "../../lib/utils.js";
 
 const logo = `${import.meta.env.BASE_URL}icon-192.png`;
@@ -81,6 +83,8 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const [startingDemo, setStartingDemo] = useState(false);
   const { t } = useTranslation();
+  const downloads = useAppDownloads();
+  const install = useInstallPrompt();
 
   const handleStartDemo = () => {
     setStartingDemo(true);
@@ -103,6 +107,9 @@ const LandingPage = () => {
         <nav className="hidden items-center gap-6 text-[15px] font-semibold text-foreground/75 md:flex" aria-label={t("landing.sections")}>
           <button type="button" onClick={() => scrollTo("how")} className="hover:text-foreground">{t("landing.how.title")}</button>
           <button type="button" onClick={() => scrollTo("compare")} className="hover:text-foreground">{t("landing.compare.title")}</button>
+          {downloads.available && (
+            <button type="button" onClick={() => scrollTo("download")} className="hover:text-foreground">{t("landing.download.nav")}</button>
+          )}
         </nav>
         <Button variant="ghost" className="rounded-full" onClick={() => navigate("/login")}>{t("landing.login")}</Button>
         <Button className="hidden rounded-full md:inline-flex" onClick={() => navigate("/register")}>{t("landing.register")}</Button>
@@ -128,6 +135,39 @@ const LandingPage = () => {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">{t("landing.demoNote")}</p>
+            {downloads.available && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-sm" data-testid="landing-device-download">
+                {downloads.primary ? (
+                  <>
+                    <a
+                      href={downloads.primary.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 font-semibold text-primary underline-offset-4 hover:underline"
+                    >
+                      <FiDownload className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      {t(`landing.download.heroCta.${downloads.primary.platform}`)}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => scrollTo("download")}
+                      className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                      {t("landing.download.allPlatforms")}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => scrollTo("download")}
+                    className="inline-flex items-center gap-1.5 font-semibold text-primary underline-offset-4 hover:underline"
+                  >
+                    <FiDownload className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    {t("landing.download.availableLink")}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div className="animate-page-in px-4 sm:px-10">
             <ProductPreview />
@@ -201,6 +241,99 @@ const LandingPage = () => {
             </div>
           </div>
         </section>
+
+        {downloads.available && (
+          <section id="download" className="scroll-mt-24 space-y-6" aria-labelledby="download-title">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="space-y-1.5">
+                <h2 id="download-title" className="text-3xl font-extrabold sm:text-4xl">{t("landing.download.title")}</h2>
+                <p className="max-w-2xl text-[15px] text-muted-foreground sm:text-base">{t("landing.download.subtitle")}</p>
+              </div>
+              {downloads.version && (
+                <span className="rounded-full bg-accent px-3 py-1 text-xs font-bold tabular-nums text-accent-foreground">
+                  v{downloads.version}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {[
+                { key: "macos", icon: FiMonitor, href: downloads.macosUrl, external: true },
+                { key: "windows", icon: FiMonitor, href: downloads.windowsUrl, external: true },
+                { key: "ios", icon: FiSmartphone, href: downloads.iosUrl, external: true },
+              ].map(({ key, icon: Icon, href }) => {
+                const current = downloads.platform === key;
+                return (
+                  <div
+                    key={key}
+                    className={cn(
+                      "surface flex flex-col justify-between gap-5 p-5 sm:p-6",
+                      current && "border-primary/50 ring-1 ring-primary/30"
+                    )}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground" aria-hidden="true">
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        {current && (
+                          <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold text-accent-foreground">
+                            {t("landing.download.thisDevice")}
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-display text-lg font-bold">{t(`landing.download.${key}.title`)}</h3>
+                        <p className="text-sm text-muted-foreground">{t(`landing.download.${key}.meta`)}</p>
+                      </div>
+                    </div>
+                    {href ? (
+                      <Button
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant={current ? "default" : "outline"}
+                        className="w-full rounded-full"
+                      >
+                        <FiDownload className="h-4 w-4" aria-hidden="true" />
+                        {t(`landing.download.${key}.action`)}
+                      </Button>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <span className="inline-flex h-10 w-full items-center justify-center rounded-full border border-border bg-muted/60 px-4 text-sm font-semibold text-muted-foreground">
+                          {t("landing.download.ios.pending")}
+                        </span>
+                        {current && install.needsManualSteps && (
+                          <p className="text-xs text-muted-foreground">{t("landing.download.ios.safariHint")}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+              <a
+                href={downloads.releasesUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground hover:underline"
+              >
+                {t("landing.download.allReleases")}
+                <FiExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+              {install.canPrompt && (
+                <button
+                  type="button"
+                  onClick={() => install.install()}
+                  className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline"
+                >
+                  <FiSmartphone className="h-4 w-4" aria-hidden="true" />
+                  {t("landing.download.installWeb")}
+                </button>
+              )}
+            </div>
+          </section>
+        )}
 
         <section
           className="surface flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:gap-6 sm:p-8"

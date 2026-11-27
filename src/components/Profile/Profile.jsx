@@ -21,12 +21,13 @@ import Sheet from "../ui/sheet";
 import Switch from "../ui/switch";
 import BackButton from "../Planning/BackButton.jsx";
 import { SettingsGroup, SettingsRow, InlineSegmented } from "./SettingsList.jsx";
-import { CategoriesSheet, EmailSheet, ExportSheet, InstallSheet, MonthStartSheet, NameSheet, PasswordSheet, QuickAddSheet } from "./ProfileSheets.jsx";
+import { CategoriesSheet, DownloadAppSheet, EmailSheet, ExportSheet, InstallSheet, MonthStartSheet, NameSheet, PasswordSheet, QuickAddSheet } from "./ProfileSheets.jsx";
 import UpdateChecker from "../Update/UpdateChecker";
 import { downloadJson } from "../../utils/accountExport.js";
 import { deleteCurrentAccount } from "../../services/accountService.js";
 import { removeLocalValue } from "../../utils/storage.js";
 import { loadEnglish } from "../../utils/loadEnglish.js";
+import { useAppDownloads } from "../../utils/appDownloads.js";
 import { useInstallPrompt } from "../../utils/installPrompt.js";
 import { useCategories } from "../../utils/categories.jsx";
 import { calculateStats } from "../../utils/statsUtils.jsx";
@@ -146,6 +147,7 @@ const Profile = () => {
   const summary = useAccountSummary();
   const budgetStatus = useBudgetStatus();
   const [sheet, setSheet] = useState(null);
+  const downloads = useAppDownloads({ enabled: sheet === "downloadApp" });
   const [backingUp, setBackingUp] = useState(false);
   const [togglingBiometric, setTogglingBiometric] = useState(false);
   const showRemindersToggle = isMobile();
@@ -503,6 +505,20 @@ const Profile = () => {
             />
             <SettingsRow icon={FiUpload} tone="blue" title={t("backupRestore.title")} subtitle={t("backupRestore.rowSummary")} onClick={() => setSheet("restore")} />
             <UpdateChecker />
+            {downloads.available && (
+              <SettingsRow
+                icon={FiDownload}
+                tone="blue"
+                title={downloads.primary
+                  ? t("profilePage.downloadApp.titleFor", { device: t(`landing.download.${downloads.primary.platform}.title`) })
+                  : t("profilePage.downloadApp.title")}
+                subtitle={downloads.primary
+                  ? t(`profilePage.downloadApp.summary${downloads.primary.platform.charAt(0).toUpperCase()}${downloads.primary.platform.slice(1)}`)
+                  : t("profilePage.downloadApp.summary")}
+                onClick={() => setSheet("downloadApp")}
+                testId="row-download-app"
+              />
+            )}
             {(install.canPrompt || install.needsManualSteps) && (
               <SettingsRow icon={FiSmartphone} title={t("profilePage.install.title")} subtitle={t("profilePage.install.summary")} onClick={installApp} />
             )}
@@ -577,6 +593,9 @@ const Profile = () => {
       <CategoriesSheet open={sheet === "categories"} onClose={close} />
       <ExportSheet open={sheet === "export"} onClose={close} firstDate={summary?.firstDate || undefined} />
       <InstallSheet open={sheet === "install"} onClose={close} />
+      {downloads.available && (
+        <DownloadAppSheet open={sheet === "downloadApp"} onClose={close} downloads={downloads} />
+      )}
       {sheet === "restore" && <Suspense fallback={null}><RestoreBackupSheet onClose={close} /></Suspense>}
       {sheet === "importCsv" && <Suspense fallback={null}><ImportCsvSheet onClose={close} /></Suspense>}
       {ACCOUNT_DELETION_ENABLED && (

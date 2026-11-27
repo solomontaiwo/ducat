@@ -676,3 +676,84 @@ export const InstallSheet = ({ open, onClose }) => {
 };
 
 InstallSheet.propTypes = { open: PropTypes.bool.isRequired, onClose: PropTypes.func.isRequired };
+
+/* ── Download native apps (web only) ──────────────────────────────────── */
+export const DownloadAppSheet = ({ open, onClose, downloads }) => {
+  const { t } = useTranslation();
+  const platforms = [
+    { key: "macos", href: downloads.macosUrl },
+    { key: "windows", href: downloads.windowsUrl },
+    { key: "ios", href: downloads.iosUrl },
+  ];
+  const sorted = [...platforms].sort((a, b) => Number(b.key === downloads.platform) - Number(a.key === downloads.platform));
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title={t("profilePage.downloadApp.title")}
+      description={t("profilePage.downloadApp.description")}
+      className="sm:max-w-md"
+    >
+      <div className="space-y-2.5">
+        {sorted.map(({ key, href }) => {
+          const current = downloads.platform === key;
+          return (
+            <div
+              key={key}
+              className={cn(
+                "flex items-center justify-between gap-3 rounded-2xl border bg-card p-3.5",
+                current ? "border-primary/50 ring-1 ring-primary/25" : "border-border"
+              )}
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold">{t(`landing.download.${key}.title`)}</span>
+                  {current && (
+                    <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-foreground">
+                      {t("landing.download.thisDevice")}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{t(`landing.download.${key}.meta`)}</p>
+              </div>
+              {href ? (
+                <Button
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="sm"
+                  variant={current ? "default" : "outline"}
+                  className="shrink-0 rounded-full"
+                >
+                  {t(`landing.download.${key}.action`)}
+                </Button>
+              ) : (
+                <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
+                  {t("landing.download.ios.pending")}
+                </span>
+              )}
+            </div>
+          );
+        })}
+        <p className="pt-1 text-center text-xs text-muted-foreground">
+          <a href={downloads.releasesUrl} target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-foreground hover:underline">
+            {t("landing.download.allReleases")}
+          </a>
+        </p>
+      </div>
+    </Sheet>
+  );
+};
+
+DownloadAppSheet.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  downloads: PropTypes.shape({
+    platform: PropTypes.string,
+    macosUrl: PropTypes.string,
+    windowsUrl: PropTypes.string,
+    iosUrl: PropTypes.string,
+    releasesUrl: PropTypes.string,
+  }).isRequired,
+};

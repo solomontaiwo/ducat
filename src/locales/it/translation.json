@@ -172,6 +172,38 @@
       "title": "Il primo movimento ti prende 3 secondi.",
       "demo": "oppure prova la demo →"
     },
+    "download": {
+      "nav": "App",
+      "title": "Scarica Ducat",
+      "subtitle": "Usala subito dal browser oppure installa l’app dedicata per il tuo dispositivo.",
+      "thisDevice": "Questo dispositivo",
+      "heroCta": {
+        "macos": "Scarica per macOS (.dmg)",
+        "windows": "Scarica per Windows (.exe)",
+        "ios": "Prova su TestFlight (iOS)"
+      },
+      "availableLink": "Disponibile per macOS, Windows e iOS",
+      "allPlatforms": "Tutte le piattaforme",
+      "allReleases": "Tutte le versioni su GitHub",
+      "installWeb": "Installa come app web",
+      "macos": {
+        "title": "macOS",
+        "meta": "Apple Silicon · file .dmg",
+        "action": "Scarica .dmg"
+      },
+      "windows": {
+        "title": "Windows",
+        "meta": "Windows 10/11 · installer .exe",
+        "action": "Scarica .exe"
+      },
+      "ios": {
+        "title": "iPhone e iPad",
+        "meta": "iOS, iPadOS e iPhone Duo · TestFlight",
+        "action": "Apri su TestFlight",
+        "pending": "Beta su TestFlight",
+        "safariHint": "In alternativa, da Safari: Condividi → Aggiungi alla schermata Home."
+      }
+    },
     "name": {
       "title": "Perché si chiama Ducat",
       "body": "Il ducato è la moneta d’oro che Venezia coniò dal 1284 e che per secoli fu la valuta dei commerci nel Mediterraneo. Il nome viene dal latino ducatus, «ducato»: la moneta del doge, fatta per viaggiare e per essere amministrata con cura."
@@ -710,6 +742,17 @@
       "step1": "Tocca il pulsante Condividi in basso",
       "step2": "Scegli «Aggiungi alla schermata Home»",
       "step3": "Conferma con «Aggiungi»"
+    },
+    "downloadApp": {
+      "title": "Scarica l'app",
+      "titleFor": "Scarica per {{device}}",
+      "summary": "macOS (.dmg), Windows (.exe) e iOS (TestFlight)",
+      "summaryMacos": "App desktop per Apple Silicon (.dmg)",
+      "summaryWindows": "Installer desktop per Windows (.exe)",
+      "summaryIos": "App iPhone e iPad su TestFlight",
+      "description": "Scegli la versione di Ducat per questo o un altro dispositivo.",
+      "recommended": "Consigliata per questo dispositivo",
+      "otherPlatforms": "Altre piattaforme"
     },
     "feedback": {
       "title": "Invia feedback",

@@ -27,11 +27,15 @@ const buttonVariants = cva(
   }
 );
 
-export function Button({ className, variant, size, type = "button", ...props }) {
+export function Button({ className, variant, size, type = "button", href, ...props }) {
+  const classes = cn(buttonVariants({ variant, size }), className);
+  if (href) {
+    return <a href={href} className={classes} {...props} />;
+  }
   return (
     <button
       type={type}
-      className={cn(buttonVariants({ variant, size }), className)}
+      className={classes}
       {...props}
     />
   );
@@ -42,4 +46,5 @@ Button.propTypes = {
   variant: PropTypes.oneOf(["default", "secondary", "ghost", "outline", "destructive"]),
   size: PropTypes.oneOf(["default", "sm", "lg", "icon"]),
   type: PropTypes.oneOf(["button", "submit", "reset"]),
+  href: PropTypes.string,
 };

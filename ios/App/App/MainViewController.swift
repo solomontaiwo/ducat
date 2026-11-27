@@ -131,7 +131,7 @@ class MainViewController: CAPBridgeViewController {
         let occlusionBottom = topRightOcclusions.map { $0.frame.maxY }.max()
 
         let rightInset = max(barInsets.right, occlusionRight)
-        let leftInset = max(barInsets.left, 16)
+        let leftInset = max(barInsets.left, 24)
 
         // Only activate when the top bar has a strongly asymmetric right-only
         // status cluster (iPhone Duo inner screen in portrait) with ample room
@@ -143,7 +143,7 @@ class MainViewController: CAPBridgeViewController {
         let safeTop = view.safeAreaInsets.top
         let rawHeight = max(occlusionBottom ?? 0, safeTop, 64)
         let barHeight = max(64, min(88, Int(round(rawHeight))))
-        let topPad = max(14, min(26, Int(round(occlusionTop ?? max(CGFloat(barHeight) - 48, 16)))))
+        let topPad = max(18, min(28, Int(round(occlusionTop ?? max(CGFloat(barHeight) - 46, 18)))))
         let rightPad = Int(ceil(rightInset)) + 8
         let leftPad = Int(ceil(leftInset))
 

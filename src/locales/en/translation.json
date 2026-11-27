@@ -172,6 +172,38 @@
       "title": "Your first movement takes 3 seconds.",
       "demo": "or try the demo →"
     },
+    "download": {
+      "nav": "Apps",
+      "title": "Download Ducat",
+      "subtitle": "Use it right in the browser or install the native app for your device.",
+      "thisDevice": "This device",
+      "heroCta": {
+        "macos": "Download for macOS (.dmg)",
+        "windows": "Download for Windows (.exe)",
+        "ios": "Try on TestFlight (iOS)"
+      },
+      "availableLink": "Available for macOS, Windows and iOS",
+      "allPlatforms": "All platforms",
+      "allReleases": "All releases on GitHub",
+      "installWeb": "Install as web app",
+      "macos": {
+        "title": "macOS",
+        "meta": "Apple Silicon · .dmg package",
+        "action": "Download .dmg"
+      },
+      "windows": {
+        "title": "Windows",
+        "meta": "Windows 10/11 · .exe installer",
+        "action": "Download .exe"
+      },
+      "ios": {
+        "title": "iPhone and iPad",
+        "meta": "iOS, iPadOS and iPhone Duo · TestFlight",
+        "action": "Open on TestFlight",
+        "pending": "TestFlight beta",
+        "safariHint": "Or from Safari: Share → Add to Home Screen."
+      }
+    },
     "name": {
       "title": "Why Ducat",
       "body": "The ducat is the gold coin Venice first minted in 1284, and for centuries it was the currency of Mediterranean trade. The name comes from Latin ducatus, “duchy”: the duke’s coin, made to travel and to be looked after."
@@ -710,6 +742,17 @@
       "step1": "Tap the Share button at the bottom",
       "step2": "Choose “Add to Home Screen”",
       "step3": "Confirm with “Add”"
+    },
+    "downloadApp": {
+      "title": "Download the app",
+      "titleFor": "Download for {{device}}",
+      "summary": "macOS (.dmg), Windows (.exe) and iOS (TestFlight)",
+      "summaryMacos": "Desktop app for Apple Silicon (.dmg)",
+      "summaryWindows": "Desktop installer for Windows (.exe)",
+      "summaryIos": "iPhone and iPad app on TestFlight",
+      "description": "Pick the Ducat app for this device or another one.",
+      "recommended": "Recommended for this device",
+      "otherPlatforms": "Other platforms"
     },
     "feedback": {
       "title": "Send feedback",

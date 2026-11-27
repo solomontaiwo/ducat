@@ -47,6 +47,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ github.ref != 'refs/heads/dev' && github.base_ref != 'dev' && github.head_ref != 'dev' && secrets.VITE_SUPABASE_URL || 'https://demo-ducat.supabase.co' }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ github.ref != 'refs/heads/dev' && github.base_ref != 'dev' && github.head_ref != 'dev' && secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_demo' }}
+          VITE_IOS_DOWNLOAD_URL: ${{ vars.VITE_IOS_DOWNLOAD_URL }}
 
       - name: Bundle budget
         run: npm run check:bundle
@@ -59,6 +60,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ github.ref != 'refs/heads/dev' && github.base_ref != 'dev' && github.head_ref != 'dev' && secrets.VITE_SUPABASE_URL || 'https://demo-ducat.supabase.co' }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ github.ref != 'refs/heads/dev' && github.base_ref != 'dev' && github.head_ref != 'dev' && secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_demo' }}
+          VITE_IOS_DOWNLOAD_URL: ${{ vars.VITE_IOS_DOWNLOAD_URL }}
 
   deploy-dev:
     name: Deploy dev to Cloudflare
@@ -86,6 +88,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.DEV_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.DEV_SUPABASE_PUBLISHABLE_KEY }}
           VITE_DESKTOP_WEB_URL: https://dev.ducatapp.com/
+          VITE_IOS_DOWNLOAD_URL: ${{ vars.VITE_IOS_DOWNLOAD_URL }}
           VITE_APP_ENV: dev
         run: |
           set -euo pipefail

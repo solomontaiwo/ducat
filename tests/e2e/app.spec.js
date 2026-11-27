@@ -399,6 +399,36 @@ test("iPhone Duo inner screen: the four insight figures share a row without over
   await context.close();
 });
 
+test("landing page offers platform download links on web", async ({ page }) => {
+  await page.route("https://api.github.com/repos/**/releases/latest", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      tag_name: "v4.0.65",
+      assets: [
+        { name: "Ducat-4.0.65-macos-arm64.dmg", browser_download_url: "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-macos-arm64.dmg" },
+        { name: "Ducat-4.0.65-windows-x64-setup.exe", browser_download_url: "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-windows-x64-setup.exe" },
+      ],
+    }),
+  }));
+  await page.goto(".");
+  const section = page.locator("#download");
+  await expect(section).toBeVisible();
+  await expect(section.getByRole("link", { name: /scarica \.dmg|download \.dmg/i })).toHaveAttribute(
+    "href",
+    "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-macos-arm64.dmg"
+  );
+  await expect(section.getByRole("link", { name: /scarica \.exe|download \.exe/i })).toHaveAttribute(
+    "href",
+    "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-windows-x64-setup.exe"
+  );
+  await expect(section.getByRole("link", { name: /testflight/i })).toHaveAttribute(
+    "href",
+    "https://testflight.apple.com/join/C3BV5sCa"
+  );
+  await expect(section.getByRole("link", { name: /github/i })).toHaveAttribute("href", /github\.com\/solomontaiwo\/ducat\/releases\/latest/);
+});
+
 test("numbers align horizontally and vertically across Overview and Insights", async ({ browser }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "Sets its own viewport: one project is enough");
   const fiveCategories = [
