@@ -185,6 +185,27 @@ describe("iOS submission requirements", () => {
     expect(scene).toContain("verticalBarEdge != .unspecified");
   });
 
+  it("signs CI release builds with the App Store profile instead of creating certificates", async () => {
+    const { signReleaseManually, manualExportOptions } = await import("../scripts/ios-release-signing.mjs");
+    const uuid = "12345678-1234-1234-1234-123456789ABC";
+    const signed = signReleaseManually(pbxproj, uuid);
+    // Only the App target's Release configuration changes; Debug stays automatic.
+    expect(signed.match(/CODE_SIGN_STYLE = Manual;/g)).toHaveLength(1);
+    expect(signed.match(/CODE_SIGN_STYLE = Automatic;/g)).toHaveLength(1);
+    expect(signed).toContain(`PROVISIONING_PROFILE_SPECIFIER = "${uuid}";`);
+    expect(signed).toContain('CODE_SIGN_IDENTITY = "Apple Distribution";');
+    expect(() => signReleaseManually("no project here", uuid)).toThrow();
+
+    const options = manualExportOptions(read("ios/ExportOptions.plist"), uuid, "TEAMID1234");
+    expect(options).toMatch(/<key>signingStyle<\/key>\s*<string>manual<\/string>/);
+    expect(options).not.toMatch(/<string>automatic<\/string>/);
+    expect(options).toMatch(/<key>com\.ducatapp\.ducat<\/key>\s*<string>12345678-1234-1234-1234-123456789ABC<\/string>/);
+
+    const workflow = read(".github/workflows/ios.yml");
+    expect(workflow).toContain("node scripts/ios-release-signing.mjs");
+    expect(workflow).not.toContain("-allowProvisioningUpdates");
+  });
+
   it("builds the native pull to refresh and the system app lock check", () => {
     expect(pbxproj).toContain("NativeRefreshPlugin.swift in Sources");
     expect(read("ios/App/App/MainViewController.swift")).toContain("registerPluginInstance(NativeRefreshPlugin())");
