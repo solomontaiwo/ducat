@@ -61,7 +61,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ github.ref != 'refs/heads/dev' && github.base_ref != 'dev' && github.head_ref != 'dev' && secrets.VITE_SUPABASE_URL || 'https://demo-ducat.supabase.co' }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ github.ref != 'refs/heads/dev' && github.base_ref != 'dev' && github.head_ref != 'dev' && secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_demo' }}
-          VITE_ENABLE_ENCRYPTED_VAULT: ${{ vars.VITE_ENABLE_ENCRYPTED_VAULT }}
+          VITE_ENABLE_ENCRYPTED_VAULT: "true"
           VITE_IOS_DOWNLOAD_URL: ${{ vars.VITE_IOS_DOWNLOAD_URL }}
 
   deploy-dev:

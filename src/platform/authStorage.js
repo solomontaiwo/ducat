@@ -10,7 +10,7 @@
 
 import { registerPlugin } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
-import { MOBILE, runtime } from "./index.js";
+import { DESKTOP, MOBILE, runtime } from "./index.js";
 import { readLocalValue } from "../utils/storage.js";
 
 let keychainPlugin = null;
@@ -86,19 +86,43 @@ export const hasStoredAuthSession = async (key) => {
   return Boolean(readLocalValue(key));
 };
 
-// Archive keys must only be remembered when the native Keychain is available.
+const isNativeMac = () => runtime() === DESKTOP && globalThis.navigator?.platform?.startsWith("Mac");
+
+const invokeArchive = async (command, args) => {
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke(command, args);
+};
+
+const removeLegacyArchiveKey = (plugin, uid) => plugin.removeSecret({ key: `ducat-archive-key:${uid}` });
+
 export const archiveKeychain = {
-  async get(uid) {
-    const entry = await getKeychain()?.getSecret({ key: `ducat-archive-key:${uid}` });
+  async status(uid) {
+    const plugin = getKeychain();
+    if (plugin) {
+      // Previous versions remembered a key without user presence. Remove it
+      // without reading it so only the protected entry can unlock an archive.
+      await removeLegacyArchiveKey(plugin, uid);
+      return plugin.archiveKeyStatus({ uid });
+    }
+    if (isNativeMac()) return invokeArchive("archive_key_status", { uid });
+    return { available: false, configured: false };
+  },
+  async get(uid, reason) {
+    const plugin = getKeychain();
+    const entry = plugin ? await plugin.unlockArchiveKey({ uid, reason })
+      : isNativeMac() ? await invokeArchive("unlock_archive_key", { uid }) : null;
     return entry?.value ?? null;
   },
   async set(uid, value) {
     const plugin = getKeychain();
-    if (!plugin) return false;
-    await plugin.setSecret({ key: `ducat-archive-key:${uid}`, value });
+    if (plugin) await plugin.saveArchiveKey({ uid, value });
+    else if (isNativeMac()) await invokeArchive("save_archive_key", { uid, value });
+    else return false;
     return true;
   },
   async remove(uid) {
-    await getKeychain()?.removeSecret({ key: `ducat-archive-key:${uid}` });
+    const plugin = getKeychain();
+    if (plugin) await Promise.all([removeLegacyArchiveKey(plugin, uid), plugin.removeArchiveKey({ uid })]);
+    else if (isNativeMac()) await invokeArchive("remove_archive_key", { uid });
   },
 };

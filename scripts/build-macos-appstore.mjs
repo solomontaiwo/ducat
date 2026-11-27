@@ -75,11 +75,14 @@ const verifyEnvironment = () => {
   if (teamId && !raw.includes(teamId)) {
     throw new Error(`The provisioning profile does not belong to team ${teamId}`);
   }
-  if (!raw.includes(BUNDLE_ID)) {
-    console.warn(`Warning: the provisioning profile does not mention ${BUNDLE_ID}`);
+  const applicationId = execFileSync("plutil", [
+    "-extract", "Entitlements.com\\.apple\\.application-identifier", "raw", "-o", "-", "--", "-",
+  ], { input: raw, encoding: "utf8" }).trim();
+  if (!applicationId.endsWith(`.${BUNDLE_ID}`)) {
+    throw new Error(`The provisioning profile does not authorize ${BUNDLE_ID}`);
   }
 
-  return { signingIdentity, installerIdentity, profile };
+  return { signingIdentity, installerIdentity, profile, applicationId };
 };
 
 const build = () => {
@@ -95,15 +98,21 @@ const build = () => {
   ]);
 };
 
-const signApp = ({ signingIdentity, profile }) => {
+const signApp = ({ signingIdentity, profile, applicationId }) => {
   const profileTarget = join(APP_PATH, "Contents", "embedded.provisionprofile");
   copyFileSync(profile, profileTarget);
+
+  const entitlements = join(OUTPUT_DIR, "Ducat.signed.entitlements");
+  copyFileSync(join(ROOT, "src-tauri", "entitlements", "AppStore.entitlements"), entitlements);
+  // Tauri does not inject the profile's application identifier as Xcode does.
+  // The macOS Data Protection Keychain uses this identifier for the app's items.
+  run("plutil", ["-insert", "com\\.apple\\.application-identifier", "-string", applicationId, entitlements]);
 
   // Tauri already signed the bundle with the same identity; re-sign explicitly
   // so the entitlements and the embedded profile are part of the signature.
   run("codesign", [
     "--force", "--deep", "--timestamp", "--options", "runtime",
-    "--entitlements", join(ROOT, "src-tauri", "entitlements", "AppStore.entitlements"),
+    "--entitlements", entitlements,
     "--sign", signingIdentity,
     APP_PATH,
   ]);
@@ -114,6 +123,7 @@ const signApp = ({ signingIdentity, profile }) => {
 const verifyEntitlements = () => {
   const entitlements = read("codesign", ["--display", "--entitlements", "-", APP_PATH]);
   const required = [
+    "com.apple.application-identifier",
     "com.apple.security.app-sandbox",
     "com.apple.security.network.client",
     "com.apple.security.files.user-selected.read-write",

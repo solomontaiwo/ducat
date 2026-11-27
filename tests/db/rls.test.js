@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 
-import { createVaultKeys, newRecoveryCode, unwrapVaultKey, vaultCrypto } from "../../src/utils/vaultCrypto.js";
+import { createRecoveryVault, createVaultPairing, decryptVaultPairing, createVaultKeys, newRecoveryCode, unwrapVaultKey, vaultCrypto } from "../../src/utils/vaultCrypto.js";
 import { loadVaultAccount, openVault, startVault } from "../../src/services/vaultService.js";
 import { setCurrentVault, vaultRecord } from "../../src/services/vaultSession.js";
 import { TransactionService } from "../../src/services/transactionService.jsx";
@@ -520,6 +520,62 @@ describe("encrypted archive", () => {
       }
     } finally {
       setCurrentVault(null);
+    }
+  });
+
+  it("accepts a recovery-only envelope and rejects a synced PIN or passphrase field", async () => {
+    await asUser(ALICE);
+    const code = newRecoveryCode();
+    const { secret, keys } = await createRecoveryVault(ALICE, code);
+    try {
+      await expect(startVault(ALICE, { ...keys, pin: "123456" })).rejects.toMatchObject({ code: "23514" });
+      await expect(startVault(ALICE, { ...keys, password: "a".repeat(80) })).rejects.toMatchObject({ code: "23514" });
+      expect(await startVault(ALICE, keys)).toBe(true);
+      expect((await loadVaultAccount(ALICE)).keys).toEqual(keys);
+      await expect(unwrapVaultKey(ALICE, keys, "123456")).rejects.toThrow("Unsupported archive credential");
+      await expect(unwrapVaultKey(ALICE, keys, code, true)).resolves.toEqual(secret);
+    } finally {
+      secret.fill(0);
+    }
+  });
+
+  it("authorizes an ephemeral device transfer for the owner and hides expired or consumed requests", async () => {
+    await asUser(ALICE);
+    const { secret, keys } = await createRecoveryVault(ALICE, newRecoveryCode());
+    expect(await startVault(ALICE, keys)).toBe(true);
+    const request = await createVaultPairing();
+    const start = () => db.query("select public.start_vault_pairing($1,$2,$3) as created", [ALICE, request.id, request.publicKey]);
+    expect((await start()).rows[0].created).toBe(false);
+    await db.query("select public.finish_vault($1, 0)", [ALICE]);
+    expect((await start()).rows[0].created).toBe(true);
+    const archive = await openVault(ALICE, secret);
+    try {
+      await archive.initialize(await loadVaultAccount(ALICE));
+      const encrypted = await archive.pairDevice(request.id, request.publicKey);
+      await asUser(BOB);
+      expect((await db.query("select * from public.vault_pairings")).rows).toEqual([]);
+      await expect(start()).rejects.toMatchObject({ code: "42501" });
+      await asUser(ALICE);
+      const approve = (receiver) => db.query("select public.approve_vault_pairing($1,$2,$3,$4,$5) as approved",
+        [ALICE, request.id, receiver, encrypted.sender, encrypted.ciphertext]);
+      expect((await approve((await createVaultPairing()).publicKey)).rows[0].approved).toBe(false);
+      expect((await approve(request.publicKey)).rows[0].approved).toBe(true);
+      expect((await approve(request.publicKey)).rows[0].approved).toBe(false);
+      const [response] = (await db.query("select * from public.vault_pairings")).rows;
+      expect(JSON.stringify(response)).not.toContain(encrypted.confirmation);
+      await expect(decryptVaultPairing(ALICE, request, response, "000000000000")).rejects.toThrow("confirmation");
+      await expect(decryptVaultPairing(ALICE, request, response, encrypted.confirmation)).resolves.toEqual(secret);
+      await db.query("select public.remove_vault_pairing($1,$2)", [ALICE, request.id]);
+      expect((await db.query("select * from public.vault_pairings")).rows).toEqual([]);
+      expect((await start()).rows[0].created).toBe(true);
+      await asAdmin();
+      await db.query("update public.vault_pairings set expires_at = now() - interval '1 second'");
+      await asUser(ALICE);
+      expect((await db.query("select * from public.vault_pairings")).rows).toEqual([]);
+      expect((await approve(request.publicKey)).rows[0].approved).toBe(false);
+    } finally {
+      secret.fill(0);
+      archive.close();
     }
   });
 

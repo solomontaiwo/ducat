@@ -1,5 +1,5 @@
 import { supabase, unwrap } from "../utils/supabaseClient.js";
-import { vaultCrypto } from "../utils/vaultCrypto.js";
+import { decodeBytes, encryptVaultPairing, vaultCrypto } from "../utils/vaultCrypto.js";
 import { readVaultLocal, storeVaultLocal } from "../utils/vaultStorage.js";
 import { clearOfflineForUser } from "../utils/offlineCache.js";
 import { emitLocalChange, watchTable } from "./changeEvents.js";
@@ -26,6 +26,18 @@ export const loadVaultAccount = async (uid) => {
   }
 };
 
+export const vaultAuthSession = async (uid) => {
+  const { data, error } = await supabase.auth.getSession();
+  if (error || data.session?.user?.id !== uid) return null;
+  try {
+    const payload = data.session.access_token.split(".")[1].replaceAll("-", "+").replaceAll("_", "/");
+    const { session_id: id } = JSON.parse(new TextDecoder().decode(decodeBytes(payload)));
+    return typeof id === "string" && id ? id : null;
+  } catch {
+    return null;
+  }
+};
+
 export const watchVaultAccount = (uid, reload) => watchTable({ supabase, table: TABLE, userId: uid, reload, watchDeletes: false });
 
 export const startVault = (uid, keys) => call("start_vault", { p_user: uid, p_keys: keys });
@@ -46,6 +58,8 @@ const readLegacyRecords = async (uid) => {
 
 export const openVault = async (uid, key) => {
   const cryptography = await vaultCrypto(uid, key);
+  const pairingKey = key.slice();
+  let keyVersion;
   const recoverRecord = async (row) => {
     if (row.ciphertext === null) return null;
     const record = await cryptography.open(row.ciphertext, "record", row.id);
@@ -175,8 +189,21 @@ export const openVault = async (uid, key) => {
   return {
     uid,
     isOpen: () => !closed,
-    close() { closed = true; clearRecords(); },
+    close() { closed = true; pairingKey.fill(0); clearRecords(); },
+    canPair: () => !closed && keyVersion === 2,
+    pairDevice: (id, receiver) => run(async () => {
+      if (keyVersion !== 2) throw new Error("Pairing unavailable");
+      const secret = pairingKey.slice();
+      try {
+        const response = await encryptVaultPairing(uid, id, receiver, secret);
+        requireOpen();
+        return response;
+      } finally {
+        secret.fill(0);
+      }
+    }),
     initialize: (account) => run(async () => {
+      keyVersion = account.keys?.v;
       if (account.active) await loadSnapshot();
       await sync({ force: true, offline: account.active });
     }),

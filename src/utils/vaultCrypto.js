@@ -34,8 +34,8 @@ const decrypt = async (key, value, scope) => {
   }, key, payload.subarray(12));
 };
 
-const passphraseKey = async (passphrase, salt) => {
-  const material = await crypto.subtle.importKey("raw", encoder.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+const deriveUnlockKey = async (credential, salt) => {
+  const material = await crypto.subtle.importKey("raw", credential, "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations }, material,
     { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 };
@@ -52,7 +52,7 @@ export const createVaultKeys = async (uid, passphrase, recovery) => {
   const secret = random(32);
   const salt = random(16);
   try {
-    const [passwordKey, codeKey] = await Promise.all([passphraseKey(passphrase, salt), recoveryKey(recovery)]);
+    const [passwordKey, codeKey] = await Promise.all([deriveUnlockKey(encoder.encode(passphrase), salt), recoveryKey(recovery)]);
     const [password, fallback] = await Promise.all([
       encrypt(passwordKey, secret, context(uid, "wrap-password")),
       encrypt(codeKey, secret, context(uid, "wrap-recovery")),
@@ -64,10 +64,60 @@ export const createVaultKeys = async (uid, passphrase, recovery) => {
 };
 
 export const unwrapVaultKey = async (uid, keys, credential, recovery = false) => {
-  if (keys?.v !== 1) throw new Error("Unsupported archive version");
-  const key = recovery ? await recoveryKey(credential) : await passphraseKey(credential, decodeBytes(keys.salt));
+  if (keys?.v !== 1 && !(keys?.v === 2 && recovery)) throw new Error("Unsupported archive credential");
+  const key = recovery ? await recoveryKey(credential) : await deriveUnlockKey(encoder.encode(credential), decodeBytes(keys.salt));
   const wrapped = recovery ? keys.recovery : keys.password;
   return new Uint8Array(await decrypt(key, wrapped, context(uid, recovery ? "wrap-recovery" : "wrap-password")));
+};
+
+export const createRecoveryVault = async (uid, recovery) => {
+  const secret = random(32);
+  try {
+    const encrypted = await encrypt(await recoveryKey(recovery), secret, context(uid, "wrap-recovery"));
+    return { secret, keys: { v: 2, recovery: encrypted } };
+  } catch (error) {
+    secret.fill(0);
+    throw error;
+  }
+};
+
+export const isVaultPin = (pin) => /^[0-9]{6}$/.test(pin);
+
+const pinKey = async (uid, recovery, pin, deviceKey, salt) => {
+  if (!isVaultPin(pin)) throw new Error("Invalid archive PIN");
+  const material = new Uint8Array(await crypto.subtle.sign("HMAC", deviceKey, encoder.encode(context(uid, recovery, pin))));
+  try {
+    return await deriveUnlockKey(material, salt);
+  } finally {
+    material.fill(0);
+  }
+};
+
+export const createDevicePin = async (uid, recovery, pin, secret) => {
+  const deviceKey = await crypto.subtle.generateKey({ name: "HMAC", hash: "SHA-256", length: 256 }, false, ["sign"]);
+  const salt = random(16);
+  const key = await pinKey(uid, recovery, pin, deviceKey, salt);
+  const ciphertext = await encrypt(key, secret, context(uid, "device-pin", recovery));
+  return { deviceKey, salt, ciphertext, recovery, attempts: 0 };
+};
+
+export const unlockDevicePin = async (uid, saved, pin) => {
+  const key = await pinKey(uid, saved.recovery, pin, saved.deviceKey, saved.salt);
+  return new Uint8Array(await decrypt(key, saved.ciphertext, context(uid, "device-pin", saved.recovery)));
+};
+
+export const deviceSessionCrypto = async (uid, saved) => {
+  const scope = context(uid, "device-session", saved.recovery, saved.ciphertext);
+  const material = new Uint8Array(await crypto.subtle.sign("HMAC", saved.deviceKey, encoder.encode(scope)));
+  try {
+    const key = await aes(material);
+    return {
+      seal: (value) => encrypt(key, encoder.encode(JSON.stringify(value)), scope),
+      open: async (value) => JSON.parse(decoder.decode(await decrypt(key, value, scope))),
+    };
+  } finally {
+    material.fill(0);
+  }
 };
 
 export const vaultCrypto = async (uid, secret) => {
@@ -87,4 +137,57 @@ export const vaultCrypto = async (uid, secret) => {
     seal: (value, name, id = null) => encrypt(key, encoder.encode(JSON.stringify(value)), context(uid, name, id)),
     open: async (value, name, id = null) => JSON.parse(decoder.decode(await decrypt(key, value, context(uid, name, id)))),
   };
+};
+
+const pairingCurve = { name: "ECDH", namedCurve: "P-256" };
+const generatePairingKeys = async () => {
+  const { publicKey, privateKey } = await crypto.subtle.generateKey(pairingCurve, false, ["deriveBits"]);
+  return { privateKey, publicKey: encodeBytes(new Uint8Array(await crypto.subtle.exportKey("raw", publicKey))) };
+};
+
+const pairingId = async (publicKey) => hex(new Uint8Array(
+  await crypto.subtle.digest("SHA-256", decodeBytes(publicKey))
+)).slice(0, 16);
+
+export const createVaultPairing = async () => {
+  const keys = await generatePairingKeys();
+  return { ...keys, id: await pairingId(keys.publicKey) };
+};
+
+const pairingCipher = async (uid, id, receiver, sender, privateKey, peer) => {
+  const publicKey = await crypto.subtle.importKey("raw", decodeBytes(peer), pairingCurve, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: publicKey }, privateKey, 256));
+  const scope = context(uid, "pair-device", id, receiver, sender);
+  try {
+    const material = await crypto.subtle.importKey("raw", shared, "HKDF", false, ["deriveBits"]);
+    const derive = (purpose, length) => crypto.subtle.deriveBits({
+      name: "HKDF", hash: "SHA-256", salt: encoder.encode(scope), info: encoder.encode(context(purpose)),
+    }, material, length);
+    const [key, confirmation] = await Promise.all([derive("encryption", 256), derive("confirmation", 48)]);
+    const bytes = new Uint8Array(key);
+    try {
+      return { key: await aes(bytes), confirmation: hex(new Uint8Array(confirmation)), scope };
+    } finally {
+      bytes.fill(0);
+    }
+  } finally {
+    shared.fill(0);
+  }
+};
+
+export const encryptVaultPairing = async (uid, id, receiver, secret) => {
+  if (await pairingId(receiver) !== id) throw new Error("Pairing code does not match this device");
+  const sender = await generatePairingKeys();
+  const cipher = await pairingCipher(uid, id, receiver, sender.publicKey, sender.privateKey, receiver);
+  return {
+    sender: sender.publicKey,
+    ciphertext: await encrypt(cipher.key, secret, cipher.scope),
+    confirmation: cipher.confirmation,
+  };
+};
+
+export const decryptVaultPairing = async (uid, request, { sender_public: sender, ciphertext }, confirmation) => {
+  const cipher = await pairingCipher(uid, request.id, request.publicKey, sender, request.privateKey, sender);
+  if (cipher.confirmation !== confirmation) throw new Error("Pairing confirmation does not match");
+  return new Uint8Array(await decrypt(cipher.key, ciphertext, cipher.scope));
 };

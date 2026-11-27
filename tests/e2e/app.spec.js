@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import process from "node:process";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { createVaultKeys, newRecoveryCode, unwrapVaultKey, vaultCrypto } from "../../src/utils/vaultCrypto.js";
@@ -64,27 +65,55 @@ test("auth pages load the account client without errors", async ({ page }) => {
 
 const ADD_BUTTON = /^(nuovo movimento|new transaction)$/i;
 
-test("unlocks an archive on two devices and persists offline writes only as ciphertext", async ({ page, browser, context }) => {
-  const uid = "00000000-0000-4000-8000-0000000000aa";
-  const passphrase = "a separate archive passphrase";
-  const code = newRecoveryCode();
-  const keys = await createVaultKeys(uid, passphrase, code);
-  const key = await unwrapVaultKey(uid, keys, passphrase);
-  const archive = await vaultCrypto(uid, key);
-  key.fill(0);
+const mockVaultAccount = (uid, keys) => {
   const authUser = { id: uid, email: "vault@example.com", email_confirmed_at: "2026-01-01T00:00:00Z", user_metadata: { lang: "it" } };
   const expires_at = Math.floor(Date.now() / 1000) + 3600;
-  const token = Buffer.from(JSON.stringify({ sub: uid, exp: expires_at, role: "authenticated" })).toString("base64url");
+  const token = Buffer.from(JSON.stringify({ sub: uid, exp: expires_at, role: "authenticated", session_id: "vault-test-session" })).toString("base64url");
   const session = { access_token: `eyJhbGciOiJIUzI1NiJ9.${token}.dGVzdA`, refresh_token: "fixture", expires_at, user: authUser };
   const records = new Map();
+  const pairings = new Map();
   const writes = [];
   let revision = 0;
+  let active = Boolean(keys);
   const prepare = async (tab) => {
-    await tab.addInitScript((auth) => localStorage.setItem("ducat-auth", JSON.stringify(auth)), session);
+    await tab.addInitScript((auth) => {
+      if (!localStorage.getItem("ducat-auth")) localStorage.setItem("ducat-auth", JSON.stringify(auth));
+    }, session);
     await tab.routeWebSocket("**/realtime/v1/websocket*", () => {});
     await tab.route((url) => url.pathname.startsWith("/rest/v1/") || url.pathname.startsWith("/auth/v1/"), async (route) => {
       const endpoint = new URL(route.request().url()).pathname.split("/").at(-1);
-      if (endpoint === "vault_accounts") return route.fulfill({ json: [{ keys, active: true, revision }] });
+      if (endpoint === "vault_accounts") return route.fulfill({ json: keys ? [{ keys, active, revision }] : [] });
+      if (endpoint === "start_vault") {
+        if (keys) return route.fulfill({ json: false });
+        ({ p_keys: keys } = route.request().postDataJSON());
+        return route.fulfill({ json: true });
+      }
+      if (endpoint === "vault_pairings") {
+        const id = new URL(route.request().url()).searchParams.get("id")?.slice(3);
+        const row = pairings.get(id);
+        return route.fulfill({ json: row ? [row] : [] });
+      }
+      if (endpoint === "start_vault_pairing") {
+        const { p_id, p_receiver } = route.request().postDataJSON();
+        pairings.set(p_id, { receiver_public: p_receiver, sender_public: null, ciphertext: null });
+        return route.fulfill({ json: true });
+      }
+      if (endpoint === "approve_vault_pairing") {
+        const { p_id, p_sender, p_receiver, p_ciphertext } = route.request().postDataJSON();
+        const request = pairings.get(p_id);
+        if (request?.receiver_public !== p_receiver || request.ciphertext) return route.fulfill({ json: false });
+        pairings.set(p_id, { receiver_public: p_receiver, sender_public: p_sender, ciphertext: p_ciphertext });
+        return route.fulfill({ json: true });
+      }
+      if (endpoint === "remove_vault_pairing") {
+        pairings.delete(route.request().postDataJSON().p_id);
+        return route.fulfill({ status: 204 });
+      }
+      if (endpoint === "read_vault_legacy") return route.fulfill({ json: [] });
+      if (endpoint === "finish_vault") {
+        active = true;
+        return route.fulfill({ json: true });
+      }
       if (endpoint === "read_vault_changes") {
         const { p_after, p_id, p_through } = route.request().postDataJSON();
         return route.fulfill({ json: [...records.values()].filter((row) => row.revision <= p_through
@@ -103,6 +132,18 @@ test("unlocks an archive on two devices and persists offline writes only as ciph
       return route.fulfill({ status: 404, json: { message: `Unexpected test request: ${endpoint}` } });
     });
   };
+  return { prepare, records, writes, getKeys: () => keys };
+};
+
+test("unlocks an archive on two devices and persists offline writes only as ciphertext", async ({ page, browser, context }) => {
+  const uid = "00000000-0000-4000-8000-0000000000aa";
+  const passphrase = "a separate archive passphrase";
+  const code = newRecoveryCode();
+  const keys = await createVaultKeys(uid, passphrase, code);
+  const key = await unwrapVaultKey(uid, keys, passphrase);
+  const archive = await vaultCrypto(uid, key);
+  key.fill(0);
+  const { prepare, records, writes } = mockVaultAccount(uid, keys);
   await prepare(page);
   await page.goto("transactions");
   await page.getByLabel("Passphrase dell’archivio").fill("wrong passphrase");
@@ -151,6 +192,111 @@ test("unlocks an archive on two devices and persists offline writes only as ciph
     await tab.getByLabel("Codice di recupero", { exact: true }).fill(code);
     await tab.getByRole("button", { name: /^sblocca$/i }).click();
     await expect(tab.getByRole("button", { name: new RegExp(description) })).toContainText("12,50");
+  } finally {
+    await second.close();
+  }
+});
+
+test("activates an archive with a device PIN and resumes or recovers on demand", async ({ page, browser, context }) => {
+  test.skip(process.env.VITE_ENABLE_ENCRYPTED_VAULT !== "true", "New activation is opt-in for test builds");
+  test.setTimeout(60_000);
+  const uid = "00000000-0000-4000-8000-0000000000bb";
+  const pin = "012345";
+  const fixture = mockVaultAccount(uid);
+  const fillPin = async (tab, value) => {
+    await tab.getByLabel("Scegli un PIN di 6 cifre").fill(value);
+    await tab.getByLabel("Conferma il PIN").fill(value);
+  };
+  const unlock = (tab) => tab.getByRole("button", { name: /^sblocca$/i }).click();
+  const ready = (tab) => expect(tab.getByRole("button", { name: ADD_BUTTON }).first()).toBeVisible();
+
+  await fixture.prepare(page);
+  await page.goto("transactions");
+  const recoveryCode = await page.locator("#archive-recovery-code").innerText();
+  expect(recoveryCode).toMatch(/^[a-f0-9-]{71}$/);
+  await fillPin(page, pin);
+  await page.getByLabel("Ho salvato il codice di recupero").check();
+  await page.getByLabel("Ricorda lo sblocco su questo dispositivo").check();
+  await page.getByRole("button", { name: "Attiva la cifratura" }).click();
+  await ready(page);
+  expect(fixture.getKeys()).toEqual({ v: 2, recovery: expect.stringMatching(/^[A-Za-z0-9+/]{80}$/) });
+  await page.reload();
+  await ready(page);
+
+  const anotherTab = await context.newPage();
+  await fixture.prepare(anotherTab);
+  await anotherTab.goto(page.url());
+  await ready(anotherTab);
+  await anotherTab.close();
+
+  await page.evaluate((userId) => new Promise((resolve, reject) => {
+    const request = indexedDB.open("ducat-encrypted-archive");
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction("accounts", "readwrite");
+      transaction.objectStore("accounts").delete(`${userId}:device-unlock`);
+      transaction.oncomplete = () => { db.close(); resolve(); };
+      transaction.onabort = () => reject(transaction.error);
+    };
+  }), uid);
+  await page.reload();
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await page.getByLabel("PIN del dispositivo", { exact: true }).fill("999999");
+    await unlock(page);
+    await expect(page.getByRole("alert")).toContainText(attempt === 4 ? /esaurito i tentativi/ : /PIN del dispositivo è errato/);
+  }
+  await page.reload();
+  await expect(page.getByLabel("Codice di recupero", { exact: true })).toBeVisible();
+  await page.getByLabel("Codice di recupero", { exact: true }).fill(recoveryCode);
+  await fillPin(page, "135791");
+  await unlock(page);
+  await ready(page);
+  await page.reload();
+  await page.getByLabel("PIN del dispositivo", { exact: true }).fill("135791");
+  await unlock(page);
+  await ready(page);
+
+  await page.goto("profile");
+  await page.getByLabel("PIN del dispositivo", { exact: true }).fill("135791");
+  await unlock(page);
+  await page.getByRole("button", { name: "Approva un dispositivo", exact: true }).click();
+
+  const second = await browser.newContext({ locale: "it-IT", baseURL: page.url() });
+  try {
+    const tab = await second.newPage();
+    await fixture.prepare(tab);
+    await tab.goto("transactions");
+    await tab.getByRole("button", { name: "Approva da un altro dispositivo" }).click();
+    const pairingCode = await tab.getByTestId("pairing-request-code").innerText();
+    const source = page.getByRole("dialog");
+    await source.getByLabel("Codice di abbinamento").fill(pairingCode);
+    await source.getByRole("button", { name: "Approva un dispositivo" }).click();
+    const confirmation = await source.getByTestId("pairing-confirmation").innerText();
+    const request = tab.getByRole("dialog");
+    await request.getByLabel("Codice di conferma").fill("0000 0000 0000");
+    await request.getByRole("button", { name: "Conferma abbinamento" }).click();
+    await expect(request.getByRole("alert")).toBeVisible();
+    await request.getByLabel("Codice di conferma").fill(confirmation);
+    await request.getByRole("button", { name: "Conferma abbinamento" }).click();
+    await expect(request).toBeHidden();
+    await expect(tab.getByText("Dispositivo approvato. Scegli il PIN da usare qui.")).toBeVisible();
+    await fillPin(tab, "135791");
+    await tab.getByLabel("Ricorda lo sblocco su questo dispositivo").check();
+    await unlock(tab);
+    await ready(tab);
+    await tab.reload();
+    await ready(tab);
+    await tab.evaluate(() => {
+      const auth = JSON.parse(localStorage.getItem("ducat-auth"));
+      const [header, payload, signature] = auth.access_token.split(".");
+      const claims = JSON.parse(atob(payload.replaceAll("-", "+").replaceAll("_", "/")));
+      claims.session_id = "new-vault-test-session";
+      auth.access_token = [header, btoa(JSON.stringify(claims)).replace(/=+$/, ""), signature].join(".");
+      localStorage.setItem("ducat-auth", JSON.stringify(auth));
+    });
+    await tab.reload();
+    await expect(tab.getByLabel("PIN del dispositivo", { exact: true })).toBeVisible();
   } finally {
     await second.close();
   }
