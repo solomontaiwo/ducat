@@ -21,38 +21,75 @@ const useNativeRefreshAvailable = () => useSyncExternalStore(
   () => false,
 );
 
+/** Keeps the spinner long enough to read as a refresh, even with cached data. */
+export const MIN_REFRESH_MS = 450;
+const NATIVE_SPINNER_PX = 52;
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** The iOS activity indicator: eight ticks fading in turn. */
+const IosSpinner = ({ paused }) => (
+  <span className={cn("ios-spinner text-muted-foreground", paused && "is-paused")} aria-hidden="true">
+    {Array.from({ length: 8 }, (_, index) => <i key={index} />)}
+  </span>
+);
+IosSpinner.propTypes = { paused: PropTypes.bool };
+
 /**
  * Pull to refresh for mobile views.
  *
- * In the iOS app it hands the gesture to the system refresh control (see
+ * In the iOS app the gesture belongs to the system refresh control (see
  * `platform/nativeRefresh.js`), on while this page is on screen and no dialog
- * is open. Elsewhere it is a light touch-only version that starts only at the
- * very top of the page, so normal scrolling and horizontal swipes are never
- * interfered with.
+ * is open; once released, the spinner shows here, in the content, so the
+ * background and the bars never move. Elsewhere it is a light touch-only
+ * version that starts only at the very top of the page, so normal scrolling
+ * and horizontal swipes are never interfered with.
  */
 const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => {
   const native = useNativeRefreshAvailable();
   const active = useRouteActive();
   const anyDialogOpen = useAnyDialogOpen();
+  const [nativeRefreshing, setNativeRefreshing] = useState(false);
+  const rootRef = useRef(null);
   const latestRefresh = useRef(onRefresh);
   latestRefresh.current = onRefresh;
   const nativeEnabled = native && active && !disabled && !anyDialogOpen;
 
   useEffect(() => {
     if (!nativeEnabled) return undefined;
-    return registerNativeRefresh(() => latestRefresh.current?.());
+    return registerNativeRefresh(async () => {
+      setNativeRefreshing(true);
+      const started = Date.now();
+      try {
+        await latestRefresh.current?.();
+      } finally {
+        const remaining = MIN_REFRESH_MS - (Date.now() - started);
+        if (remaining > 0) await wait(remaining);
+        setNativeRefreshing(false);
+      }
+    }, () => {
+      const rect = rootRef.current?.getBoundingClientRect();
+      return rect ? rect.left + rect.width / 2 - window.innerWidth / 2 : 0;
+    });
   }, [nativeEnabled]);
 
   // Same tree either way, so the page never remounts if the native control
   // turns out to be unavailable; with it, the web gesture stays off.
   return (
-    <WebPullToRefresh onRefresh={onRefresh} disabled={disabled || native} className={className}>
+    <WebPullToRefresh
+      onRefresh={onRefresh}
+      disabled={disabled || native}
+      native={native}
+      nativeRefreshing={nativeRefreshing}
+      rootRef={rootRef}
+      className={className}
+    >
       {children}
     </WebPullToRefresh>
   );
 };
 
-const WebPullToRefresh = ({ onRefresh, disabled = false, children, className }) => {
+const WebPullToRefresh = ({ onRefresh, disabled = false, native = false, nativeRefreshing = false, rootRef, children, className }) => {
   const { t } = useTranslation();
   const [pullDistance, setPullDistance] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -113,11 +150,13 @@ const WebPullToRefresh = ({ onRefresh, disabled = false, children, className }) 
     }
   }, [pullDistance, disabled, refreshing, onRefresh]);
 
-  const visible = refreshing || pullDistance > 8;
+  const visible = nativeRefreshing || refreshing || pullDistance > 8;
   const ready = pullDistance >= TRIGGER_PX;
+  const height = nativeRefreshing ? NATIVE_SPINNER_PX : Math.max(refreshing ? 44 : 0, pullDistance);
 
   return (
     <div
+      ref={rootRef}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -129,11 +168,21 @@ const WebPullToRefresh = ({ onRefresh, disabled = false, children, className }) 
         className={cn(
           // Follows the finger while dragging; eases back on release.
           "flex items-center justify-center overflow-hidden motion-reduce:transition-none",
-          !dragging && "transition-[height,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+          !dragging && "transition-[height,opacity] duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
+          // The page spinner fades in once the native one has faded out.
+          nativeRefreshing && "[transition-delay:0ms,160ms]",
           visible ? "opacity-100" : "opacity-0"
         )}
-        style={{ height: visible ? `${Math.max(refreshing ? 44 : 0, pullDistance)}px` : "0px" }}
+        style={{ height: visible ? `${height}px` : "0px" }}
       >
+        {/* With the native gesture this area only ever shows the spinner, also
+            while it fades away. */}
+        {native ? (
+          <>
+            <IosSpinner paused={!nativeRefreshing} />
+            {nativeRefreshing && <span className="sr-only">{t("common.refreshing")}</span>}
+          </>
+        ) : (
         <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-sm">
           <FiRefreshCw
             aria-hidden="true"
@@ -145,6 +194,7 @@ const WebPullToRefresh = ({ onRefresh, disabled = false, children, className }) 
               ? t("common.releaseToRefresh")
               : t("common.pullToRefresh")}
         </span>
+        )}
       </div>
       {children}
     </div>
@@ -157,6 +207,11 @@ PullToRefresh.propTypes = {
   children: PropTypes.node.isRequired,
   className: PropTypes.string,
 };
-WebPullToRefresh.propTypes = PullToRefresh.propTypes;
+WebPullToRefresh.propTypes = {
+  ...PullToRefresh.propTypes,
+  native: PropTypes.bool,
+  nativeRefreshing: PropTypes.bool,
+  rootRef: PropTypes.shape({ current: PropTypes.any }),
+};
 
 export default PullToRefresh;

@@ -3,22 +3,22 @@
  * system refresh control on the WebView's scroll view, as in the App Store.
  *
  * Pages register while they are on screen and able to refresh; the control is
- * on only while one is registered. A pull calls the most recent page, and the
- * spinner stays until its refresh settles. Outside the iOS app, or when the
- * plugin reports it is not available (the iPad app on a Mac), every call is a
- * no-op and the web pull to refresh is used instead.
+ * on only while one is registered. When the finger lifts past the threshold
+ * the control springs back and the most recent page refreshes, showing its own
+ * spinner (see `PullToRefresh`). Outside the iOS app, or when the plugin
+ * reports it is not available (the iPad app on a Mac), every call is a no-op
+ * and the web pull to refresh is used instead.
  */
 
 import { MOBILE, runtime } from "./index.js";
-
-/** Keeps the spinner long enough to read as a refresh, even with cached data. */
-export const MIN_REFRESH_MS = 450;
 
 let pluginPromise = null;
 let queue = Promise.resolve();
 let listening = false;
 let refreshing = false;
 let sentEnabled = false;
+let sentOffset = 0;
+let resizeListening = false;
 let available = null;
 const owners = new Map();
 const availabilityListeners = new Set();
@@ -45,33 +45,44 @@ const enqueue = (task) => {
   return queue;
 };
 
+const latestOwner = () => [...owners.values()].at(-1);
+
 const sync = () => {
-  // Stay on while a refresh runs, even if its page stops accepting new ones.
-  const enabled = owners.size > 0 || refreshing;
-  if (enabled === sentEnabled) return;
+  const enabled = owners.size > 0;
+  // Horizontal offset of the page's centre from the screen's, so the native
+  // spinner sits over the content and not under a side bar.
+  const offsetX = enabled ? Math.round(latestOwner()?.offset?.() ?? 0) : sentOffset;
+  if (enabled === sentEnabled && offsetX === sentOffset) return;
   sentEnabled = enabled;
+  sentOffset = offsetX;
   enqueue(async (plugin) => {
-    const result = await plugin.setEnabled({ enabled });
+    const result = await plugin.setEnabled({ enabled, offsetX });
     setAvailable(Boolean(result?.available));
   });
 };
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const listenToResize = () => {
+  if (resizeListening || typeof window === "undefined") return;
+  resizeListening = true;
+  let frame = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(sync);
+  });
+};
 
 const handleRefresh = async () => {
-  const owner = [...owners.values()].at(-1);
+  // A second pull while the page is still loading adds nothing.
+  if (refreshing) return;
+  const owner = latestOwner();
+  if (!owner) return;
   refreshing = true;
-  const started = Date.now();
   try {
-    await owner?.refresh();
+    await owner.refresh();
   } catch {
-    // The page reports its own errors; the spinner must still stop.
+    // The page reports its own errors.
   } finally {
-    const remaining = MIN_REFRESH_MS - (Date.now() - started);
-    if (remaining > 0) await wait(remaining);
     refreshing = false;
-    enqueue((plugin) => plugin.endRefreshing());
-    sync();
   }
 };
 
@@ -83,13 +94,15 @@ const listen = () => {
 
 /**
  * Turns the native control on for `refresh` until the returned function is
- * called. Does nothing outside the iOS app.
+ * called. `offset` returns how far right of the screen's centre the page's
+ * centre is. Does nothing outside the iOS app.
  */
-export const registerNativeRefresh = (refresh) => {
+export const registerNativeRefresh = (refresh, offset) => {
   if (runtime() !== MOBILE) return () => {};
   listen();
+  listenToResize();
   const token = Symbol("refresh");
-  owners.set(token, { refresh });
+  owners.set(token, { refresh, offset });
   sync();
   return () => {
     owners.delete(token);
