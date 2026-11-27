@@ -4,7 +4,7 @@
  *
  * Pages register while they are on screen and able to refresh; the control is
  * on only while one is registered. When the finger lifts past the threshold
- * the control springs back and the most recent page refreshes, showing its own
+ * the control fades out and the most recent page refreshes, showing its own
  * spinner (see `PullToRefresh`). Outside the iOS app, or when the plugin
  * reports it is not available (the iPad app on a Mac), every call is a no-op
  * and the web pull to refresh is used instead.
@@ -17,8 +17,9 @@ let queue = Promise.resolve();
 let listening = false;
 let refreshing = false;
 let sentEnabled = false;
-let sentOffset = 0;
+let sentCenter = null;
 let resizeListening = false;
+let syncFrame = 0;
 let available = null;
 const owners = new Map();
 const availabilityListeners = new Set();
@@ -49,26 +50,28 @@ const latestOwner = () => [...owners.values()].at(-1);
 
 const sync = () => {
   const enabled = owners.size > 0;
-  // Horizontal offset of the page's centre from the screen's, so the native
-  // spinner sits over the content and not under a side bar.
-  const offsetX = enabled ? Math.round(latestOwner()?.offset?.() ?? 0) : sentOffset;
-  if (enabled === sentEnabled && offsetX === sentOffset) return;
+  // Where the page's centre is across the screen, so the native spinner sits
+  // over the content and not over a side bar.
+  const measured = enabled ? latestOwner()?.center?.() : null;
+  const centerX = Number.isFinite(measured) ? Math.round(measured) : null;
+  if (enabled === sentEnabled && (!enabled || centerX === sentCenter)) return;
   sentEnabled = enabled;
-  sentOffset = offsetX;
+  sentCenter = centerX;
   enqueue(async (plugin) => {
-    const result = await plugin.setEnabled({ enabled, offsetX });
+    const result = await plugin.setEnabled(centerX === null ? { enabled } : { enabled, centerX });
     setAvailable(Boolean(result?.available));
   });
+};
+
+const scheduleSync = () => {
+  cancelAnimationFrame(syncFrame);
+  syncFrame = requestAnimationFrame(sync);
 };
 
 const listenToResize = () => {
   if (resizeListening || typeof window === "undefined") return;
   resizeListening = true;
-  let frame = 0;
-  window.addEventListener("resize", () => {
-    cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(sync);
-  });
+  window.addEventListener("resize", scheduleSync);
 };
 
 const handleRefresh = async () => {
@@ -94,20 +97,26 @@ const listen = () => {
 
 /**
  * Turns the native control on for `refresh` until the returned function is
- * called. `offset` returns how far right of the screen's centre the page's
- * centre is. Does nothing outside the iOS app.
+ * called. `center` returns the horizontal position of the page's centre in the
+ * viewport. Does nothing outside the iOS app.
  */
-export const registerNativeRefresh = (refresh, offset) => {
+export const registerNativeRefresh = (refresh, center) => {
   if (runtime() !== MOBILE) return () => {};
   listen();
   listenToResize();
   const token = Symbol("refresh");
-  owners.set(token, { refresh, offset });
+  owners.set(token, { refresh, center });
   sync();
   return () => {
     owners.delete(token);
     sync();
   };
+};
+
+/** Sends the page's centre again, after its layout changed. */
+export const updateNativeRefreshOffset = () => {
+  if (runtime() !== MOBILE || owners.size === 0) return;
+  scheduleSync();
 };
 
 /** False outside the iOS app, or once the plugin says it cannot help. */

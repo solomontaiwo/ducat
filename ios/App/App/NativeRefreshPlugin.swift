@@ -10,8 +10,9 @@ import Capacitor
 /// inset, which WebKit takes for a scroll past the top once the finger lifts:
 /// every fixed element (background, tab bar) would drop by the inset. So the
 /// control is reset as soon as it fires, while the finger is still down, and
-/// `refresh` is sent when the finger lifts; the page then shows its own spinner
-/// in the content, so only the content moves, as in the App Store.
+/// `refresh` is sent when the finger lifts. At that moment the control fades
+/// out and the page shows its own spinner in the content, so there is only
+/// ever one spinner and only the content moves, as in the App Store.
 ///
 /// JavaScript turns it on only on pages that can refresh (`setEnabled`). Not
 /// used when the iPad app runs on a Mac.
@@ -32,7 +33,7 @@ public class NativeRefreshPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func setEnabled(_ call: CAPPluginCall) {
         let enabled = call.getBool("enabled") ?? false
-        let offsetX = CGFloat(call.getDouble("offsetX") ?? 0)
+        let centerX = call.getDouble("centerX").map { CGFloat($0) }
         DispatchQueue.main.async {
             guard Self.supported, let scrollView = self.bridge?.webView?.scrollView else {
                 call.resolve(["available": false])
@@ -40,7 +41,7 @@ public class NativeRefreshPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             if enabled {
                 self.attach(to: scrollView)
-                self.control?.horizontalOffset = offsetX
+                self.control?.pageCenterX = centerX
             } else {
                 self.detach(from: scrollView)
             }
@@ -56,6 +57,7 @@ public class NativeRefreshPlugin: CAPPlugin, CAPBridgedPlugin {
             return created
         }()
         if liftObserver.view !== scrollView {
+            liftObserver.onTouch = { [weak self] in self?.control?.reveal() }
             liftObserver.onLift = { [weak self] in self?.fingerLifted() }
             scrollView.addGestureRecognizer(liftObserver)
         }
@@ -69,6 +71,7 @@ public class NativeRefreshPlugin: CAPPlugin, CAPBridgedPlugin {
         guard let control, scrollView.refreshControl === control else { return }
         refreshPending = false
         if control.isRefreshing { control.endRefreshing() }
+        control.reveal()
         scrollView.refreshControl = nil
     }
 
@@ -80,22 +83,31 @@ public class NativeRefreshPlugin: CAPPlugin, CAPBridgedPlugin {
         if scrollView?.isTracking == true {
             refreshPending = true
         } else {
-            notifyListeners("refresh", data: [:])
+            startRefresh()
         }
     }
 
     private func fingerLifted() {
         guard refreshPending else { return }
         refreshPending = false
+        startRefresh()
+    }
+
+    /// The page takes over with its own spinner while the content springs
+    /// back, so the control's spinner goes away instead of lingering at the top.
+    private func startRefresh() {
+        control?.hideUntilNextTouch()
         notifyListeners("refresh", data: [:])
     }
 }
 
-/// Reports the moment the last finger leaves the scroll view. Touches reach
-/// gesture recognizers before the scroll view's pan handler runs, so the
-/// refresh control can end before the scroll view starts holding it open. It
-/// never recognizes anything and never delays or cancels touches.
+/// Reports when a finger first touches the scroll view and when the last one
+/// leaves it. Touches reach gesture recognizers before the scroll view's pan
+/// handler runs, so the refresh control can end before the scroll view starts
+/// holding it open. It never recognizes anything and never delays or cancels
+/// touches.
 final class TouchLiftObserver: UIGestureRecognizer, UIGestureRecognizerDelegate {
+    var onTouch: (() -> Void)?
     var onLift: (() -> Void)?
 
     init() {
@@ -104,6 +116,11 @@ final class TouchLiftObserver: UIGestureRecognizer, UIGestureRecognizerDelegate 
         delaysTouchesBegan = false
         delaysTouchesEnded = false
         delegate = self
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesBegan(touches, with: event)
+        onTouch?()
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
@@ -131,20 +148,43 @@ final class TouchLiftObserver: UIGestureRecognizer, UIGestureRecognizerDelegate 
 /// The WebView lays the page out under the status bar (`contentInset: never`),
 /// so a plain refresh control would draw its spinner behind the Dynamic Island.
 /// This one moves its content below the top safe area, centres it over the
-/// page content (`horizontalOffset`, set by the web app when a side bar takes
-/// part of the width) and stays above the page, which paints a full-screen
-/// background of its own.
+/// page content (`pageCenterX`, from the web app: a side bar can take part of
+/// the width) and stays above the page, which paints a full-screen background
+/// of its own.
 final class SafeAreaRefreshControl: UIRefreshControl {
-    var horizontalOffset: CGFloat = 0 {
-        didSet { if horizontalOffset != oldValue { setNeedsLayout() } }
+    var pageCenterX: CGFloat? {
+        didSet { if pageCenterX != oldValue { setNeedsLayout() } }
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let origin = CGPoint(x: -horizontalOffset, y: -(superview?.safeAreaInsets.top ?? 0))
-        if bounds.origin != origin {
-            bounds.origin = origin
+        let top = -(superview?.safeAreaInsets.top ?? 0)
+        if bounds.origin.y != top {
+            bounds.origin.y = top
+        }
+        // The control centres its spinner within the safe area (which leaves
+        // out the status bar on the side of the iPhone Duo's inner screen), so
+        // its content moves by the distance from there to the page's centre.
+        let insets = safeAreaInsets
+        let spinnerX = insets.left + (bounds.width - insets.left - insets.right) / 2
+        let centreX = bounds.midX + (pageCenterX.map { $0 - spinnerX } ?? 0)
+        for view in subviews where view.center.x != centreX {
+            view.center.x = centreX
         }
         superview?.bringSubviewToFront(self)
+    }
+
+    /// Fades the spinner out once the page shows its own.
+    func hideUntilNextTouch() {
+        UIView.animate(withDuration: 0.12, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
+            self.alpha = 0
+        }
+    }
+
+    /// Shows the spinner again for the next pull.
+    func reveal() {
+        guard alpha < 1 else { return }
+        layer.removeAllAnimations()
+        alpha = 1
     }
 }

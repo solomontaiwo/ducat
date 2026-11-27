@@ -7,6 +7,7 @@ import {
   isNativeRefreshAvailable,
   registerNativeRefresh,
   subscribeNativeRefreshAvailability,
+  updateNativeRefreshOffset,
 } from "../../platform/nativeRefresh.js";
 import { useRouteActive } from "../../router/RouterProvider";
 import { useAnyDialogOpen } from "./dialogStack.js";
@@ -69,8 +70,17 @@ const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => 
       }
     }, () => {
       const rect = rootRef.current?.getBoundingClientRect();
-      return rect ? rect.left + rect.width / 2 - window.innerWidth / 2 : 0;
+      return rect && rect.width > 0 ? rect.left + rect.width / 2 : undefined;
     });
+  }, [nativeEnabled]);
+
+  // The native spinner is centred over this page: follow its layout.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!nativeEnabled || !root || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(() => updateNativeRefreshOffset());
+    observer.observe(root);
+    return () => observer.disconnect();
   }, [nativeEnabled]);
 
   // Same tree either way, so the page never remounts if the native control
@@ -169,8 +179,8 @@ const WebPullToRefresh = ({ onRefresh, disabled = false, native = false, nativeR
           // Follows the finger while dragging; eases back on release.
           "flex items-center justify-center overflow-hidden motion-reduce:transition-none",
           !dragging && "transition-[height,opacity] duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
-          // The page spinner fades in once the native one has faded out.
-          nativeRefreshing && "[transition-delay:0ms,160ms]",
+          // Takes over from the native spinner, which fades out as quickly.
+          nativeRefreshing && "[transition-duration:300ms,150ms]",
           visible ? "opacity-100" : "opacity-0"
         )}
         style={{ height: visible ? `${height}px` : "0px" }}

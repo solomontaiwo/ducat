@@ -80,13 +80,23 @@ describe("native pull to refresh", () => {
 
   it("centres the native spinner over the page, beside a side bar", async () => {
     vi.stubEnv("MODE", "mobile");
-    const { registerNativeRefresh } = await load();
-    let offset = 130;
-    registerNativeRefresh(vi.fn(), () => offset);
-    await waitFor(() => expect(mocks.plugin.setEnabled).toHaveBeenLastCalledWith({ enabled: true, offsetX: 130 }));
-    offset = 0;
+    const { registerNativeRefresh, updateNativeRefreshOffset } = await load();
+    let center = 544.4;
+    const release = registerNativeRefresh(vi.fn(), () => center);
+    await waitFor(() => expect(mocks.plugin.setEnabled).toHaveBeenLastCalledWith({ enabled: true, centerX: 544 }));
+    center = 196;
     window.dispatchEvent(new Event("resize"));
-    await waitFor(() => expect(mocks.plugin.setEnabled).toHaveBeenLastCalledWith({ enabled: true, offsetX: 0 }));
+    await waitFor(() => expect(mocks.plugin.setEnabled).toHaveBeenLastCalledWith({ enabled: true, centerX: 196 }));
+    center = 300;
+    updateNativeRefreshOffset();
+    await waitFor(() => expect(mocks.plugin.setEnabled).toHaveBeenLastCalledWith({ enabled: true, centerX: 300 }));
+    const calls = mocks.plugin.setEnabled.mock.calls.length;
+    // Nothing new to send.
+    updateNativeRefreshOffset();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(mocks.plugin.setEnabled).toHaveBeenCalledTimes(calls);
+    release();
+    await waitFor(() => expect(mocks.plugin.setEnabled).toHaveBeenLastCalledWith({ enabled: false }));
   });
 
   it("keeps working after a refresh fails", async () => {
