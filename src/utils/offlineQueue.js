@@ -21,8 +21,8 @@ const VALID_FREQUENCIES = new Set(["weekly", "monthly", "yearly"]);
 const VALID_MODES = new Set(["auto", "confirm"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const queueKey = (userId) => `${PREFIX}${userId}`;
-const mutationsKey = (userId) => `${MUTATIONS_PREFIX}${userId}`;
+export const queueKey = (userId) => `${PREFIX}${userId}`;
+export const mutationsKey = (userId) => `${MUTATIONS_PREFIX}${userId}`;
 const safeId = (value) => String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
 
 const validationError = (message) => Object.assign(new Error(message), { issues: [{ message }] });
@@ -62,12 +62,12 @@ const sanitizeItem = (data, clientRequestId) => {
   };
 };
 
-const writeQueue = (userId, items) => {
+const writeQueue = (userId, items, storage) => {
   try {
     if (!items.length) {
-      localStorage.removeItem(queueKey(userId));
+      storage.removeItem(queueKey(userId));
     } else {
-      localStorage.setItem(queueKey(userId), JSON.stringify({ v: VERSION, items }));
+      storage.setItem(queueKey(userId), JSON.stringify({ v: VERSION, items }));
     }
     return true;
   } catch {
@@ -75,10 +75,10 @@ const writeQueue = (userId, items) => {
   }
 };
 
-export const readOfflineQueue = (userId) => {
+export const readOfflineQueue = (userId, storage = localStorage) => {
   if (!userId) return [];
   try {
-    const raw = localStorage.getItem(queueKey(userId));
+    const raw = storage.getItem(queueKey(userId));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!parsed || parsed.v !== VERSION || !Array.isArray(parsed.items)) return [];
@@ -89,10 +89,10 @@ export const readOfflineQueue = (userId) => {
 };
 
 /** Validates and adds a pending transaction; deduplicates by `clientRequestId`. */
-export const enqueueOfflineTransaction = (userId, data, { requestId } = {}) => {
+export const enqueueOfflineTransaction = (userId, data, { requestId } = {}, storage = localStorage) => {
   if (!userId) throw new Error("Missing user id");
   const entry = sanitizeItem(data, requestId || data.clientRequestId);
-  const current = readOfflineQueue(userId);
+  const current = readOfflineQueue(userId, storage);
   const existingIndex = current.findIndex((item) => item.clientRequestId === entry.clientRequestId);
   if (existingIndex >= 0) {
     return {
@@ -106,7 +106,7 @@ export const enqueueOfflineTransaction = (userId, data, { requestId } = {}) => {
     return { ok: false, reason: "queue-full", queue: current };
   }
   const next = [...current, entry];
-  const saved = writeQueue(userId, next);
+  const saved = writeQueue(userId, next, storage);
   const queue = saved ? next : current;
   return {
     ok: saved,
@@ -116,17 +116,17 @@ export const enqueueOfflineTransaction = (userId, data, { requestId } = {}) => {
   };
 };
 
-export const removeOfflineTransaction = (userId, clientRequestId) => {
+export const removeOfflineTransaction = (userId, clientRequestId, storage = localStorage) => {
   if (!userId) return [];
-  const next = readOfflineQueue(userId).filter((item) => item.clientRequestId !== clientRequestId);
-  writeQueue(userId, next);
+  const next = readOfflineQueue(userId, storage).filter((item) => item.clientRequestId !== clientRequestId);
+  writeQueue(userId, next, storage);
   return next;
 };
 
 /** Removes a queued transaction by its synthetic transaction id (`<uid>_<reqId>`) or `clientRequestId`. */
-export const removeOfflineTransactionById = (userId, transactionId) => {
+export const removeOfflineTransactionById = (userId, transactionId, storage = localStorage) => {
   if (!userId || !transactionId) return { removed: false, queue: [], pending: [] };
-  const current = readOfflineQueue(userId);
+  const current = readOfflineQueue(userId, storage);
   const next = current.filter((item) => (
     item.clientRequestId !== transactionId && queuedItemToTransaction(userId, item).id !== transactionId
   ));
@@ -137,7 +137,7 @@ export const removeOfflineTransactionById = (userId, transactionId) => {
       pending: current.map((item) => queuedItemToTransaction(userId, item)),
     };
   }
-  writeQueue(userId, next);
+  writeQueue(userId, next, storage);
   return {
     removed: true,
     queue: next,
@@ -146,9 +146,9 @@ export const removeOfflineTransactionById = (userId, transactionId) => {
 };
 
 /** Updates a queued offline transaction in-place by synthetic transaction id or `clientRequestId`. */
-export const updateOfflineTransaction = (userId, transactionId, patch = {}) => {
+export const updateOfflineTransaction = (userId, transactionId, patch = {}, storage = localStorage) => {
   if (!userId || !transactionId) return { ok: false, queue: [], pending: [] };
-  const current = readOfflineQueue(userId);
+  const current = readOfflineQueue(userId, storage);
   const index = current.findIndex((item) => (
     item.clientRequestId === transactionId || queuedItemToTransaction(userId, item).id === transactionId
   ));
@@ -162,7 +162,7 @@ export const updateOfflineTransaction = (userId, transactionId, patch = {}) => {
     payload: recurring ? { ...validated, recurring } : validated,
   };
   const next = current.map((item, idx) => (idx === index ? updatedEntry : item));
-  const saved = writeQueue(userId, next);
+  const saved = writeQueue(userId, next, storage);
   const queue = saved ? next : current;
   return {
     ok: saved,
@@ -186,10 +186,10 @@ export const clearAllOfflineQueues = () => {
   }
 };
 
-const writeMutations = (userId, items) => {
+const writeMutations = (userId, items, storage) => {
   try {
-    if (!items.length) localStorage.removeItem(mutationsKey(userId));
-    else localStorage.setItem(mutationsKey(userId), JSON.stringify({ v: VERSION, items }));
+    if (!items.length) storage.removeItem(mutationsKey(userId));
+    else storage.setItem(mutationsKey(userId), JSON.stringify({ v: VERSION, items }));
     return true;
   } catch {
     return false;
@@ -231,10 +231,10 @@ const validatePatch = (patch = {}) => {
 };
 
 /** Reads queued offline updates/deletes for already-synced server transactions. */
-export const readOfflineMutations = (userId) => {
+export const readOfflineMutations = (userId, storage = localStorage) => {
   if (!userId) return [];
   try {
-    const raw = localStorage.getItem(mutationsKey(userId));
+    const raw = storage.getItem(mutationsKey(userId));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!parsed || parsed.v !== VERSION || !Array.isArray(parsed.items)) return [];
@@ -245,10 +245,10 @@ export const readOfflineMutations = (userId) => {
 };
 
 /** Queues an offline edit for an existing server transaction, coalescing repeated edits. */
-export const enqueueOfflineUpdate = (userId, transactionId, patch) => {
+export const enqueueOfflineUpdate = (userId, transactionId, patch, storage = localStorage) => {
   if (!userId || !transactionId) return { ok: false, mutations: [] };
   const validPatch = validatePatch(patch);
-  const current = readOfflineMutations(userId);
+  const current = readOfflineMutations(userId, storage);
   const existingIndex = current.findIndex((item) => item.id === transactionId);
   let next;
   if (existingIndex >= 0) {
@@ -260,20 +260,20 @@ export const enqueueOfflineUpdate = (userId, transactionId, patch) => {
     if (current.length >= MAX_QUEUE_SIZE) return { ok: false, reason: "queue-full", mutations: current };
     next = [...current, { op: "update", id: transactionId, patch: validPatch, queuedAt: Date.now() }];
   }
-  const saved = writeMutations(userId, next);
+  const saved = writeMutations(userId, next, storage);
   return { ok: saved, mutations: saved ? next : current };
 };
 
 /** Queues an offline deletion for an existing server transaction (supersedes queued edits). */
-export const enqueueOfflineDelete = (userId, transactionId) => {
+export const enqueueOfflineDelete = (userId, transactionId, storage = localStorage) => {
   if (!userId || !transactionId) return { ok: false, mutations: [] };
-  const current = readOfflineMutations(userId);
+  const current = readOfflineMutations(userId, storage);
   const withoutExisting = current.filter((item) => item.id !== transactionId);
   if (withoutExisting.length >= MAX_QUEUE_SIZE && withoutExisting.length === current.length) {
     return { ok: false, reason: "queue-full", mutations: current };
   }
   const next = [...withoutExisting, { op: "delete", id: transactionId, queuedAt: Date.now() }];
-  const saved = writeMutations(userId, next);
+  const saved = writeMutations(userId, next, storage);
   return { ok: saved, mutations: saved ? next : current };
 };
 
@@ -305,8 +305,8 @@ export const applyOfflineMutations = (rows = [], mutations = []) => {
 };
 
 /** Replays queued offline updates and deletes in FIFO order. */
-export const flushOfflineMutations = async (userId, { update, remove }, onRemaining) => {
-  const queued = readOfflineMutations(userId);
+export const flushOfflineMutations = async (userId, { update, remove }, onRemaining, run = (operation) => operation()) => {
+  const queued = await run((storage) => readOfflineMutations(userId, storage));
   if (!queued.length) {
     onRemaining?.([]);
     return { synced: 0, failed: 0 };
@@ -325,8 +325,11 @@ export const flushOfflineMutations = async (userId, { update, remove }, onRemain
           if (error?.code !== "permission-denied") throw error;
         }
       }
-      const remaining = readOfflineMutations(userId).filter((item) => item.id !== entry.id);
-      writeMutations(userId, remaining);
+      const remaining = await run((storage = localStorage) => {
+        const next = readOfflineMutations(userId, storage).filter((item) => JSON.stringify(item) !== JSON.stringify(entry));
+        if (!writeMutations(userId, next, storage)) throw new Error("Unable to save offline queue");
+        return next;
+      });
       onRemaining?.(remaining);
       synced += 1;
     } catch (error) {
@@ -440,8 +443,8 @@ export const mergePendingTotals = (serverTotals, serverRows, pending, options = 
 };
 
 /** Replays queued writes in FIFO order using idempotent request IDs. */
-export const flushOfflineQueue = async (userId, submit, onRemaining) => {
-  const queued = readOfflineQueue(userId);
+export const flushOfflineQueue = async (userId, submit, onRemaining, run = (operation) => operation()) => {
+  const queued = await run((storage) => readOfflineQueue(userId, storage));
   if (!queued.length) {
     onRemaining?.([]);
     return { synced: 0, failed: 0 };
@@ -451,7 +454,7 @@ export const flushOfflineQueue = async (userId, submit, onRemaining) => {
   for (const entry of queued) {
     try {
       await submit(entry);
-      const remaining = removeOfflineTransaction(userId, entry.clientRequestId);
+      const remaining = await run((storage) => removeOfflineTransaction(userId, entry.clientRequestId, storage));
       onRemaining?.(remaining.map((item) => queuedItemToTransaction(userId, item)));
       synced += 1;
     } catch (error) {

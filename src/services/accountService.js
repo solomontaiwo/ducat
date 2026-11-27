@@ -1,6 +1,8 @@
 import { supabase, unwrap } from "../utils/supabaseClient.js";
 import { sendPasswordReset, signIn, toAuthError, updateEmail } from "./authService.js";
 import { clearOffline } from "../utils/offlineCache.js";
+import { currentVault, setCurrentVault } from "./vaultSession.js";
+import { archiveKeychain } from "../platform/authStorage.js";
 import { clearAllOfflineQueues } from "../utils/offlineQueue.js";
 import { setBiometricLockEnabled } from "../platform/biometricLock.js";
 import { clearRecurringReminders } from "../platform/reminders.js";
@@ -31,8 +33,13 @@ export const requestEmailChange = async (newEmail, password) => {
 
 /** Deletes the account; the database removes every row it owns. */
 export const deleteCurrentAccount = async (password) => {
-  await reauthenticateWithPassword(password);
+  const user = await reauthenticateWithPassword(password);
   unwrap(await supabase.rpc("delete_my_account"));
+  if (user?.uid) {
+    if (currentVault(user.uid)) setCurrentVault(null);
+    const { clearVaultLocal } = await import("../utils/vaultStorage.js");
+    await Promise.allSettled([clearVaultLocal(user.uid), archiveKeychain.remove(user.uid)]);
+  }
   // The offline copy and queued writes must not outlive the account they belong to.
   clearOffline();
   clearAllOfflineQueues();

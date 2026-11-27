@@ -95,6 +95,10 @@ export const AuthProvider = ({ children }) => {
       }
     }
     if (uid) {
+      if (import.meta.env.MODE === "mobile") {
+        const { archiveKeychain } = await import("../platform/authStorage.js");
+        await archiveKeychain.remove(uid).catch(() => {});
+      }
       import("../utils/offlineCache.js")
         .then(({ clearOfflineForUser }) => clearOfflineForUser(uid))
         .catch(() => {});

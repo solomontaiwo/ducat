@@ -85,3 +85,20 @@ export const hasStoredAuthSession = async (key) => {
   }
   return Boolean(readLocalValue(key));
 };
+
+// Archive keys must only be remembered when the native Keychain is available.
+export const archiveKeychain = {
+  async get(uid) {
+    const entry = await getKeychain()?.getSecret({ key: `ducat-archive-key:${uid}` });
+    return entry?.value ?? null;
+  },
+  async set(uid, value) {
+    const plugin = getKeychain();
+    if (!plugin) return false;
+    await plugin.setSecret({ key: `ducat-archive-key:${uid}`, value });
+    return true;
+  },
+  async remove(uid) {
+    await getKeychain()?.removeSecret({ key: `ducat-archive-key:${uid}` });
+  },
+};

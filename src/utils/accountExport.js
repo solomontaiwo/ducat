@@ -2,6 +2,7 @@ import { saveFile } from "./saveFile.js";
 import { getTransactionAmountMinor, minorToMajor } from "./money.js";
 import { coerceDateKey } from "./dateUtils.js";
 import { z } from "zod";
+import { currentVault } from "../services/vaultSession.js";
 import { transactionV2InputSchema } from "../schemas/transaction.jsx";
 import { DEFAULT_PREFERENCES, budgetLimitsSchema, preferencesSchema, recurringInputSchema } from "../schemas/planning.js";
 
@@ -25,6 +26,14 @@ export const parseAccountBackup = (raw, userId) => {
   }
   parsed.preferences = preferencesSchema.parse({ ...DEFAULT_PREFERENCES, ...parsed.preferences });
   return parsed;
+};
+
+export const parseAccountBackupFile = async (raw, userId) => {
+  const backup = JSON.parse(raw);
+  if (backup?.format !== "ducat-encrypted-backup") return parseAccountBackup(backup, userId);
+  const vault = currentVault(userId);
+  if (!vault || backup.version !== 1 || typeof backup.ciphertext !== "string") throw new Error("Invalid encrypted backup");
+  return parseAccountBackup(await vault.open(backup.ciphertext, "backup"), userId);
 };
 
 export const buildAccountExport = ({ user, profileName, transactions, recurring = [], budgets = {}, preferences = null, exportedAt = new Date() }) => ({

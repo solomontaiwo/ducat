@@ -5,6 +5,8 @@ import { transactionV2InputSchema, transactionV2PatchSchema } from "../schemas/t
 import { DEFAULT_CURRENCY, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
 import { compareTransactions, transactionComparator } from "../utils/transactionOrder.js";
 import { coerceDateKey, dateKeyToDate, isDateKey } from "../utils/dateUtils.js";
+import { currentVault, vaultRecord } from "./vaultSession.js";
+import { computeOfflineTotals, filterOfflineTransactions } from "../utils/offlineQueue.js";
 import { recurringDraftSchema } from "../schemas/planning.js";
 
 const TABLE = "transactions";
@@ -130,7 +132,7 @@ const toV2Input = (data) => transactionV2InputSchema.parse({
   type: data.type,
 });
 
-const toRow = (input) => {
+export const toTransactionRow = (input) => {
   const row = {};
   if (input.amountMinor !== undefined) row.amount_minor = input.amountMinor;
   if (input.currency !== undefined) row.currency = input.currency;
@@ -143,27 +145,38 @@ const toRow = (input) => {
 
 const notFound = () => Object.assign(new Error("Transaction not found"), { code: "permission-denied" });
 
+export const transactionRecord = (id, userId, fields) => {
+  const timestamp = new Date().toISOString();
+  return vaultRecord(TABLE, id, { id, user_id: userId, schema_version: 2, created_at: timestamp, updated_at: timestamp, ...fields });
+};
+
+const readVaultTransactions = (vault, options) => vault.read(({ list }) =>
+  filterOfflineTransactions(normalizeRows(list(TABLE), options?.onInvalid), [], options), options?.forceRefresh);
+
 export const TransactionService = {
   /** The most recently created transactions, kept current while subscribed. */
   subscribeToRecent: (userId, limitCount, onUpdate, onError, onInvalid) => {
+    const vault = currentVault(userId);
     const cacheId = `transactions-recent:${userId}:${limitCount}`;
     let active = true;
     let request = 0;
     const reload = async () => {
       const currentRequest = ++request;
       try {
-        const rows = unwrap(await supabase.from(TABLE).select(COLUMNS)
+        const rows = vault ? await vault.read(({ list }) => list(TABLE)
+          .sort((first, second) => new Date(second.created_at) - new Date(first.created_at))
+          .slice(0, limitCount)) : unwrap(await supabase.from(TABLE).select(COLUMNS)
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(limitCount));
         if (!active || currentRequest !== request) return;
         invalidateCache();
-        writeOffline(cacheId, rows);
+        if (!vault) writeOffline(cacheId, rows);
         onUpdate(normalizeRows(rows, onInvalid), []);
       } catch (error) {
         if (!active || currentRequest !== request) return;
         // Offline: show the last copy instead of an empty dashboard.
-        const cached = readOffline(cacheId);
+        const cached = !vault && readOffline(cacheId);
         if (Array.isArray(cached)) {
           onUpdate(normalizeRows(cached, onInvalid), []);
           return;
@@ -171,11 +184,13 @@ export const TransactionService = {
         onError?.(error);
       }
     };
-    const stop = watchTable({ supabase, table: TABLE, userId, reload });
+    const stop = vault ? vault.watch(reload) : watchTable({ supabase, table: TABLE, userId, reload });
     return () => { active = false; stop(); };
   },
 
   fetchRange: async (userId, options = {}) => {
+    const vault = currentVault(userId);
+    if (vault) return readVaultTransactions(vault, options);
     const {
       forceRefresh = false,
       ttlMs = DEFAULT_TTL_MS,
@@ -211,17 +226,35 @@ export const TransactionService = {
   /** Keyset pagination, with date and id as deterministic tie breakers. The cursor is the last row returned. */
   fetchPage: async (userId, { pageSize = DEFAULT_PAGE_SIZE, cursor = null, onInvalid, type = "all", category = "all", sortBy = "date-desc", startDate, endDate } = {}) => {
     const byAmount = sortBy === "amount-asc" || sortBy === "amount-desc";
+
+    if (cursor !== null) {
+      if (!isDateKey(cursor?.dateKey)) throw Object.assign(new Error("Invalid cursor date"), { code: "invalid-argument" });
+      cursorId(cursor.id);
+      if (byAmount && (!Number.isSafeInteger(cursor.amountMinor) || cursor.amountMinor <= 0)) {
+        throw Object.assign(new Error("Invalid cursor amount"), { code: "invalid-argument" });
+      }
+    }
+    const vault = currentVault(userId);
+    if (vault) {
+      const rows = await readVaultTransactions(vault, { type, category, sortBy, startDate, endDate, onInvalid });
+      const compare = transactionComparator(sortBy);
+      const boundary = cursor && { ...cursor, date: dateKeyToDate(cursor.dateKey), amount: byAmount ? minorToMajor(cursor.amountMinor) : undefined };
+      const items = (boundary ? rows.filter((row) => compare(row, boundary) > 0) : rows).slice(0, pageSize);
+      const last = items.at(-1);
+      return {
+        items,
+        nextCursor: last ? { dateKey: last.dateKey, id: last.id, ...(byAmount && { amountMinor: last.amountMinor }) } : null,
+        hasMore: items.length === pageSize,
+      };
+    }
     let query = applyFilters(supabase.from(TABLE).select(COLUMNS), { userId, type, category, startDate, endDate });
     if (byAmount) query = query.order("amount_minor", { ascending: sortBy === "amount-asc" });
     query = orderNewestFirst(query);
     if (cursor !== null) {
-      if (!isDateKey(cursor?.dateKey)) throw Object.assign(new Error("Invalid cursor date"), { code: "invalid-argument" });
-      const dateKey = cursor.dateKey;
-      const id = cursorId(cursor.id);
+      const { dateKey, id } = cursor;
       const older = `date_key.lt.${dateKey},and(date_key.eq.${dateKey},id.lt.${id})`;
       if (byAmount) {
         const amount = cursor.amountMinor;
-        if (!Number.isSafeInteger(amount) || amount <= 0) throw Object.assign(new Error("Invalid cursor amount"), { code: "invalid-argument" });
         const op = sortBy === "amount-asc" ? "gt" : "lt";
         query = query.or(`amount_minor.${op}.${amount},and(amount_minor.eq.${amount},or(${older}))`);
       } else {
@@ -242,6 +275,8 @@ export const TransactionService = {
    * right even when only the first page is loaded.
    */
   getTotals: async (userId, options = {}) => {
+    const vault = currentVault(userId);
+    if (vault) return computeOfflineTotals(await readVaultTransactions(vault, options), []);
     const { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, type = "all", category = "all", startDate, endDate } = options;
     const key = queryKey({ userId, type, category, startDate, endDate });
     const cached = totalsCache.get(key);
@@ -276,6 +311,8 @@ export const TransactionService = {
   },
 
   getTotalCount: async (userId, options = {}) => {
+    const vault = currentVault(userId);
+    if (vault) return (await readVaultTransactions(vault, options)).length;
     const { forceRefresh = false, ttlMs = DEFAULT_TTL_MS, type = "all", category = "all", startDate, endDate } = options;
     const key = queryKey({ userId, type, category, startDate, endDate });
     const cached = countCache.get(key);
@@ -297,7 +334,13 @@ export const TransactionService = {
   },
 
   /** Number of transactions per category, computed by the database. */
-  countByCategory: async (_userId, categories) => {
+  countByCategory: async (userId, categories) => {
+    const vault = currentVault(userId);
+    if (vault) {
+      const counts = new Map();
+      for (const row of await readVaultTransactions(vault)) counts.set(row.category, (counts.get(row.category) || 0) + 1);
+      return Object.fromEntries(categories.map((category) => [category, counts.get(category) || 0]));
+    }
     const rows = unwrap(await supabase.rpc("transaction_category_counts"));
     const counts = new Map((rows || []).map((row) => [row.category, Number(row.count)]));
     return Object.fromEntries(categories.map((category) => [category, counts.get(category) || 0]));
@@ -305,6 +348,8 @@ export const TransactionService = {
 
   /** Date of the oldest transaction, or null when there is none. */
   getFirstDate: async (userId) => {
+    const vault = currentVault(userId);
+    if (vault) return (await readVaultTransactions(vault)).at(-1)?.date ?? null;
     const rows = unwrap(await supabase.from(TABLE).select("date_key")
       .eq("user_id", userId)
       .order("date_key", { ascending: true })
@@ -315,17 +360,36 @@ export const TransactionService = {
   add: async (userId, data, { requestId = crypto.randomUUID() } = {}) => {
     const input = toV2Input(data);
     const id = `${safeId(userId)}_${safeId(requestId)}`;
+    const vault = currentVault(userId);
+    if (vault) {
+      const fields = toTransactionRow(input);
+      const rule = data.recurring && recurringDraftSchema.parse(data.recurring);
+      return vault.change(({ get }) => {
+        const changes = [];
+        if (!get(TABLE, id)) changes.push(transactionRecord(id, userId, fields));
+        if (rule && !get("recurring", rule.id)) {
+          const { date_key: anchor_date_key, ...details } = fields;
+          const created_at = new Date().toISOString();
+          changes.push(vaultRecord("recurring", rule.id, {
+            ...details, id: rule.id, user_id: userId, created_at, updated_at: created_at,
+            anchor_date_key, frequency: rule.frequency, mode: rule.mode, next_index: 1, paused: false,
+          }));
+        }
+        return { changes, result: { id } };
+      });
+    }
+
     if (data.recurring) {
       const rule = recurringDraftSchema.parse(data.recurring);
       unwrap(await supabase.rpc("add_transaction_with_recurring", {
-        p_id: id, p_rule_id: rule.id, p_transaction: toRow(input),
+        p_id: id, p_rule_id: rule.id, p_transaction: toTransactionRow(input),
         p_frequency: rule.frequency, p_mode: rule.mode,
       }));
       afterWrite();
       emitLocalChange("recurring");
       return { id };
     }
-    const { error } = await supabase.from(TABLE).insert({ id, user_id: userId, ...toRow(input), schema_version: 2 });
+    const { error } = await supabase.from(TABLE).insert({ id, user_id: userId, ...toTransactionRow(input), schema_version: 2 });
     // A retry reuses the same id. If the first attempt actually reached the
     // server the row is already there: confirm that instead of failing.
     if (error && !(error.code === "23505" && await isAlreadyCreated(id))) throw toDataError(error);
@@ -336,6 +400,7 @@ export const TransactionService = {
   /** Bulk idempotent insert for CSV imports (chunks of 100 rows, one cache invalidation). */
   addBatch: async (userId, items = [], { chunkSize = 100, onProgress } = {}) => {
     if (!items.length) return { imported: 0, failed: [] };
+    const vault = currentVault(userId);
     const failed = [];
     let imported = 0;
     for (let offset = 0; offset < items.length; offset += chunkSize) {
@@ -346,14 +411,21 @@ export const TransactionService = {
         try {
           const input = toV2Input(item);
           const id = `${safeId(userId)}_${safeId(item.clientRequestId || crypto.randomUUID())}`;
-          rows.push({ id, user_id: userId, ...toRow(input), schema_version: 2 });
+          rows.push({ id, user_id: userId, ...toTransactionRow(input), schema_version: 2 });
           validSlice.push(item);
         } catch {
           failed.push(item);
         }
       }
       if (rows.length) {
-        const { error } = await supabase.from(TABLE).upsert(rows, { onConflict: "id", ignoreDuplicates: true });
+        const { error } = vault ? await vault.change(({ get }) => {
+          const unique = new Map(rows.map((row) => [row.id, row]));
+          return {
+            changes: [...unique.values()].filter((row) => !get(TABLE, row.id))
+              .map((row) => transactionRecord(row.id, userId, row)),
+            result: {},
+          };
+        }).catch((error) => ({ error })) : await supabase.from(TABLE).upsert(rows, { onConflict: "id", ignoreDuplicates: true });
         if (error) {
           failed.push(...validSlice);
         } else {
@@ -377,13 +449,24 @@ export const TransactionService = {
     if (data.category !== undefined) rawPatch.category = data.category;
     if (data.type !== undefined) rawPatch.type = data.type;
     const patch = transactionV2PatchSchema.parse(rawPatch);
+    const vault = currentVault();
+    if (vault) return vault.change(({ get }) => {
+      const current = get(TABLE, id);
+      if (!current) throw notFound();
+      return { changes: [transactionRecord(id, vault.uid, { ...current, ...toTransactionRow(patch), updated_at: new Date().toISOString() })] };
+    });
 
-    const rows = unwrap(await supabase.from(TABLE).update({ ...toRow(patch), schema_version: 2 }).eq("id", id).select("id"));
+    const rows = unwrap(await supabase.from(TABLE).update({ ...toTransactionRow(patch), schema_version: 2 }).eq("id", id).select("id"));
     if (!rows.length) throw notFound();
     afterWrite();
   },
 
   delete: async (id) => {
+    const vault = currentVault();
+    if (vault) return vault.change(({ get }) => {
+      if (!get(TABLE, id)) throw notFound();
+      return { changes: [vaultRecord(TABLE, id, null)] };
+    });
     const rows = unwrap(await supabase.from(TABLE).delete().eq("id", id).select("id"));
     if (!rows.length) throw notFound();
     afterWrite();

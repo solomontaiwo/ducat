@@ -7,6 +7,7 @@ import { RouterProvider } from './router/RouterProvider';
 import { ThemeProvider } from "./utils/ThemeProvider";
 import { NotificationProvider } from "./utils/notificationUtils";
 import { AuthProvider } from "./context/AuthProvider";
+import AccountAccess from "./context/AccountAccess.jsx";
 import UnifiedTransactionProvider from "./context/UnifiedTransactionProvider";
 import PlanningProvider from "./context/PlanningProvider";
 import PrivacyProvider from "./context/PrivacyProvider";
@@ -48,13 +49,15 @@ ensureLanguage().finally(() => {
               account mode remounts them, and must not reset the current route. */}
           <RouterProvider basename={import.meta.env.BASE_URL}>
             <AuthProvider>
-              <UnifiedTransactionProvider>
-                <PlanningProvider>
-                  <PrivacyProvider>
-                    <App />
-                  </PrivacyProvider>
-                </PlanningProvider>
-              </UnifiedTransactionProvider>
+              <AccountAccess>
+                <UnifiedTransactionProvider>
+                  <PlanningProvider>
+                    <PrivacyProvider>
+                      <App />
+                    </PrivacyProvider>
+                  </PlanningProvider>
+                </UnifiedTransactionProvider>
+              </AccountAccess>
             </AuthProvider>
           </RouterProvider>
         </NotificationProvider>

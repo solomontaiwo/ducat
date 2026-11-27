@@ -1,5 +1,7 @@
+import { Buffer } from "node:buffer";
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { createVaultKeys, newRecoveryCode, unwrapVaultKey, vaultCrypto } from "../../src/utils/vaultCrypto.js";
 
 test("landing supports demo navigation without serious accessibility violations", async ({ page }) => {
   const pageErrors = [];
@@ -61,6 +63,98 @@ test("auth pages load the account client without errors", async ({ page }) => {
 });
 
 const ADD_BUTTON = /^(nuovo movimento|new transaction)$/i;
+
+test("unlocks an archive on two devices and persists offline writes only as ciphertext", async ({ page, browser, context }) => {
+  const uid = "00000000-0000-4000-8000-0000000000aa";
+  const passphrase = "a separate archive passphrase";
+  const code = newRecoveryCode();
+  const keys = await createVaultKeys(uid, passphrase, code);
+  const key = await unwrapVaultKey(uid, keys, passphrase);
+  const archive = await vaultCrypto(uid, key);
+  key.fill(0);
+  const authUser = { id: uid, email: "vault@example.com", email_confirmed_at: "2026-01-01T00:00:00Z", user_metadata: { lang: "it" } };
+  const expires_at = Math.floor(Date.now() / 1000) + 3600;
+  const token = Buffer.from(JSON.stringify({ sub: uid, exp: expires_at, role: "authenticated" })).toString("base64url");
+  const session = { access_token: `eyJhbGciOiJIUzI1NiJ9.${token}.dGVzdA`, refresh_token: "fixture", expires_at, user: authUser };
+  const records = new Map();
+  const writes = [];
+  let revision = 0;
+  const prepare = async (tab) => {
+    await tab.addInitScript((auth) => localStorage.setItem("ducat-auth", JSON.stringify(auth)), session);
+    await tab.routeWebSocket("**/realtime/v1/websocket*", () => {});
+    await tab.route((url) => url.pathname.startsWith("/rest/v1/") || url.pathname.startsWith("/auth/v1/"), async (route) => {
+      const endpoint = new URL(route.request().url()).pathname.split("/").at(-1);
+      if (endpoint === "vault_accounts") return route.fulfill({ json: [{ keys, active: true, revision }] });
+      if (endpoint === "read_vault_changes") {
+        const { p_after, p_id, p_through } = route.request().postDataJSON();
+        return route.fulfill({ json: [...records.values()].filter((row) => row.revision <= p_through
+          && (row.revision > p_after || (p_id !== null && row.revision === p_after && row.id > p_id))) });
+      }
+      if (endpoint === "write_vault") {
+        const payload = route.request().postDataJSON();
+        if (payload.p_revision !== revision) return route.fulfill({ json: false });
+        revision += 1;
+        writes.push(payload);
+        for (const record of payload.p_changes) records.set(record.id, { ...record, revision });
+        return route.fulfill({ json: true });
+      }
+      if (endpoint === "user") return route.fulfill({ json: authUser });
+      if (endpoint === "profiles") return route.fulfill({ json: [{ username: "Ada", display_name: "Ada", email: authUser.email }] });
+      return route.fulfill({ status: 404, json: { message: `Unexpected test request: ${endpoint}` } });
+    });
+  };
+  await prepare(page);
+  await page.goto("transactions");
+  await page.getByLabel("Passphrase dell’archivio").fill("wrong passphrase");
+  await page.getByRole("button", { name: /^sblocca$/i }).click();
+  await expect(page.getByRole("alert")).toContainText(/non è valido/);
+  await page.getByLabel("Passphrase dell’archivio").fill(passphrase);
+  await page.getByRole("button", { name: /^sblocca$/i }).click();
+  const description = "Movimento inserito offline";
+  await expect(page.getByRole("button", { name: ADD_BUTTON }).first()).toBeVisible();
+  await context.setOffline(true);
+  await page.getByRole("button", { name: ADD_BUTTON }).first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#transaction-amount").fill("12,50");
+  await dialog.getByRole("radio", { name: /^(trasporti|transportation)$/i }).click();
+  await dialog.locator("#transaction-description").fill(description);
+  await dialog.getByRole("button", { name: /12,50|12\.50/ }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: new RegExp(description) })).toBeVisible();
+  expect(writes).toHaveLength(0);
+  const persistedQueue = await page.evaluate((userId) => new Promise((resolve, reject) => {
+    const request = indexedDB.open("ducat-encrypted-archive");
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const record = db.transaction("accounts").objectStore("accounts").get(`${userId}:queue`);
+      record.onsuccess = () => { db.close(); resolve(record.result); };
+      record.onerror = () => reject(record.error);
+    };
+  }), uid);
+  expect(persistedQueue).not.toContain(description);
+  expect(JSON.stringify(await archive.open(persistedQueue, "queue"))).toContain(description);
+  await context.setOffline(false);
+  await expect.poll(() => writes.length).toBe(1);
+  const [record] = [...records.values()];
+  expect(JSON.stringify(writes)).not.toContain(description);
+  expect(await archive.open(record.ciphertext, "record", record.id)).toMatchObject({ value: { description, amount_minor: 1250 } });
+
+  const second = await browser.newContext({ locale: "it-IT", baseURL: page.url() });
+  try {
+    const tab = await second.newPage();
+    await prepare(tab);
+    await tab.goto("/reset-password");
+    await expect(tab.locator("#new-password")).toBeVisible();
+    await tab.goto(page.url());
+    await tab.getByRole("button", { name: "Usa il codice di recupero" }).click();
+    await tab.getByLabel("Codice di recupero", { exact: true }).fill(code);
+    await tab.getByRole("button", { name: /^sblocca$/i }).click();
+    await expect(tab.getByRole("button", { name: new RegExp(description) })).toContainText("12,50");
+  } finally {
+    await second.close();
+  }
+});
 
 test("a sign-up waiting for the confirmation can try the app with local data", async ({ page }) => {
   await page.goto(".");
