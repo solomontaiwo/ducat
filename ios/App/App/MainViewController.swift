@@ -42,7 +42,8 @@ class MainViewController: CAPBridgeViewController {
                 self?.syncTopCornerBarMetrics(force: true)
             }
         }
-        if #available(iOS 27.1, *) {
+        // iOS apps running on Mac may lack the UIKit bar layout symbols.
+        if !ProcessInfo.processInfo.isiOSAppOnMac, #available(iOS 27.1, *) {
             installTopBarRegionObserver()
             registerForTraitChanges(UITraitCollection.systemTraitsAffectingVerticalBarEdge) { (controller: MainViewController, _) in
                 controller.syncTopCornerBarMetrics()

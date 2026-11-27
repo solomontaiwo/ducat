@@ -14,7 +14,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.rootViewController = MainViewController()
         window?.makeKeyAndVisible()
 
-        if #available(iOS 27.1, *) {
+        if !ProcessInfo.processInfo.isiOSAppOnMac, #available(iOS 27.1, *) {
             observeVerticalBar(in: windowScene)
         }
 
