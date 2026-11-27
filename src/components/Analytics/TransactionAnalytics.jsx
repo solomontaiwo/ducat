@@ -257,7 +257,7 @@ const TransactionAnalytics = () => {
         <div
           role="radiogroup"
           aria-label={t("analytics.period")}
-          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none md:mx-0 md:flex-wrap md:px-0"
+          className="scroll-row-bleed flex gap-2 overflow-x-auto pb-1 scrollbar-none md:mx-0 md:flex-wrap md:px-0"
           data-swipe-ignore="true"
         >
           {PERIODS.map((value) => (

@@ -648,7 +648,7 @@ const TransactionList = () => {
             </p>
           )}
 
-          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 scrollbar-none md:mx-0 md:flex-wrap md:px-0" data-swipe-ignore="true">
+          <div className="scroll-row-bleed flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none md:mx-0 md:flex-wrap md:px-0" data-swipe-ignore="true">
             {TYPE_FILTERS.map((type) => (
               <button
                 key={type}

@@ -292,9 +292,24 @@
    * top-right corner, and phones in landscape inset the sides.
    */
   .app-main {
+    --page-gutter-left: max(1rem, calc(env(safe-area-inset-left) + 0.5rem));
+    --page-gutter-right: max(1rem, calc(env(safe-area-inset-right) + 0.5rem));
     padding-top: calc(env(safe-area-inset-top) + 1rem);
-    padding-left: max(1rem, calc(env(safe-area-inset-left) + 0.5rem));
-    padding-right: max(1rem, calc(env(safe-area-inset-right) + 0.5rem));
+    padding-left: var(--page-gutter-left);
+    padding-right: var(--page-gutter-right);
+  }
+  /*
+   * A horizontally scrolling row (filter and period chips) that runs to the
+   * screen's edges, past the page margins and under the side safe areas, such
+   * as the iPhone Duo's vertical bar, instead of being cut off where the
+   * margin starts. Its first and last items still rest inside the margins, so
+   * they stay clear of the camera and remain easy to tap.
+   */
+  .scroll-row-bleed {
+    margin-left: calc(-1 * var(--page-gutter-left, 1rem));
+    margin-right: calc(-1 * var(--page-gutter-right, 1rem));
+    padding-left: var(--page-gutter-left, 1rem);
+    padding-right: var(--page-gutter-right, 1rem);
   }
   :root {
     --sidebar-width: clamp(12rem, 18vw, 17rem);
