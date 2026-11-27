@@ -17,6 +17,7 @@ const DEFAULT_PRIVACY = Object.freeze({
   biometricAvailable: false,
   biometricType: "none",
   biometricEnabled: false,
+  systemAppLock: false,
   enableBiometricLock: async () => false,
   disableBiometricLock: async () => false,
   locked: false,
@@ -33,6 +34,7 @@ export const PrivacyProvider = ({ children }) => {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState("none");
   const [biometricEnabled, setBiometricEnabled] = useState(readBiometricFlag);
+  const [systemAppLock, setSystemAppLock] = useState(false);
   const [locked, setLocked] = useState(readBiometricFlag);
   const [unlocking, setUnlocking] = useState(false);
   const backgroundAtRef = useRef(null);
@@ -62,10 +64,11 @@ export const PrivacyProvider = ({ children }) => {
     loadBiometrics().then(async (mod) => {
       if (!mod) return;
       const { checkBiometricAvailability, isBiometricLockEnabled, setBiometricLockEnabled } = mod;
-      const { available, biometryType } = await checkBiometricAvailability();
+      const { available, biometryType, systemAppLock: system } = await checkBiometricAvailability();
       if (cancelled) return;
       setBiometricAvailable(available);
       setBiometricType(biometryType);
+      setSystemAppLock(system);
       if (!available && isBiometricLockEnabled()) {
         setBiometricLockEnabled(false);
         setBiometricEnabled(false);
@@ -143,6 +146,7 @@ export const PrivacyProvider = ({ children }) => {
     biometricAvailable,
     biometricType,
     biometricEnabled,
+    systemAppLock,
     enableBiometricLock,
     disableBiometricLock,
     locked,
@@ -150,7 +154,7 @@ export const PrivacyProvider = ({ children }) => {
     unlock,
   }), [
     hideAmounts, toggleHideAmounts, setHideAmounts,
-    biometricAvailable, biometricType, biometricEnabled,
+    biometricAvailable, biometricType, biometricEnabled, systemAppLock,
     enableBiometricLock, disableBiometricLock,
     locked, unlocking, unlock,
   ]);

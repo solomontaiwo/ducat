@@ -22,18 +22,25 @@ const getPlugin = () => {
   return cachedPlugin;
 };
 
-/** @returns {Promise<{ available: boolean, biometryType: "faceID"|"touchID"|"opticID"|"passcode"|"none" }>} */
+const UNAVAILABLE = Object.freeze({ available: false, biometryType: "none", systemAppLock: false });
+
+/**
+ * `systemAppLock`: iOS itself can lock the app (iOS 18+, "Require Face ID"
+ * from the Home Screen menu), so the in-app lock is not offered.
+ * @returns {Promise<{ available: boolean, biometryType: "faceID"|"touchID"|"opticID"|"passcode"|"none", systemAppLock: boolean }>}
+ */
 export const checkBiometricAvailability = async () => {
   const plugin = getPlugin();
-  if (!plugin) return { available: false, biometryType: "none" };
+  if (!plugin) return { ...UNAVAILABLE };
   try {
     const result = await plugin.isAvailable();
     return {
       available: Boolean(result?.available),
       biometryType: result?.biometryType || "none",
+      systemAppLock: Boolean(result?.systemAppLock),
     };
   } catch {
-    return { available: false, biometryType: "none" };
+    return { ...UNAVAILABLE };
   }
 };
 

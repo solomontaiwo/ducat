@@ -185,6 +185,12 @@ describe("iOS submission requirements", () => {
     expect(scene).toContain("verticalBarEdge != .unspecified");
   });
 
+  it("builds the native pull to refresh and the system app lock check", () => {
+    expect(pbxproj).toContain("NativeRefreshPlugin.swift in Sources");
+    expect(read("ios/App/App/MainViewController.swift")).toContain("registerPluginInstance(NativeRefreshPlugin())");
+    expect(read("ios/App/App/BiometricAuthPlugin.swift")).toContain('"systemAppLock"');
+  });
+
   it("translates the Home Screen quick actions into every app language", () => {
     const titles = [...infoPlist.matchAll(/<key>UIApplicationShortcutItemTitle<\/key>\s*<string>([^<]+)<\/string>/g)].map((match) => match[1]);
     expect(titles).toEqual(["New Expense", "New Income"]);

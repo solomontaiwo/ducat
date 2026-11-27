@@ -22,6 +22,7 @@ public class BiometricAuthPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve([
                 "available": true,
                 "biometryType": Self.biometryLabel(context.biometryType),
+                "systemAppLock": Self.systemAppLock,
             ])
             return
         }
@@ -31,7 +32,17 @@ public class BiometricAuthPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve([
             "available": canDeviceAuth,
             "biometryType": canDeviceAuth ? "passcode" : "none",
+            "systemAppLock": Self.systemAppLock,
         ])
+    }
+
+    /// iOS and iPadOS 18 can lock any app from its Home Screen menu ("Require
+    /// Face ID"). The web app then points there instead of offering its own
+    /// lock. Not available when the iPad app runs on a Mac.
+    private static var systemAppLock: Bool {
+        if ProcessInfo.processInfo.isiOSAppOnMac { return false }
+        if #available(iOS 18.0, *) { return true }
+        return false
     }
 
     @objc func authenticate(_ call: CAPPluginCall) {

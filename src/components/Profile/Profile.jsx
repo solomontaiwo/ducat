@@ -133,6 +133,7 @@ const Profile = () => {
     biometricAvailable,
     biometricType,
     biometricEnabled,
+    systemAppLock,
     enableBiometricLock,
     disableBiometricLock,
   } = usePrivacy();
@@ -537,7 +538,19 @@ const Profile = () => {
           </SettingsGroup>
 
           <SettingsGroup title={t("profilePage.security")}>
-            {biometricAvailable && (
+            {/* iOS 18+ locks apps itself: point there instead of a second lock.
+                Anyone who already turned the in-app lock on keeps its switch. */}
+            {biometricAvailable && systemAppLock && !biometricEnabled && (
+              <SettingsRow
+                icon={FiShield}
+                tone="blue"
+                title={t("privacy.biometric.title", { method: biometricLabel })}
+                subtitle={t("privacy.biometric.systemHint", { app: APP_NAME, method: biometricLabel })}
+                subtitleWrap
+                testId="row-system-app-lock"
+              />
+            )}
+            {biometricAvailable && (!systemAppLock || biometricEnabled) && (
               <SettingsRow
                 icon={FiShield}
                 tone="blue"

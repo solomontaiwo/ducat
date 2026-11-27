@@ -1,21 +1,61 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { FiRefreshCw } from "react-icons/fi";
 import { hapticTap } from "../../platform/haptics.js";
+import {
+  isNativeRefreshAvailable,
+  registerNativeRefresh,
+  subscribeNativeRefreshAvailability,
+} from "../../platform/nativeRefresh.js";
+import { useRouteActive } from "../../router/RouterProvider";
+import { useAnyDialogOpen } from "./dialogStack.js";
 import { cn } from "../../lib/utils.js";
 
 const TRIGGER_PX = 64;
 const MAX_PULL_PX = 108;
 
+const useNativeRefreshAvailable = () => useSyncExternalStore(
+  subscribeNativeRefreshAvailability,
+  isNativeRefreshAvailable,
+  () => false,
+);
+
 /**
- * Lightweight touch-only pull-to-refresh wrapper for mobile views.
- * Activates only when the page is already scrolled to the very top so normal
- * scrolling and horizontal swipes are never interfered with.
+ * Pull to refresh for mobile views.
+ *
+ * In the iOS app it hands the gesture to the system refresh control (see
+ * `platform/nativeRefresh.js`), on while this page is on screen and no dialog
+ * is open. Elsewhere it is a light touch-only version that starts only at the
+ * very top of the page, so normal scrolling and horizontal swipes are never
+ * interfered with.
  */
 const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => {
+  const native = useNativeRefreshAvailable();
+  const active = useRouteActive();
+  const anyDialogOpen = useAnyDialogOpen();
+  const latestRefresh = useRef(onRefresh);
+  latestRefresh.current = onRefresh;
+  const nativeEnabled = native && active && !disabled && !anyDialogOpen;
+
+  useEffect(() => {
+    if (!nativeEnabled) return undefined;
+    return registerNativeRefresh(() => latestRefresh.current?.());
+  }, [nativeEnabled]);
+
+  // Same tree either way, so the page never remounts if the native control
+  // turns out to be unavailable; with it, the web gesture stays off.
+  return (
+    <WebPullToRefresh onRefresh={onRefresh} disabled={disabled || native} className={className}>
+      {children}
+    </WebPullToRefresh>
+  );
+};
+
+const WebPullToRefresh = ({ onRefresh, disabled = false, children, className }) => {
   const { t } = useTranslation();
   const [pullDistance, setPullDistance] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const startYRef = useRef(null);
   const startXRef = useRef(null);
@@ -26,6 +66,7 @@ const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => 
     startYRef.current = event.touches[0].clientY;
     startXRef.current = event.touches[0].clientX;
     crossedRef.current = false;
+    setDragging(true);
   }, [disabled, refreshing]);
 
   const handleTouchMove = useCallback((event) => {
@@ -53,6 +94,7 @@ const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => 
   }, [disabled, refreshing, pullDistance]);
 
   const handleTouchEnd = useCallback(async () => {
+    setDragging(false);
     if (startYRef.current === null) return;
     startYRef.current = null;
     startXRef.current = null;
@@ -85,7 +127,9 @@ const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => 
       <div
         aria-live="polite"
         className={cn(
-          "flex items-center justify-center overflow-hidden transition-[height,opacity] duration-150",
+          // Follows the finger while dragging; eases back on release.
+          "flex items-center justify-center overflow-hidden motion-reduce:transition-none",
+          !dragging && "transition-[height,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
           visible ? "opacity-100" : "opacity-0"
         )}
         style={{ height: visible ? `${Math.max(refreshing ? 44 : 0, pullDistance)}px` : "0px" }}
@@ -113,5 +157,6 @@ PullToRefresh.propTypes = {
   children: PropTypes.node.isRequired,
   className: PropTypes.string,
 };
+WebPullToRefresh.propTypes = PullToRefresh.propTypes;
 
 export default PullToRefresh;

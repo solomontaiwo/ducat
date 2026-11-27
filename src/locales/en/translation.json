@@ -942,6 +942,7 @@
       "faceId": "Face ID",
       "touchId": "Touch ID",
       "device": "passcode",
+      "systemHint": "Touch and hold {{app}} on the Home Screen, then choose Require {{method}}.",
       "promptReason": "Unlock {{app}}",
       "lockedTitle": "{{app}} is locked",
       "lockedSubtitle": "Verify your identity to view balances and transactions.",

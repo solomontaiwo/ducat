@@ -6,6 +6,8 @@ import { isTabPath } from "./tabs.js";
 const RouterContext = createContext(null);
 // Location seen by a page kept mounted in the background (see `RouteLocationScope`).
 const LocationOverrideContext = createContext(null);
+// False for a page kept mounted but hidden; true everywhere else.
+const RouteActiveContext = createContext(true);
 
 const prefersReducedMotion = () => typeof window !== "undefined"
   && typeof window.matchMedia === "function"
@@ -133,8 +135,15 @@ export const RouteLocationScope = ({ active, children }) => {
   const live = useRouter().location;
   const lastRef = useRef(live);
   if (active) lastRef.current = live;
-  return <LocationOverrideContext.Provider value={lastRef.current}>{children}</LocationOverrideContext.Provider>;
+  return (
+    <RouteActiveContext.Provider value={active}>
+      <LocationOverrideContext.Provider value={lastRef.current}>{children}</LocationOverrideContext.Provider>
+    </RouteActiveContext.Provider>
+  );
 };
+
+/** Whether the calling page is the one on screen (false while kept hidden). */
+export const useRouteActive = () => useContext(RouteActiveContext);
 
 RouteLocationScope.propTypes = {
   active: PropTypes.bool.isRequired,

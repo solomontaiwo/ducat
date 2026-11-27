@@ -21,6 +21,7 @@
 		E1B0000000000000000000B3 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A4 /* MainViewController.swift */; };
 		E1B0000000000000000000B4 /* NativeFeaturesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A5 /* NativeFeaturesPlugin.swift */; };
 		E1B0000000000000000000B6 /* VerticalBarNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A7 /* VerticalBarNavigation.swift */; };
+		E1B0000000000000000000B8 /* NativeRefreshPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000AB /* NativeRefreshPlugin.swift */; };
 		E1B0000000000000000000B7 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A8 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
@@ -42,6 +43,7 @@
 		E1A0000000000000000000A4 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		E1A0000000000000000000A5 /* NativeFeaturesPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeFeaturesPlugin.swift; sourceTree = "<group>"; };
 		E1A0000000000000000000A7 /* VerticalBarNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerticalBarNavigation.swift; sourceTree = "<group>"; };
+		E1A0000000000000000000AB /* NativeRefreshPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeRefreshPlugin.swift; sourceTree = "<group>"; };
 		E1A0000000000000000000A9 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		E1A0000000000000000000AA /* it */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = it; path = it.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -83,6 +85,7 @@
 				E1A0000000000000000000A3 /* BiometricAuthPlugin.swift */,
 				E1A0000000000000000000A5 /* NativeFeaturesPlugin.swift */,
 				E1A0000000000000000000A7 /* VerticalBarNavigation.swift */,
+				E1A0000000000000000000AB /* NativeRefreshPlugin.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -188,6 +191,7 @@
 				E1B0000000000000000000B3 /* MainViewController.swift in Sources */,
 				E1B0000000000000000000B4 /* NativeFeaturesPlugin.swift in Sources */,
 				E1B0000000000000000000B6 /* VerticalBarNavigation.swift in Sources */,
+				E1B0000000000000000000B8 /* NativeRefreshPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

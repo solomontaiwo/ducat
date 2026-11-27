@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { FiLock } from "react-icons/fi";
 import { usePrivacy } from "../../context/PrivacyProvider.jsx";
 import { Button } from "../ui/button";
+import { trackOpenDialog } from "../ui/dialogStack.js";
 import { APP_NAME } from "../../utils/brand.js";
 
 const logo = `${import.meta.env.BASE_URL}icon-192.png`;
@@ -33,6 +34,9 @@ const AppLockOverlay = () => {
     autoPromptedRef.current = true;
     unlock(reason);
   }, [locked, unlock, reason]);
+
+  // Counts as an open dialog: native bars and pull to refresh step aside.
+  useEffect(() => (locked ? trackOpenDialog() : undefined), [locked]);
 
   if (!locked) return null;
 

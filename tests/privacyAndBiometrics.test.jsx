@@ -43,7 +43,7 @@ afterEach(() => {
 describe("biometrics bridge", () => {
   it("is a safe no-op outside the mobile shell", async () => {
     vi.stubEnv("MODE", "production");
-    await expect(checkBiometricAvailability()).resolves.toEqual({ available: false, biometryType: "none" });
+    await expect(checkBiometricAvailability()).resolves.toEqual({ available: false, biometryType: "none", systemAppLock: false });
     await expect(authenticateBiometric("Unlock")).resolves.toEqual({ authenticated: false, errorCode: "notAvailable" });
     setBiometricLockEnabled(true);
     expect(isBiometricLockEnabled()).toBe(false);
@@ -51,7 +51,9 @@ describe("biometrics bridge", () => {
 
   it("queries and authenticates through the native iOS plugin on mobile", async () => {
     vi.stubEnv("MODE", "mobile");
-    await expect(checkBiometricAvailability()).resolves.toEqual({ available: true, biometryType: "faceID" });
+    await expect(checkBiometricAvailability()).resolves.toEqual({ available: true, biometryType: "faceID", systemAppLock: false });
+    pluginMocks.isAvailable.mockResolvedValueOnce({ available: true, biometryType: "touchID", systemAppLock: true });
+    await expect(checkBiometricAvailability()).resolves.toEqual({ available: true, biometryType: "touchID", systemAppLock: true });
     await expect(authenticateBiometric("Unlock Ducat")).resolves.toEqual({ authenticated: true });
     expect(pluginMocks.authenticate).toHaveBeenCalledWith({ reason: "Unlock Ducat" });
 

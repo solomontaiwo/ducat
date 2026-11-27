@@ -942,6 +942,7 @@
       "faceId": "Face ID",
       "touchId": "Touch ID",
       "device": "codice",
+      "systemHint": "Tieni premuta l’icona di {{app}} nella schermata Home e scegli «Richiedi {{method}}».",
       "promptReason": "Sblocca {{app}}",
       "lockedTitle": "{{app}} è bloccata",
       "lockedSubtitle": "Verifica la tua identità per vedere saldi e movimenti.",

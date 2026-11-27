@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => {
     changeLanguage: vi.fn(),
     openExternal: vi.fn(async () => {}),
     toggleHideAmounts: vi.fn(),
+    biometric: { biometricAvailable: false, biometricType: "none", biometricEnabled: false, systemAppLock: false },
   };
 });
 
@@ -77,9 +78,7 @@ vi.mock("../src/context/PrivacyProvider.jsx", () => ({
   usePrivacy: () => ({
     hideAmounts: false,
     toggleHideAmounts: mocks.toggleHideAmounts,
-    biometricAvailable: false,
-    biometricType: "none",
-    biometricEnabled: false,
+    ...mocks.biometric,
     enableBiometricLock: vi.fn(async () => true),
     disableBiometricLock: vi.fn(async () => true),
   }),
@@ -91,6 +90,7 @@ import Profile from "../src/components/Profile/Profile.jsx";
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.savePreferences.mockResolvedValue(true);
+  mocks.biometric = { biometricAvailable: false, biometricType: "none", biometricEnabled: false, systemAppLock: false };
 });
 afterEach(cleanup);
 
@@ -187,6 +187,27 @@ describe("Profile", () => {
 
     fireEvent.click(screen.getByTestId("row-feedback"));
     await waitFor(() => expect(mocks.openExternal).toHaveBeenCalledWith(expect.stringMatching(/^mailto:/)));
+  });
+
+  it("offers the in-app lock where iOS cannot lock apps itself", () => {
+    mocks.biometric = { biometricAvailable: true, biometricType: "touchID", biometricEnabled: false, systemAppLock: false };
+    render(<Profile />);
+    expect(screen.getByRole("switch", { name: /privacy.biometric.title/ })).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByTestId("row-system-app-lock")).toBeNull();
+  });
+
+  it("points to the iOS app lock instead of a second lock on iOS 18 and later", () => {
+    mocks.biometric = { biometricAvailable: true, biometricType: "touchID", biometricEnabled: false, systemAppLock: true };
+    render(<Profile />);
+    expect(screen.queryByRole("switch", { name: /privacy.biometric.title/ })).toBeNull();
+    expect(screen.getByTestId("row-system-app-lock")).toHaveTextContent(/privacy.biometric.systemHint.*Touch ID|privacy.biometric.systemHint.*touchId/);
+  });
+
+  it("keeps the switch for anyone who already turned the in-app lock on", () => {
+    mocks.biometric = { biometricAvailable: true, biometricType: "faceID", biometricEnabled: true, systemAppLock: true };
+    render(<Profile />);
+    expect(screen.getByRole("switch", { name: /privacy.biometric.title/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.queryByTestId("row-system-app-lock")).toBeNull();
   });
 });
 

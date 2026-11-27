@@ -29,7 +29,7 @@ const TONES = {
  * One row. With `to` it is a link, with `onClick` a button; `trailing`
  * replaces the chevron (e.g. a segmented control).
  */
-export const SettingsRow = ({ icon: Icon, tone = "neutral", title, subtitle, subtitleTone, badge, to, onClick, trailing, testId }) => {
+export const SettingsRow = ({ icon: Icon, tone = "neutral", title, subtitle, subtitleTone, subtitleWrap = false, badge, to, onClick, trailing, testId }) => {
   const content = (
     <>
       {Icon && (
@@ -43,7 +43,7 @@ export const SettingsRow = ({ icon: Icon, tone = "neutral", title, subtitle, sub
           {badge && <span className="shrink-0 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-accent-foreground">{badge}</span>}
         </span>
         {subtitle && (
-          <span className={cn("truncate text-[13px]", subtitleTone === "warning" ? "font-semibold text-warning-strong" : "text-muted-foreground")}>
+          <span className={cn(subtitleWrap ? "text-pretty text-[13px]" : "truncate text-[13px]", subtitleTone === "warning" ? "font-semibold text-warning-strong" : "text-muted-foreground")}>
             {subtitle}
           </span>
         )}
@@ -64,6 +64,8 @@ SettingsRow.propTypes = {
   title: PropTypes.string.isRequired,
   subtitle: PropTypes.string,
   subtitleTone: PropTypes.oneOf(["warning"]),
+  /** Lets a longer subtitle wrap instead of being cut. */
+  subtitleWrap: PropTypes.bool,
   badge: PropTypes.string,
   to: PropTypes.string,
   onClick: PropTypes.func,
