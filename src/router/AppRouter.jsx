@@ -128,6 +128,14 @@ const AppRouter = () => {
     pathname: location.pathname,
   }) : null;
   const ready = !authLoading && !transactionLoading && !(authStalled && !currentUser);
+  useEffect(() => {
+    if (authLoading || (transactionLoading && !authStalled)) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      window.__ducatReady = true;
+      window.dispatchEvent(new Event("ducat:ready"));
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [authLoading, authStalled, transactionLoading]);
   const activeTab = ready && route && !redirect && session && isTabPath(route.path) ? route.path : null;
   // Pages inside the app shell keep the opened tabs alive; leaving the app
   // (sign-out, public pages) releases them.

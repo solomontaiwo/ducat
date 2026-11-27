@@ -13,6 +13,8 @@ const networkError = (error) => error.code === "unknown" && /fetch|network|load 
 const readAccount = async (uid) => unwrap(await supabase.from(TABLE)
   .select("keys, active, revision").eq("user_id", uid).maybeSingle());
 
+export const readCachedVaultAccount = (uid) => readVaultLocal(uid, "keys").catch(() => null);
+
 export const loadVaultAccount = async (uid) => {
   try {
     const account = await readAccount(uid);
@@ -125,7 +127,7 @@ export const openVault = async (uid, key) => {
   };
 
   const sync = async ({ offline = true, force = false } = {}) => {
-    if (!force && initialized && Date.now() - lastSync < 300) return;
+    if (!force && initialized && Date.now() - lastSync < 1000) return;
     try {
       for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
         const account = await readAccount(uid);
@@ -202,9 +204,21 @@ export const openVault = async (uid, key) => {
         secret.fill(0);
       }
     }),
-    initialize: (account) => run(async () => {
+    initialize: (account, { fast = false } = {}) => run(async () => {
       keyVersion = account.keys?.v;
       if (account.active) await loadSnapshot();
+      if (fast && account.active && initialized) {
+        lastSync = Date.now();
+        setTimeout(() => {
+          run(async () => {
+            const previous = revision;
+            const updated = await sync({ force: true, offline: true });
+            if (updated?.active) storeVaultLocal(uid, "keys", updated).catch(() => {});
+            if (updated && updated.revision !== previous) emitLocalChange(TABLE);
+          }).catch(() => {});
+        }, 80);
+        return;
+      }
       await sync({ force: true, offline: account.active });
     }),
     migrate: () => run(async () => {
@@ -260,7 +274,14 @@ export const openVault = async (uid, key) => {
       }
       throw new Error("Archive changed on another device. Retry the operation.");
     }),
-    watch: (reload) => watchVaultAccount(uid, () => { lastSync = 0; reload(); }),
+    watch: (reload) => {
+      let first = true;
+      return watchVaultAccount(uid, () => {
+        if (first) first = false;
+        else lastSync = 0;
+        reload();
+      });
+    },
     seal: (...args) => { requireOpen(); return cryptography.seal(...args); },
     open: (...args) => { requireOpen(); return cryptography.open(...args); },
   };

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   set: vi.fn(),
   remove: vi.fn(),
   loadVaultAccount: vi.fn(),
+  readCachedVaultAccount: vi.fn(),
   openVault: vi.fn(),
   watchVaultAccount: vi.fn(() => () => {}),
   loadVaultPin: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock("../src/platform/authStorage.js", () => ({
 }));
 vi.mock("../src/services/vaultService.js", () => ({
   loadVaultAccount: mocks.loadVaultAccount,
+  readCachedVaultAccount: mocks.readCachedVaultAccount,
   openVault: mocks.openVault,
   startVault: vi.fn(),
   watchVaultAccount: mocks.watchVaultAccount,
@@ -64,6 +66,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   setCurrentVault(null);
   mocks.loadVaultAccount.mockResolvedValue(ACCOUNT);
+  mocks.readCachedVaultAccount.mockResolvedValue(null);
   mocks.loadVaultPin.mockResolvedValue(null);
   mocks.openVault.mockResolvedValue({
     uid: mocks.currentUser.uid,
@@ -88,6 +91,26 @@ describe("VaultGate", () => {
     expect(await screen.findByText("Unlocked content")).toBeInTheDocument();
     expect(mocks.get).toHaveBeenCalledWith(mocks.currentUser.uid, "vault.deviceReason");
     expect(screen.queryByRole("button", { name: "vault.unlockWithDevice" })).toBeNull();
+  });
+
+  it("opens immediately from the cached archive metadata without showing the archive card", async () => {
+    const initialize = vi.fn(() => Promise.resolve());
+    mocks.openVault.mockResolvedValueOnce({
+      uid: mocks.currentUser.uid,
+      initialize,
+      migrate: vi.fn(() => Promise.resolve()),
+      close: vi.fn(),
+    });
+    mocks.readCachedVaultAccount.mockResolvedValue(ACCOUNT);
+    mocks.status.mockResolvedValue({ available: true, configured: true, requiresPrompt: false });
+    mocks.get.mockResolvedValue(KEY_B64);
+
+    render(<VaultGate><div>Unlocked content</div></VaultGate>);
+    expect(screen.queryByText("vault.title")).toBeNull();
+
+    expect(await screen.findByText("Unlocked content")).toBeInTheDocument();
+    expect(mocks.loadVaultAccount).not.toHaveBeenCalled();
+    expect(initialize).toHaveBeenCalledWith(ACCOUNT, { fast: true });
   });
 
   it("waits for one confirmation when migrating a legacy prompt-protected keychain entry", async () => {
