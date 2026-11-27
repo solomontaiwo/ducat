@@ -680,8 +680,7 @@ const TransactionList = () => {
 
         <header className="mobile-glass-header flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <h1 className="pl-1 text-[1.75rem] font-extrabold leading-tight md:pl-0 md:text-3xl">{t("transactions.title")}</h1>
-          <HeaderProfileButton />
-          <div className="max-md:order-last max-md:basis-full">
+          <div className="max-sm:order-last max-sm:basis-full sm:ml-auto">
             <MonthSwitcher
               size="sm"
               month={monthRange.month}
@@ -692,6 +691,7 @@ const TransactionList = () => {
               className="w-fit rounded-full border border-border bg-card px-0.5"
             />
           </div>
+          <HeaderProfileButton />
         </header>
 
         <div className="space-y-3">
@@ -890,15 +890,15 @@ const TransactionList = () => {
         </div>
 
         <div className="surface grid grid-cols-3 divide-x divide-border py-3 text-center">
-          <div className="px-2">
+          <div className="flex flex-col justify-between gap-0.5 px-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("transactions.summary.label")}</p>
             <p className="font-display text-base font-bold tabular-nums tracking-[-0.01em] sm:text-lg">{totals?.count ?? "—"}</p>
           </div>
-          <div className="px-2">
+          <div className="flex flex-col justify-between gap-0.5 px-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("dashboard.income")}</p>
             <p className="amount truncate text-base text-income sm:text-lg">{totals ? formatSignedAmount(totals.income, "income") : "—"}</p>
           </div>
-          <div className="px-2">
+          <div className="flex flex-col justify-between gap-0.5 px-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("dashboard.expenses")}</p>
             <p className="amount truncate text-base sm:text-lg">{totals ? formatSignedAmount(totals.expense, "expense") : "—"}</p>
           </div>

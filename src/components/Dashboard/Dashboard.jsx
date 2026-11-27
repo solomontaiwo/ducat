@@ -196,9 +196,9 @@ const Dashboard = () => {
   return (
     <PullToRefresh onRefresh={handleRefresh} disabled={isLoading}>
     <div className="page-shell dashboard-page">
-      <header className="mobile-glass-header flex items-start justify-between gap-x-4 gap-y-1">
+      <header className="mobile-glass-header dashboard-header flex items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
-          <p className="pl-1 text-sm font-semibold text-muted-foreground md:pl-0">
+          <p className="dashboard-greeting pl-1 text-sm font-semibold text-muted-foreground md:pl-0">
             {profileNameLoading
               ? <Skeleton width={140} height={14} />
               : t(`dashboard.${getGreetingKey(localHour)}`, { name: profileName || t("profile.user") })}
@@ -209,10 +209,10 @@ const Dashboard = () => {
             onPrevious={goToPrevious}
             onNext={goToNext}
             canGoNext={canGoNext}
-            className="-ml-3 md:-ml-3"
+            className="dashboard-month-switcher -ml-3 md:-ml-3"
           />
           {startDay > 1 && (
-            <p className="pl-1 text-xs font-semibold text-muted-foreground md:pl-0" data-testid="cycle-range">
+            <p className="dashboard-cycle-range pl-1 text-xs font-semibold text-muted-foreground md:pl-0" data-testid="cycle-range">
               {formatCycleRange(startDate, endDate, i18n.language)}
             </p>
           )}
@@ -268,18 +268,18 @@ const Dashboard = () => {
                   <div className="h-full rounded-full bg-warning" style={{ width: `${Math.max(2, Math.min(100, expenseShare))}%` }} />
                 </div>
               )}
-              <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6.5em),1fr))] gap-4 short:gap-3">
-                <div>
+              <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6.5em),1fr))] gap-3 sm:gap-4 cols2:gap-3 short:gap-3">
+                <div className="flex flex-col justify-between gap-0.5">
                   <dt className="text-sm font-semibold text-hero-muted short:text-xs">{t("dashboard.income")}</dt>
-                  <dd className="amount text-lg sm:text-xl short:text-base">{formatSignedAmount(stats.totalIncome, "income")}</dd>
+                  <dd className="amount whitespace-nowrap text-lg sm:text-xl cols2:text-base short:text-base">{formatSignedAmount(stats.totalIncome, "income")}</dd>
                 </div>
-                <div>
+                <div className="flex flex-col justify-between gap-0.5">
                   <dt className="text-sm font-semibold text-hero-muted short:text-xs">
                     {expenseShare !== null
                       ? t("dashboard.expensesWithShare", { percent: Math.round(expenseShare) })
                       : t("dashboard.expenses")}
                   </dt>
-                  <dd className="amount text-lg sm:text-xl short:text-base">{formatSignedAmount(stats.totalExpense, "expense")}</dd>
+                  <dd className="amount whitespace-nowrap text-lg sm:text-xl cols2:text-base short:text-base">{formatSignedAmount(stats.totalExpense, "expense")}</dd>
                 </div>
               </dl>
               {projection && (
@@ -332,8 +332,10 @@ const Dashboard = () => {
                         <span className="font-semibold tabular-nums" data-amount="true">{formatCurrency(item.amount)}</span>
                         <span className="w-10 text-right tabular-nums text-muted-foreground">{Math.round(item.percentage)}%</span>
                       </span>
-                      {item.category !== "remaining" && (
+                      {item.category !== "remaining" ? (
                         <FiChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+                      ) : (
+                        <span className="h-4 w-4 shrink-0" aria-hidden="true" />
                       )}
                     </>
                   );

@@ -211,6 +211,97 @@
       line-height: 1.2;
     }
   }
+  /*
+   * iPhone Duo inner screen in portrait: the system clock, battery/connectivity
+   * ring and Dynamic Island sit in the top-right corner, leaving the top-left
+   * strip free. Place page titles and header actions directly in that top bar
+   * row (like native iOS 27 / T3 Code) instead of a floating pill beneath it.
+   */
+  @media (max-width: 767px) {
+    html[data-top-corner-bar="true"] .top-scroll-fade {
+      display: none;
+    }
+    html[data-top-corner-bar="true"] .app-main {
+      padding-top: 0;
+    }
+    html[data-top-corner-bar="true"] .app-main > div > [role="alert"],
+    html[data-top-corner-bar="true"] .app-main > div > [role="status"] {
+      margin-top: calc(var(--top-bar-height, 64px) + 0.5rem);
+    }
+    html[data-top-corner-bar="true"] .mobile-glass-header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      min-height: var(--top-bar-height, 64px);
+      margin-left: calc(-1 * var(--page-gutter-left, 1rem));
+      margin-right: calc(-1 * var(--page-gutter-right, 1rem));
+      padding: var(--top-bar-top, 1rem) var(--top-bar-right, 14rem) 0.625rem var(--top-bar-left, var(--page-gutter-left, 1rem));
+      border-radius: 0;
+      border: 0;
+      border-bottom: 1px solid hsl(var(--border) / 0.5);
+      background: hsl(var(--background) / 0.84);
+      box-shadow: none;
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      backdrop-filter: blur(24px) saturate(180%);
+    }
+    html[data-top-corner-bar="true"] .mobile-glass-header h1 {
+      padding-left: 0;
+      font-size: 1.375rem;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    html[data-top-corner-bar="true"] .mobile-glass-header [data-testid="header-profile"],
+    html[data-top-corner-bar="true"] .mobile-glass-header > a[href="/register"],
+    html[data-top-corner-bar="true"] .mobile-glass-header > a[href="/verify-email"],
+    html[data-top-corner-bar="true"] .mobile-glass-header a[href="/register"],
+    html[data-top-corner-bar="true"] .mobile-glass-header a[href="/verify-email"] {
+      margin-top: 0;
+      height: 2.25rem;
+      width: 2.25rem;
+      font-size: 0.875rem;
+    }
+    html[data-top-corner-bar="true"] .mobile-glass-header .top-bar-compact-export {
+      display: inline-flex;
+      height: 2.25rem;
+    }
+    html[data-top-corner-bar="true"] .mobile-glass-header .top-bar-full-export {
+      display: none;
+    }
+    html[data-top-corner-bar="true"] .mobile-glass-header [data-swipe-ignore="true"] button {
+      height: 2rem;
+      width: 2rem;
+    }
+    html[data-top-corner-bar="true"] .dashboard-header {
+      padding-top: max(0.75rem, calc(var(--top-bar-top, 1rem) - 0.25rem));
+      padding-bottom: 0.5rem;
+    }
+    html[data-top-corner-bar="true"] .dashboard-header .dashboard-greeting {
+      padding-left: 0;
+      font-size: 0.75rem;
+      line-height: 1.15;
+    }
+    html[data-top-corner-bar="true"] .dashboard-header .dashboard-month-switcher {
+      margin-left: -0.5rem;
+    }
+    html[data-top-corner-bar="true"] .dashboard-header .dashboard-month-switcher button {
+      height: 1.875rem;
+      width: 1.875rem;
+    }
+    html[data-top-corner-bar="true"] .dashboard-header .dashboard-month-switcher h1 {
+      font-size: 1.25rem;
+      line-height: 1.2;
+    }
+    html[data-top-corner-bar="true"] .dashboard-header .dashboard-cycle-range {
+      padding-left: 0;
+      font-size: 0.6875rem;
+      line-height: 1.15;
+    }
+  }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .glass, .mobile-glass-header { background: hsl(var(--card)); }
     .glass-thick { background: hsl(var(--card)); }

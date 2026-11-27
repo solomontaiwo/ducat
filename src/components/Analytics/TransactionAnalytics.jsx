@@ -52,25 +52,36 @@ const DELTA_TONE = {
 const KpiTile = ({ label, value, note, tone, delta, maskNote = false }) => {
   const [showDetail, setShowDetail] = useState(false);
   return (
-    <div className="surface flex flex-col gap-1 p-4 [container-type:inline-size] sm:p-5 cols2:p-4">
-      <span className="text-[13px] font-semibold text-muted-foreground">{label}</span>
+    <div className="surface row-span-4 grid [grid-template-rows:subgrid] gap-y-1 p-4 sm:p-5 cols2:p-4">
+      <span className="self-start text-[13px] font-semibold leading-snug text-muted-foreground">{label}</span>
       {/* Four tiles in a row on `cols2` screens: the figure shrinks with its
-          tile, so even five-digit amounts fit on one line. */}
-      <span className={cn("amount text-2xl sm:text-[1.75rem] cols2:whitespace-nowrap cols2:[font-size:clamp(1.0625rem,15cqi,1.75rem)]", tone === "income" && "text-income")}>{value}</span>
-      {note && <span className="text-xs font-medium text-muted-foreground" data-amount={maskNote ? "true" : undefined}>{note}</span>}
-      {delta && (
-        <button
-          type="button"
-          onClick={() => setShowDetail((open) => !open)}
-          aria-expanded={showDetail}
-          title={delta.detail}
-          className={cn("self-start rounded text-left text-xs font-bold underline decoration-dotted decoration-1 underline-offset-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", DELTA_TONE[delta.tone])}
-          data-testid="kpi-delta"
-        >
-          {delta.text}
-        </button>
-      )}
-      {delta && showDetail && <span className="text-xs text-muted-foreground" data-testid="kpi-delta-detail">{delta.detail}</span>}
+          tile, so even five-digit amounts fit on one line. Keeping container
+          containment on an inner wrapper avoids interfering with row subgrid. */}
+      <div className="min-w-0 self-baseline [container-type:inline-size]">
+        <span className={cn("amount block text-2xl sm:text-[1.75rem] cols2:whitespace-nowrap cols2:[font-size:clamp(1.0625rem,15cqi,1.75rem)]", tone === "income" && "text-income")}>{value}</span>
+      </div>
+      <span
+        className="self-start text-xs font-medium leading-snug text-muted-foreground"
+        aria-hidden={!note || undefined}
+        data-amount={note && maskNote ? "true" : undefined}
+      >
+        {note || null}
+      </span>
+      <div className="flex flex-col items-start gap-1 self-start">
+        {delta && (
+          <button
+            type="button"
+            onClick={() => setShowDetail((open) => !open)}
+            aria-expanded={showDetail}
+            title={delta.detail}
+            className={cn("rounded text-left text-xs font-bold underline decoration-dotted decoration-1 underline-offset-[3px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", DELTA_TONE[delta.tone])}
+            data-testid="kpi-delta"
+          >
+            {delta.text}
+          </button>
+        )}
+        {delta && showDetail && <span className="text-xs text-muted-foreground" data-testid="kpi-delta-detail">{delta.detail}</span>}
+      </div>
     </div>
   );
 };
@@ -241,24 +252,24 @@ const TransactionAnalytics = () => {
         </div>
       )}
 
-      <header className="space-y-4">
-        <div className="mobile-glass-header flex flex-wrap items-center justify-between gap-3">
-          <h1 className="pl-1 text-[1.75rem] font-extrabold leading-tight md:pl-0 md:text-3xl">{t("analytics.title")}</h1>
-          <div className="flex items-center gap-2">
-            {/* Narrow screens: one button opening a choice of formats. */}
-            <Button variant="outline" size="sm" onClick={() => setExportSheetOpen(true)} disabled={!canExport} className="sm:hidden">
-              <FiDownload aria-hidden="true" />
-              {t("analytics.export")}
-            </Button>
-            <Button variant="outline" size="sm" onClick={exportCsv} disabled={!canExport} className="hidden sm:inline-flex">
-              {t("analytics.exportCsv")}
-            </Button>
-            <Button variant="outline" size="sm" onClick={exportPdf} disabled={!canExport} className="hidden sm:inline-flex">
-              {t("analytics.exportPdf")}
-            </Button>
-            <HeaderProfileButton className="ml-1" />
-          </div>
+      <header className="mobile-glass-header flex flex-wrap items-center justify-between gap-3">
+        <h1 className="pl-1 text-[1.75rem] font-extrabold leading-tight md:pl-0 md:text-3xl">{t("analytics.title")}</h1>
+        <div className="flex items-center gap-2">
+          {/* Narrow screens and Duo portrait top bar: one button opening a choice of formats. */}
+          <Button variant="outline" size="sm" onClick={() => setExportSheetOpen(true)} disabled={!canExport} className="top-bar-compact-export sm:hidden">
+            <FiDownload aria-hidden="true" />
+            {t("analytics.export")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={!canExport} className="top-bar-full-export hidden sm:inline-flex">
+            {t("analytics.exportCsv")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportPdf} disabled={!canExport} className="top-bar-full-export hidden sm:inline-flex">
+            {t("analytics.exportPdf")}
+          </Button>
+          <HeaderProfileButton className="ml-1" />
         </div>
+      </header>
+      <div className="space-y-4">
         <Sheet
           open={exportSheetOpen}
           onOpenChange={setExportSheetOpen}
@@ -330,7 +341,7 @@ const TransactionAnalytics = () => {
             {t("analytics.demoDescription", { current: demoCount, max: maxTransactions })}
           </p>
         )}
-      </header>
+      </div>
 
       <section className="grid grid-cols-2 gap-3 cols2:grid-cols-4 lg:grid-cols-4 lg:gap-4" aria-label={t("analytics.summary")}>
         <KpiTile
@@ -368,30 +379,36 @@ const TransactionAnalytics = () => {
           </h2>
           <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {annualSummary.bestSavingMonth && (
-              <div className="rounded-2xl bg-muted/60 p-3.5">
+              <div className="flex flex-col justify-between gap-1 rounded-2xl bg-muted/60 p-3.5">
                 <dt className="text-xs font-semibold text-muted-foreground">{t("analytics.annual.bestMonth")}</dt>
-                <dd className="mt-0.5 text-base font-bold capitalize">{annualSummary.bestSavingMonth.label}</dd>
-                <dd data-amount="true" className="text-xs font-semibold tabular-nums text-income">
-                  {formatCurrency(annualSummary.bestSavingMonth.net)}
-                </dd>
+                <div>
+                  <dd className="text-base font-bold capitalize">{annualSummary.bestSavingMonth.label}</dd>
+                  <dd data-amount="true" className="text-xs font-semibold tabular-nums text-income">
+                    {formatCurrency(annualSummary.bestSavingMonth.net)}
+                  </dd>
+                </div>
               </div>
             )}
             {annualSummary.highestExpenseMonth && (
-              <div className="rounded-2xl bg-muted/60 p-3.5">
+              <div className="flex flex-col justify-between gap-1 rounded-2xl bg-muted/60 p-3.5">
                 <dt className="text-xs font-semibold text-muted-foreground">{t("analytics.annual.highestSpend")}</dt>
-                <dd className="mt-0.5 text-base font-bold capitalize">{annualSummary.highestExpenseMonth.label}</dd>
-                <dd data-amount="true" className="text-xs font-semibold tabular-nums text-muted-foreground">
-                  {formatCurrency(annualSummary.highestExpenseMonth.expense)}
-                </dd>
+                <div>
+                  <dd className="text-base font-bold capitalize">{annualSummary.highestExpenseMonth.label}</dd>
+                  <dd data-amount="true" className="text-xs font-semibold tabular-nums text-muted-foreground">
+                    {formatCurrency(annualSummary.highestExpenseMonth.expense)}
+                  </dd>
+                </div>
               </div>
             )}
             {annualSummary.topCategory && (
-              <div className="rounded-2xl bg-muted/60 p-3.5">
+              <div className="flex flex-col justify-between gap-1 rounded-2xl bg-muted/60 p-3.5">
                 <dt className="text-xs font-semibold text-muted-foreground">{t("analytics.annual.topCategory")}</dt>
-                <dd className="mt-0.5 truncate text-base font-bold">{annualSummary.topCategory.label}</dd>
-                <dd data-amount="true" className="text-xs font-semibold tabular-nums text-muted-foreground">
-                  {formatCurrency(annualSummary.topCategory.amount)}
-                </dd>
+                <div>
+                  <dd className="truncate text-base font-bold">{annualSummary.topCategory.label}</dd>
+                  <dd data-amount="true" className="text-xs font-semibold tabular-nums text-muted-foreground">
+                    {formatCurrency(annualSummary.topCategory.amount)}
+                  </dd>
+                </div>
               </div>
             )}
           </dl>
@@ -474,10 +491,10 @@ const TransactionAnalytics = () => {
                             label={t("analytics.compare.categoryLabel", { ref: reference })}
                           />
                         </span>
-                        <span className="flex shrink-0 items-center gap-1.5 tabular-nums">
-                          <strong className="font-semibold" data-amount="true">{formatCurrency(category.amount)}</strong>
-                          <span className="text-muted-foreground">{Math.round(category.percentage)}%</span>
-                          <FiChevronRight className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+                        <span className="flex shrink-0 items-center gap-2 tabular-nums">
+                          <strong className="text-right font-semibold" data-amount="true">{formatCurrency(category.amount)}</strong>
+                          <span className="w-10 text-right text-muted-foreground">{Math.round(category.percentage)}%</span>
+                          <FiChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
                         </span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-muted">

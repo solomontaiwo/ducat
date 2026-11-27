@@ -144,11 +144,11 @@ const RecurringPage = () => {
 
       {recurring.length > 0 && (
         <section className="surface grid grid-cols-2 divide-x divide-border py-4 text-center" aria-label={t("recurring.title")}>
-          <div className="px-3">
+          <div className="flex flex-col justify-between gap-0.5 px-3">
             <p className="text-xs font-semibold text-muted-foreground">{t("recurring.fixedExpenses")}</p>
             <p className="amount text-lg sm:text-xl">{formatSignedAmount(minorToMajor(totals.expense), "expense")}</p>
           </div>
-          <div className="px-3">
+          <div className="flex flex-col justify-between gap-0.5 px-3">
             <p className="text-xs font-semibold text-muted-foreground">{t("recurring.fixedIncome")}</p>
             <p className="amount text-lg text-income sm:text-xl">{formatSignedAmount(minorToMajor(totals.income), "income")}</p>
           </div>

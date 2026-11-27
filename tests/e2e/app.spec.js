@@ -389,9 +389,91 @@ test("iPhone Duo inner screen: the four insight figures share a row without over
   await expect(tiles).toHaveCount(4);
   const boxes = await tiles.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
   expect(Math.max(...boxes) - Math.min(...boxes)).toBeLessThan(2);
+  // Every figure in the row shares the same horizontal baseline even when a
+  // label wraps onto two lines.
+  const amountTops = await tiles.locator(".amount").evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
+  expect(Math.max(...amountTops) - Math.min(...amountTops)).toBeLessThan(2);
   // Even "€12.345,67" stays on one line inside its tile.
   const overflow = await tiles.locator(".amount").evaluateAll((items) => items.map((item) => item.scrollWidth - item.clientWidth));
   expect(Math.max(...overflow)).toBeLessThanOrEqual(0);
+  await context.close();
+});
+
+test("numbers align horizontally and vertically across Overview and Insights", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "Sets its own viewport: one project is enough");
+  const fiveCategories = [
+    { id: "aln-inc", type: "income", amountMinor: 653400, description: "Stipendio", category: "stipendio" },
+    { id: "aln-1", type: "expense", amountMinor: 63800, description: "Treno", category: "trasporti" },
+    { id: "aln-2", type: "expense", amountMinor: 44000, description: "Volo", category: "viaggi" },
+    { id: "aln-3", type: "expense", amountMinor: 43810, description: "Bollette", category: "casa" },
+    { id: "aln-4", type: "expense", amountMinor: 19000, description: "Streaming", category: "abbonamenti" },
+    { id: "aln-5", type: "expense", amountMinor: 45800, description: "Spesa", category: "cibo" },
+  ];
+  const { context, page } = await openDuoDemo(browser, { width: 951, height: 669 }, fiveCategories);
+  await page.goto("dashboard");
+  const heroValues = page.getByRole("region", { name: /riepilogo del mese/i }).locator("dl dd.amount");
+  await expect(heroValues).toHaveCount(2);
+  const heroBottoms = await heroValues.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().bottom));
+  expect(Math.abs(heroBottoms[0] - heroBottoms[1])).toBeLessThan(2);
+
+  // All 5 category amounts in "Where your money goes" (including "Altre categorie"
+  // which has no chevron) right-align vertically in the same column.
+  const spendingAmounts = page.locator(".spending-card .spending-figures [data-amount='true']");
+  await expect(spendingAmounts).toHaveCount(5);
+  const spendingRights = await spendingAmounts.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().right));
+  expect(Math.max(...spendingRights) - Math.min(...spendingRights)).toBeLessThan(2);
+
+  // In Insights "By category", single-digit and two-digit percentages keep the
+  // euro amounts vertically right-aligned too.
+  await page.goto("analytics");
+  const categoryAmounts = page.locator(".category-card ul li button [data-amount='true']");
+  await expect(categoryAmounts).toHaveCount(5);
+  const categoryRights = await categoryAmounts.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().right));
+  expect(Math.max(...categoryRights) - Math.min(...categoryRights)).toBeLessThan(2);
+  await context.close();
+});
+
+test("iPhone Duo portrait top-corner bar places titles and actions beside the status cluster", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "Sets its own viewport: one project is enough");
+  const { context, page } = await openDuoDemo(browser, { width: 669, height: 951 }, duoSpending);
+  await page.addInitScript(() => {
+    const apply = () => {
+      const r = document.documentElement;
+      if (!r) return;
+      r.dataset.topCornerBar = "true";
+      r.style.setProperty("--top-bar-top", "10px");
+      r.style.setProperty("--top-bar-left", "16px");
+      r.style.setProperty("--top-bar-right", "228px");
+      r.style.setProperty("--top-bar-height", "58px");
+    };
+    if (document.documentElement) apply();
+    document.addEventListener("DOMContentLoaded", apply);
+  });
+
+  await page.goto("analytics");
+  const header = page.locator(".mobile-glass-header:visible").first();
+  await expect(header).toBeVisible();
+  const headerBox = await header.boundingBox();
+  expect(headerBox.y).toBeLessThanOrEqual(2);
+  // Uses the single compact Export button so the bar stays clear of the status cluster.
+  const exportBtn = page.getByRole("button", { name: "Esporta", exact: true });
+  await expect(exportBtn).toBeVisible();
+  await expect(page.getByRole("button", { name: "Esporta CSV" })).toBeHidden();
+  const rightmostBtn = header.locator("a, button").last();
+  const rightmostBox = await rightmostBtn.boundingBox();
+  // Header controls stop strictly before the 228px top-right status/battery zone.
+  expect(rightmostBox.x + rightmostBox.width).toBeLessThanOrEqual(669 - 228 + 2);
+  // Stays pinned at top:0 after scrolling down.
+  await page.evaluate(() => window.scrollTo(0, 320));
+  await page.waitForFunction(() => window.scrollY >= 200);
+  const scrolledHeaderBox = await header.boundingBox();
+  expect(scrolledHeaderBox.y).toBeLessThanOrEqual(2);
+
+  // Transactions header keeps MonthSwitcher and profile/register button on one line clear of the cluster.
+  await page.goto("transactions");
+  const txHeader = page.locator(".mobile-glass-header:visible").first();
+  const txRightmostBox = await txHeader.locator("a, button").last().boundingBox();
+  expect(txRightmostBox.x + txRightmostBox.width).toBeLessThanOrEqual(669 - 228 + 2);
   await context.close();
 });
 
