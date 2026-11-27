@@ -616,23 +616,24 @@ body::-webkit-scrollbar-thumb {
   to { opacity: 1; transform: none; }
 }
 
-/* The iOS activity indicator (pull to refresh in the iOS app). */
+/* The iOS activity indicator (pull to refresh in the iOS app), the same size
+   as the system one it takes over from. */
 .ios-spinner {
   position: relative;
   display: inline-block;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
 }
 .ios-spinner > i {
   position: absolute;
   left: 50%;
-  top: 1px;
-  width: 3px;
-  height: 7px;
-  margin-left: -1.5px;
+  top: 0;
+  width: 3.5px;
+  height: 10px;
+  margin-left: -1.75px;
   border-radius: 2px;
   background: currentColor;
-  transform-origin: 50% 12px;
+  transform-origin: 50% 15px;
   opacity: 0.25;
   animation: ios-spinner-fade 0.8s linear infinite;
 }

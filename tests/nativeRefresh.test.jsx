@@ -62,8 +62,9 @@ describe("native pull to refresh", () => {
     expect(mocks.plugin.setEnabled).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(mocks.plugin.listeners.refresh).toBeTypeOf("function"));
 
-    mocks.plugin.listeners.refresh({});
+    mocks.plugin.listeners.refresh({ x: 544, y: 30 });
     expect(second).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenLastCalledWith({ x: 544, y: 30 });
     expect(first).not.toHaveBeenCalled();
     // A second pull while the page loads adds nothing.
     mocks.plugin.listeners.refresh({});
@@ -72,6 +73,7 @@ describe("native pull to refresh", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     mocks.plugin.listeners.refresh({});
     expect(second).toHaveBeenCalledTimes(2);
+    expect(second).toHaveBeenLastCalledWith(null);
 
     releaseSecond();
     releaseFirst();
@@ -147,12 +149,15 @@ describe("PullToRefresh in the iOS app", () => {
     const { view, page, onRefresh, stack } = await renderPage();
     await waitFor(() => expect(lastEnabled()).toBe(true));
     await waitFor(() => expect(mocks.plugin.listeners.refresh).toBeTypeOf("function"));
-    mocks.plugin.listeners.refresh({});
+    act(() => mocks.plugin.listeners.refresh({ x: 544, y: 92 }));
     expect(onRefresh).toHaveBeenCalledTimes(1);
-    // The spinner shows in the page until the refresh settles.
+    // The page's spinner takes the native one's place until the refresh settles.
     expect(await screen.findByText("common.refreshing")).toBeInTheDocument();
-    expect(view.container.querySelector(".ios-spinner")).not.toBeNull();
+    const spinner = document.body.querySelector(".ios-spinner").parentElement;
+    expect(spinner).toHaveStyle({ left: "544px", top: "92px" });
+    expect(spinner).toHaveClass("fixed", "opacity-100");
     await waitFor(() => expect(screen.queryByText("common.refreshing")).toBeNull(), { timeout: 2000 });
+    expect(spinner).toHaveClass("opacity-0");
 
     let release;
     act(() => { release = stack.trackOpenDialog(); });

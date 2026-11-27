@@ -5,7 +5,7 @@
  * Pages register while they are on screen and able to refresh; the control is
  * on only while one is registered. When the finger lifts past the threshold
  * the control fades out and the most recent page refreshes, showing its own
- * spinner (see `PullToRefresh`). Outside the iOS app, or when the plugin
+ * spinner where the native one was (see `PullToRefresh`). Outside the iOS app, or when the plugin
  * reports it is not available (the iPad app on a Mac), every call is a no-op
  * and the web pull to refresh is used instead.
  */
@@ -74,14 +74,19 @@ const listenToResize = () => {
   window.addEventListener("resize", scheduleSync);
 };
 
-const handleRefresh = async () => {
+/** Where the native spinner was, in viewport pixels, if the plugin said so. */
+const spinnerPosition = (event) => (
+  Number.isFinite(event?.x) && Number.isFinite(event?.y) ? { x: event.x, y: event.y } : null
+);
+
+const handleRefresh = async (event) => {
   // A second pull while the page is still loading adds nothing.
   if (refreshing) return;
   const owner = latestOwner();
   if (!owner) return;
   refreshing = true;
   try {
-    await owner.refresh();
+    await owner.refresh(spinnerPosition(event));
   } catch {
     // The page reports its own errors.
   } finally {
@@ -92,13 +97,14 @@ const handleRefresh = async () => {
 const listen = () => {
   if (listening) return;
   listening = true;
-  enqueue((plugin) => plugin.addListener("refresh", () => { handleRefresh(); }));
+  enqueue((plugin) => plugin.addListener("refresh", (event) => { handleRefresh(event); }));
 };
 
 /**
  * Turns the native control on for `refresh` until the returned function is
- * called. `center` returns the horizontal position of the page's centre in the
- * viewport. Does nothing outside the iOS app.
+ * called; `refresh` receives where the native spinner was ({ x, y } in the
+ * viewport, or null). `center` returns the horizontal position of the page's
+ * centre in the viewport. Does nothing outside the iOS app.
  */
 export const registerNativeRefresh = (refresh, center) => {
   if (runtime() !== MOBILE) return () => {};

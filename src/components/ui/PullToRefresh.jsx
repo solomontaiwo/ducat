@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { FiRefreshCw } from "react-icons/fi";
@@ -22,9 +23,12 @@ const useNativeRefreshAvailable = () => useSyncExternalStore(
   () => false,
 );
 
-/** Keeps the spinner long enough to read as a refresh, even with cached data. */
-export const MIN_REFRESH_MS = 450;
+/** Keeps the spinner long enough to read as a refresh, even with cached data, and the content time to settle below it. */
+export const MIN_REFRESH_MS = 800;
+/** Room held above the content while the native-style spinner shows. */
 const NATIVE_SPINNER_PX = 52;
+/** Where the system spinner sits when the iOS app does not say: 30pt below the safe area. */
+const DEFAULT_SPINNER_TOP = "calc(env(safe-area-inset-top) + 30px)";
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -37,12 +41,38 @@ const IosSpinner = ({ paused }) => (
 IosSpinner.propTypes = { paused: PropTypes.bool };
 
 /**
+ * The page's spinner in the iOS app: fixed where the system one was when the
+ * finger lifted, so it seems to stay put while the content springs back below.
+ */
+const NativeRefreshSpinner = ({ visible, at }) => createPortal(
+  <div
+    aria-hidden="true"
+    className={cn(
+      "pointer-events-none fixed z-30 -translate-x-1/2 -translate-y-1/2 transition-opacity motion-reduce:transition-none",
+      visible ? "opacity-100 duration-150" : "opacity-0 duration-300"
+    )}
+    style={{
+      left: at?.x != null ? `${at.x}px` : "50%",
+      top: at?.y != null ? `${at.y}px` : DEFAULT_SPINNER_TOP,
+    }}
+  >
+    <IosSpinner paused={!visible} />
+  </div>,
+  document.body
+);
+NativeRefreshSpinner.propTypes = {
+  visible: PropTypes.bool,
+  at: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
+};
+
+/**
  * Pull to refresh for mobile views.
  *
  * In the iOS app the gesture belongs to the system refresh control (see
  * `platform/nativeRefresh.js`), on while this page is on screen and no dialog
- * is open; once released, the spinner shows here, in the content, so the
- * background and the bars never move. Elsewhere it is a light touch-only
+ * is open. Once released, this page shows its own spinner exactly where the
+ * system one was and holds the content below it, as in the App Store, while
+ * the background and the bars never move. Elsewhere it is a light touch-only
  * version that starts only at the very top of the page, so normal scrolling
  * and horizontal swipes are never interfered with.
  */
@@ -51,6 +81,7 @@ const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => 
   const active = useRouteActive();
   const anyDialogOpen = useAnyDialogOpen();
   const [nativeRefreshing, setNativeRefreshing] = useState(false);
+  const [spinnerAt, setSpinnerAt] = useState(null);
   const rootRef = useRef(null);
   const latestRefresh = useRef(onRefresh);
   latestRefresh.current = onRefresh;
@@ -58,7 +89,12 @@ const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => 
 
   useEffect(() => {
     if (!nativeEnabled) return undefined;
-    return registerNativeRefresh(async () => {
+    const pageCenter = () => {
+      const rect = rootRef.current?.getBoundingClientRect();
+      return rect && rect.width > 0 ? rect.left + rect.width / 2 : undefined;
+    };
+    return registerNativeRefresh(async (position) => {
+      setSpinnerAt(position ?? { x: pageCenter(), y: null });
       setNativeRefreshing(true);
       const started = Date.now();
       try {
@@ -68,10 +104,7 @@ const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => 
         if (remaining > 0) await wait(remaining);
         setNativeRefreshing(false);
       }
-    }, () => {
-      const rect = rootRef.current?.getBoundingClientRect();
-      return rect && rect.width > 0 ? rect.left + rect.width / 2 : undefined;
-    });
+    }, pageCenter);
   }, [nativeEnabled]);
 
   // The native spinner is centred over this page: follow its layout.
@@ -91,6 +124,7 @@ const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => 
       disabled={disabled || native}
       native={native}
       nativeRefreshing={nativeRefreshing}
+      spinnerAt={spinnerAt}
       rootRef={rootRef}
       className={className}
     >
@@ -99,7 +133,16 @@ const PullToRefresh = ({ onRefresh, disabled = false, children, className }) => 
   );
 };
 
-const WebPullToRefresh = ({ onRefresh, disabled = false, native = false, nativeRefreshing = false, rootRef, children, className }) => {
+const WebPullToRefresh = ({
+  onRefresh,
+  disabled = false,
+  native = false,
+  nativeRefreshing = false,
+  spinnerAt = null,
+  rootRef,
+  children,
+  className,
+}) => {
   const { t } = useTranslation();
   const [pullDistance, setPullDistance] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -160,9 +203,9 @@ const WebPullToRefresh = ({ onRefresh, disabled = false, native = false, nativeR
     }
   }, [pullDistance, disabled, refreshing, onRefresh]);
 
-  const visible = nativeRefreshing || refreshing || pullDistance > 8;
+  const visible = refreshing || pullDistance > 8;
   const ready = pullDistance >= TRIGGER_PX;
-  const height = nativeRefreshing ? NATIVE_SPINNER_PX : Math.max(refreshing ? 44 : 0, pullDistance);
+  const height = Math.max(refreshing ? 44 : 0, pullDistance);
 
   return (
     <div
@@ -173,39 +216,42 @@ const WebPullToRefresh = ({ onRefresh, disabled = false, native = false, nativeR
       onTouchCancel={handleTouchEnd}
       className={className}
     >
-      <div
-        aria-live="polite"
-        className={cn(
-          // Follows the finger while dragging; eases back on release.
-          "flex items-center justify-center overflow-hidden motion-reduce:transition-none",
-          !dragging && "transition-[height,opacity] duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
-          // Takes over from the native spinner, which fades out as quickly.
-          nativeRefreshing && "[transition-duration:300ms,150ms]",
-          visible ? "opacity-100" : "opacity-0"
-        )}
-        style={{ height: visible ? `${height}px` : "0px" }}
-      >
-        {/* With the native gesture this area only ever shows the spinner, also
-            while it fades away. */}
-        {native ? (
-          <>
-            <IosSpinner paused={!nativeRefreshing} />
+      {native ? (
+        <>
+          {/* Holds the content below the spinner while the page refreshes. */}
+          <div
+            aria-live="polite"
+            className="overflow-hidden transition-[height] duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+            style={{ height: nativeRefreshing ? `${NATIVE_SPINNER_PX}px` : "0px" }}
+          >
             {nativeRefreshing && <span className="sr-only">{t("common.refreshing")}</span>}
-          </>
-        ) : (
-        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-sm">
-          <FiRefreshCw
-            aria-hidden="true"
-            className={cn("h-3.5 w-3.5 transition-transform", refreshing && "animate-spin", ready && !refreshing && "rotate-180 text-primary")}
-          />
-          {refreshing
-            ? t("common.refreshing")
-            : ready
-              ? t("common.releaseToRefresh")
-              : t("common.pullToRefresh")}
-        </span>
-        )}
-      </div>
+          </div>
+          <NativeRefreshSpinner visible={nativeRefreshing} at={spinnerAt} />
+        </>
+      ) : (
+        <div
+          aria-live="polite"
+          className={cn(
+            // Follows the finger while dragging; eases back on release.
+            "flex items-center justify-center overflow-hidden motion-reduce:transition-none",
+            !dragging && "transition-[height,opacity] duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
+            visible ? "opacity-100" : "opacity-0"
+          )}
+          style={{ height: visible ? `${height}px` : "0px" }}
+        >
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-sm">
+            <FiRefreshCw
+              aria-hidden="true"
+              className={cn("h-3.5 w-3.5 transition-transform", refreshing && "animate-spin", ready && !refreshing && "rotate-180 text-primary")}
+            />
+            {refreshing
+              ? t("common.refreshing")
+              : ready
+                ? t("common.releaseToRefresh")
+                : t("common.pullToRefresh")}
+          </span>
+        </div>
+      )}
       {children}
     </div>
   );
@@ -221,6 +267,7 @@ WebPullToRefresh.propTypes = {
   ...PullToRefresh.propTypes,
   native: PropTypes.bool,
   nativeRefreshing: PropTypes.bool,
+  spinnerAt: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }),
   rootRef: PropTypes.shape({ current: PropTypes.any }),
 };
 

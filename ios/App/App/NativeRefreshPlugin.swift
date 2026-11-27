@@ -10,9 +10,10 @@ import Capacitor
 /// inset, which WebKit takes for a scroll past the top once the finger lifts:
 /// every fixed element (background, tab bar) would drop by the inset. So the
 /// control is reset as soon as it fires, while the finger is still down, and
-/// `refresh` is sent when the finger lifts. At that moment the control fades
-/// out and the page shows its own spinner in the content, so there is only
-/// ever one spinner and only the content moves, as in the App Store.
+/// `refresh` is sent when the finger lifts, with where the spinner is on
+/// screen. The control then fades out while the page shows its own spinner in
+/// that same place and holds the content below it, so the spinner seems to
+/// stay put and only the content moves, as in the App Store.
 ///
 /// JavaScript turns it on only on pages that can refresh (`setEnabled`). Not
 /// used when the iPad app runs on a Mac.
@@ -93,11 +94,16 @@ public class NativeRefreshPlugin: CAPPlugin, CAPBridgedPlugin {
         startRefresh()
     }
 
-    /// The page takes over with its own spinner while the content springs
-    /// back, so the control's spinner goes away instead of lingering at the top.
+    /// The page takes over with its own spinner, in the same place, while the
+    /// content springs back.
     private func startRefresh() {
+        var data: [String: Any] = [:]
+        if let centre = control?.spinnerCentre(in: bridge?.webView) {
+            data["x"] = Double(centre.x)
+            data["y"] = Double(centre.y)
+        }
         control?.hideUntilNextTouch()
-        notifyListeners("refresh", data: [:])
+        notifyListeners("refresh", data: data)
     }
 }
 
@@ -174,9 +180,17 @@ final class SafeAreaRefreshControl: UIRefreshControl {
         superview?.bringSubviewToFront(self)
     }
 
-    /// Fades the spinner out once the page shows its own.
+    /// The spinner's centre in `view`, so the page can show its own spinner in
+    /// the same place. Nil if the control's layout is not the expected one.
+    func spinnerCentre(in view: UIView?) -> CGPoint? {
+        guard let view, let spinner = subviews.first?.subviews.first,
+              spinner.bounds.width > 0, spinner.bounds.width <= 120, spinner.bounds.height <= 120 else { return nil }
+        return spinner.convert(CGPoint(x: spinner.bounds.midX, y: spinner.bounds.midY), to: view)
+    }
+
+    /// Fades the spinner out while the page's own takes its place.
     func hideUntilNextTouch() {
-        UIView.animate(withDuration: 0.12, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
+        UIView.animate(withDuration: 0.2, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
             self.alpha = 0
         }
     }
