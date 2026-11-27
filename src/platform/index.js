@@ -2,7 +2,7 @@
  * Which shell is running the app.
  *
  * The same React code is packaged three ways:
- * - `web`     — the Vite build served from GitHub Pages (and the PWA);
+ * - `web`     — the Vite build served from ducatapp.com (and the PWA);
  * - `desktop` — the Tauri build (`vite build --mode desktop`);
  * - `mobile`  — the Capacitor iOS build (`vite build --mode mobile`).
  *

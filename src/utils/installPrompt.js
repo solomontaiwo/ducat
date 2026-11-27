@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isWeb } from "../platform/index.js";
 
 /**
  * Captures the browser's "install app" prompt as early as possible (it fires
@@ -34,10 +35,12 @@ export const useInstallPrompt = () => {
     return () => listeners.delete(listener);
   }, []);
 
-  const standalone = isStandalone();
+  // Only the website can be installed: the iOS and desktop apps already are,
+  // even though their WebView does not report standalone display.
+  const installable = isWeb() && !isStandalone();
   return {
-    canPrompt: !standalone && Boolean(deferredPrompt),
-    needsManualSteps: !standalone && !deferredPrompt && isIos(),
+    canPrompt: installable && Boolean(deferredPrompt),
+    needsManualSteps: installable && !deferredPrompt && isIos(),
     install: async () => {
       if (!deferredPrompt) return false;
       const prompt = deferredPrompt;
