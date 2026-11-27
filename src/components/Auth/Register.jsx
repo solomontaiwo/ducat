@@ -49,7 +49,7 @@ const Register = () => {
         navigate("/dashboard", { replace: true });
         return;
       }
-      if (!hasSession) markPendingVerification(normalizedEmail);
+      if (!hasSession) markPendingVerification(normalizedEmail, password);
       navigate("/verify-email", { replace: true });
     } catch (err) {
       let errorMessage;

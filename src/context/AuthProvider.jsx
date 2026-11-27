@@ -47,6 +47,7 @@ export const AuthProvider = ({ children }) => {
   const [profileName, setProfileName] = useState(null);
   const [profileNameLoading, setProfileNameLoading] = useState(true);
   const sessionUserRef = useRef(null);
+  const pendingCredentialsRef = useRef(null);
 
   const refreshProfileName = useCallback(async (user) => {
     if (!user?.uid) {
@@ -68,21 +69,26 @@ export const AuthProvider = ({ children }) => {
     sessionUserRef.current = user;
     setSessionUser(user);
     if (user) {
+      pendingCredentialsRef.current = null;
       removeLocalValue(PENDING_KEY);
       setPendingEmail(null);
     }
     return user;
   }, []);
 
-  const markPendingVerification = useCallback((email) => {
+  const markPendingVerification = useCallback((email, password = null) => {
     const normalized = String(email || "").trim().toLowerCase();
     if (!normalized) return;
     writeLocalValue(PENDING_KEY, normalized);
     setPendingEmail(normalized);
+    // Kept strictly in memory for this session so "I have verified my email"
+    // can complete sign-in after confirming in another browser or device.
+    pendingCredentialsRef.current = password ? { email: normalized, password } : null;
   }, []);
 
   const logout = useCallback(async () => {
     const uid = sessionUserRef.current?.uid;
+    pendingCredentialsRef.current = null;
     removeLocalValue(PENDING_KEY);
     setPendingEmail(null);
     setBiometricLockEnabled(false);
@@ -116,10 +122,34 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const refreshCurrentUser = useCallback(async () => {
-    const { reloadUser } = await import("../services/authService.js");
+    const { reloadUser, signIn } = await import("../services/authService.js");
     const user = await reloadUser();
-    if (!user) return pendingUser(readLocalValue(PENDING_KEY));
-    return applySessionUser(user);
+    if (user) return applySessionUser(user);
+
+    const pendingMail = readLocalValue(PENDING_KEY);
+    if (!pendingMail) return null;
+
+    const creds = pendingCredentialsRef.current;
+    if (creds && creds.email === pendingMail && creds.password) {
+      try {
+        const signedIn = await signIn(creds.email, creds.password);
+        pendingCredentialsRef.current = null;
+        return applySessionUser(signedIn);
+      } catch (error) {
+        if (error.code === "auth/email-not-verified") {
+          return pendingUser(pendingMail);
+        }
+        pendingCredentialsRef.current = null;
+        if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
+          return { ...pendingUser(pendingMail), needsSignIn: true };
+        }
+        throw error;
+      }
+    }
+
+    // No local session and no in-memory password (e.g. app was restarted after
+    // signing up): cannot check remotely without signing in again.
+    return { ...pendingUser(pendingMail), needsSignIn: true };
   }, [applySessionUser]);
 
   useEffect(() => {
