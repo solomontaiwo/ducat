@@ -79,8 +79,11 @@ jobs:
         if: runner.os == 'macOS' && env.APPLE_SIGNING_IDENTITY == ''
         run: echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
 
+      # The updater tries the endpoints in order: our own domain first (see
+      # public/_redirects), so installed apps do not depend on where releases
+      # are hosted, then GitHub directly if the site is unreachable.
       - name: Build desktop packages
-        run: npm run tauri -- build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config '{"plugins":{"updater":{"endpoints":["https://github.com/${{ github.repository }}/releases/latest/download/latest.json"]}}}'
+        run: npm run tauri -- build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config '{"plugins":{"updater":{"endpoints":["https://ducatapp.com/download/latest.json","https://github.com/${{ github.repository }}/releases/latest/download/latest.json"]}}}'
 
       - name: Verify Windows executable architecture
         if: runner.os == 'Windows'
@@ -187,7 +190,10 @@ jobs:
               echo "Expected exactly one $artifact package (pattern $pattern), found ${#matches[@]}" >&2
               exit 1
             fi
-            cp -- "${matches[0]}" "release-assets/Ducat-${version}-${output}"
+            # Fixed names without the version: the ducatapp.com/download/* links
+            # in public/_redirects resolve them through releases/latest/download.
+            # The updater bundles keep versioned names (see latest.json).
+            cp -- "${matches[0]}" "release-assets/Ducat-${output}"
           }
           copy_one macos-arm64 '*.dmg' macos-arm64.dmg
           copy_one windows-x64 '*-setup.exe' windows-x64-setup.exe

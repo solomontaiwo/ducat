@@ -640,33 +640,28 @@ test("iPhone Duo inner screen: the four insight figures share a row without over
 });
 
 test("landing page offers platform download links on web", async ({ page }) => {
-  await page.route("https://api.github.com/repos/**/releases/latest", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({
-      tag_name: "v4.0.65",
-      assets: [
-        { name: "Ducat-4.0.65-macos-arm64.dmg", browser_download_url: "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-macos-arm64.dmg" },
-        { name: "Ducat-4.0.65-windows-x64-setup.exe", browser_download_url: "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-windows-x64-setup.exe" },
-      ],
-    }),
-  }));
+  // The links are fixed redirects on our domain: the page must not ask GitHub.
+  const githubApiCalls = [];
+  page.on("request", (request) => {
+    if (request.url().startsWith("https://api.github.com/")) githubApiCalls.push(request.url());
+  });
   await page.goto(".");
   const section = page.locator("#download");
   await expect(section).toBeVisible();
   await expect(section.getByRole("link", { name: /scarica \.dmg|download \.dmg/i })).toHaveAttribute(
     "href",
-    "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-macos-arm64.dmg"
+    "https://ducatapp.com/download/macos"
   );
   await expect(section.getByRole("link", { name: /scarica \.exe|download \.exe/i })).toHaveAttribute(
     "href",
-    "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-windows-x64-setup.exe"
+    /^https:\/\/ducatapp\.com\/download\/windows(-arm64)?$/
   );
   await expect(section.getByRole("link", { name: /testflight/i })).toHaveAttribute(
     "href",
     "https://testflight.apple.com/join/C3BV5sCa"
   );
   await expect(section.getByRole("link", { name: /github/i })).toHaveAttribute("href", /github\.com\/solomontaiwo\/ducat\/releases\/latest/);
+  expect(githubApiCalls).toEqual([]);
 });
 
 test("numbers align horizontally and vertically across Overview and Insights", async ({ browser }, testInfo) => {

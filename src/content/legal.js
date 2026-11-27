@@ -8,7 +8,7 @@
  * The controller data is the only part that changes from person to person:
  * check it before submitting the app, together with the Supabase region.
  */
-export const LEGAL_UPDATED = "25 novembre 2026";
+export const LEGAL_UPDATED = "27 novembre 2026";
 
 export const LEGAL_ENTITY = {
   name: "Solomon Taiwo",
@@ -48,7 +48,7 @@ export const PRIVACY_SECTIONS = {
     {
       title: "Destinatari",
       paragraphs: [
-        "Supabase (PostgreSQL e autenticazione) è il fornitore tecnico che ospita il database. Il sito web è pubblicato tramite Cloudflare (ducatapp.com) con mirror su GitHub Pages. Non vendiamo né condividiamo dati con inserzionisti o data broker.",
+        "Supabase (PostgreSQL e autenticazione) è il fornitore tecnico che ospita il database. Il sito web è pubblicato tramite Cloudflare (ducatapp.com). Gli installer e gli aggiornamenti dell’app desktop sono distribuiti tramite GitHub Releases: quando scarichi l’app o controlli gli aggiornamenti, GitHub riceve l’indirizzo IP e i dati tecnici della richiesta. Non vendiamo né condividiamo dati con inserzionisti o data broker.",
         "Se l’installazione configura un endpoint di segnalazione errori, vengono inviati solo dati tecnici sull’errore (messaggio, versione dell’app, pagina), senza il contenuto dei movimenti.",
       ],
     },
@@ -113,7 +113,7 @@ export const PRIVACY_SECTIONS = {
     {
       title: "Recipients",
       paragraphs: [
-        "Supabase (PostgreSQL and authentication) is the technical provider hosting the database. The website is published through Cloudflare (ducatapp.com) with a GitHub Pages mirror. We do not sell or share data with advertisers or data brokers.",
+        "Supabase (PostgreSQL and authentication) is the technical provider hosting the database. The website is published through Cloudflare (ducatapp.com). Desktop installers and updates are distributed through GitHub Releases: when you download the app or check for updates, GitHub receives your IP address and the technical details of the request. We do not sell or share data with advertisers or data brokers.",
         "If the installation configures an error-reporting endpoint, only technical data about the error is sent (message, app version, page), never transaction contents.",
       ],
     },
@@ -185,7 +185,7 @@ const TERMS = {
     {
       title: "Disponibilità del servizio",
       paragraphs: [
-        "L’app dipende da servizi di terze parti (Supabase per il database e l’autenticazione, Cloudflare e GitHub Pages per il sito). Possono esserci interruzioni, manutenzioni o modifiche. Le funzioni possono cambiare nel tempo; gli aggiornamenti di iOS e Mac provengono dall’App Store.",
+        "L’app dipende da servizi di terze parti (Supabase per il database e l’autenticazione, Cloudflare per il sito, GitHub per distribuire l’app desktop e i suoi aggiornamenti). Possono esserci interruzioni, manutenzioni o modifiche. Le funzioni possono cambiare nel tempo; le versioni per iOS e dal Mac App Store si aggiornano tramite l’App Store.",
       ],
     },
     {
@@ -247,7 +247,7 @@ const TERMS = {
     {
       title: "Availability",
       paragraphs: [
-        "The app depends on third-party services (Supabase for the database and authentication, Cloudflare and GitHub Pages for the website). Interruptions, maintenance and changes may occur. Features may change over time; iOS and Mac updates are delivered by the App Store.",
+        "The app depends on third-party services (Supabase for the database and authentication, Cloudflare for the website, GitHub to distribute the desktop app and its updates). Interruptions, maintenance and changes may occur. Features may change over time; the iOS and Mac App Store versions are updated through the App Store.",
       ],
     },
     {

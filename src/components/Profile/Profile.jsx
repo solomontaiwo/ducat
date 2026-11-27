@@ -149,7 +149,7 @@ const Profile = () => {
   const summary = useAccountSummary();
   const budgetStatus = useBudgetStatus();
   const [sheet, setSheet] = useState(null);
-  const downloads = useAppDownloads({ enabled: sheet === "downloadApp" });
+  const downloads = useAppDownloads();
   const [backingUp, setBackingUp] = useState(false);
   const [togglingBiometric, setTogglingBiometric] = useState(false);
   const showRemindersToggle = isMobile();

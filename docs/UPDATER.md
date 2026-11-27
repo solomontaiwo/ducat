@@ -17,7 +17,14 @@ endpoint configurati, scarica l'aggiornamento firmato e si reinstalla, poi chied
 
 ### Endpoint e manifest
 
-- Endpoint: `https://github.com/solomontaiwo/ducat/releases/latest/download/latest.json`
+- Endpoint, provati in ordine:
+  1. `https://ducatapp.com/download/latest.json`: un redirect (`public/_redirects`) verso il
+     `latest.json` dell'ultima release. Se un giorno le release si spostano da GitHub, basta
+     cambiare il redirect: le app installate continuano ad aggiornarsi.
+  2. `https://github.com/solomontaiwo/ducat/releases/latest/download/latest.json`: riserva se il
+     sito non risponde. Le installazioni precedenti all'endpoint su ducatapp.com conoscono solo
+     questo, quindi
+     `latest.json` deve restare un asset di ogni release.
 - `latest.json` è il manifest statico generato da `scripts/build-update-manifest.mjs` durante
   la CI e caricato come asset della release. Contiene per ogni piattaforma `url` + `signature`
   (il contenuto del file `.sig`).

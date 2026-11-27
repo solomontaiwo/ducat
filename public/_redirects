@@ -1,0 +1,9 @@
+# Stable download links on ducatapp.com (served by Cloudflare; GitHub Pages
+# ignores this file). Each one points at the asset with the same fixed name in
+# the latest GitHub release, published by .github/workflows/desktop.yml.
+# 302, not 301, so browsers never cache where a link leads.
+/download/macos https://github.com/solomontaiwo/ducat/releases/latest/download/Ducat-macos-arm64.dmg 302
+/download/windows https://github.com/solomontaiwo/ducat/releases/latest/download/Ducat-windows-x64-setup.exe 302
+/download/windows-arm64 https://github.com/solomontaiwo/ducat/releases/latest/download/Ducat-windows-arm64-setup.exe 302
+# Desktop updater manifest, the first endpoint built into the app.
+/download/latest.json https://github.com/solomontaiwo/ducat/releases/latest/download/latest.json 302
