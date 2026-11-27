@@ -10,7 +10,7 @@ import { isDesktop, isStoreBuild } from "../../platform/index.js";
 
 const logo = `${import.meta.env.BASE_URL}icon-192.png`;
 
-/** Desktop navigation column. */
+/** Desktop navigation column; tighter on short screens (iPhone Duo inner screen). */
 const Sidebar = ({ onAdd, addDisabled = false }) => {
   const { currentUser, logout, profileName } = useAuth();
   const { isDemo, transactions, maxTransactions, clearTransactions, stopDemo } = useUnifiedTransactions();
@@ -44,13 +44,13 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
   const demoCount = transactions.filter((item) => !item.isSample).length;
 
   return (
-    <aside className="app-sidebar glass fixed z-30 flex flex-col gap-6 rounded-[28px] px-3.5 pb-4 pt-5 short:gap-4 short:pt-4">
+    <aside className="app-sidebar glass fixed z-30 flex flex-col gap-6 rounded-[28px] px-3.5 pb-4 pt-5 short:gap-3 short:pb-3 short:pt-4">
       <Link to="/" className="flex items-center gap-2.5 rounded-xl px-2 py-1">
         <img src={logo} alt="" width="34" height="34" className="h-[34px] w-[34px] rounded-[11px]" />
         <span className="font-display text-xl font-extrabold tracking-tight">{t("appName")}</span>
       </Link>
 
-      <Button onClick={onAdd} disabled={addDisabled} size="lg" className="w-full">
+      <Button onClick={onAdd} disabled={addDisabled} size="lg" className="w-full short:h-10">
         <FiPlus className="h-[18px] w-[18px]" strokeWidth={2.6} aria-hidden="true" />
         {t("navbar.add")}
       </Button>
@@ -65,7 +65,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
               to={item.path}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-11 items-center gap-3 rounded-xl px-3 text-base font-semibold transition-colors",
+                "flex h-11 items-center gap-3 rounded-xl px-3 text-base font-semibold transition-colors short:h-10",
                 active ? "glass-active text-accent-foreground" : "text-foreground/80 hover:bg-foreground/5 hover:text-foreground"
               )}
             >
@@ -74,7 +74,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
             </Link>
           );
         })}
-        <div className="my-1.5 border-t border-border/70" />
+        <div className="my-1.5 border-t border-border/70 short:my-1" />
         {planningItems.map((item) => {
           const active = location.pathname === item.path;
           const Icon = item.icon;
@@ -84,7 +84,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
               to={item.path}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
+                "flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors short:h-9",
                 active ? "glass-active text-accent-foreground" : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
               )}
             >
@@ -114,14 +114,14 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
       )}
 
       {isDemo && (
-        <div className="space-y-3 rounded-2xl bg-foreground/5 p-4">
+        <div className="space-y-3 rounded-2xl bg-foreground/5 p-4 short:space-y-2 short:p-3">
           <p className="text-sm font-semibold">
             {t("navbar.demoBadge", { count: demoCount, max: maxTransactions })}
           </p>
           {currentUser?.pending
-            ? <Button className="w-full" onClick={() => navigate("/verify-email")}>{t("demo.confirmEmail")}</Button>
-            : <Button className="w-full" onClick={() => navigate("/register")}>{t("navbar.register")}</Button>}
-          <Button variant="ghost" className="w-full" onClick={handleExitDemo}>{t("navbar.backToHome")}</Button>
+            ? <Button className="w-full short:h-9" onClick={() => navigate("/verify-email")}>{t("demo.confirmEmail")}</Button>
+            : <Button className="w-full short:h-9" onClick={() => navigate("/register")}>{t("navbar.register")}</Button>}
+          <Button variant="ghost" className="w-full short:h-9" onClick={handleExitDemo}>{t("navbar.backToHome")}</Button>
         </div>
       )}
 

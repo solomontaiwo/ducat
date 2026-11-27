@@ -235,10 +235,13 @@ const Dashboard = () => {
             <Skeleton height={150} baseColor="rgba(255,255,255,0.14)" highlightColor="rgba(255,255,255,0.26)" borderRadius={16} />
           ) : (
             <>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1.5">
+              {/* In a narrow card (cols2, short) the privacy button moves under
+                  the figure only when the figure itself does not fit beside
+                  it; a long label wraps instead. */}
+              <div className="flex flex-wrap items-start justify-between gap-3 cols2:gap-2 short:gap-2">
+                <div className="min-w-0 space-y-1.5 cols2:flex-1 cols2:basis-0 short:flex-1 short:basis-0">
                   <p className="text-sm font-semibold text-hero-muted">{balanceLabel}</p>
-                  <p className="amount [overflow-wrap:anywhere] text-[2.75rem] leading-none sm:text-5xl lg:text-[3.5rem] cols2:text-[2.25rem] short:text-[2rem]">
+                  <p className="amount [overflow-wrap:anywhere] text-[2.75rem] leading-none sm:text-5xl lg:text-[3.5rem] cols2:whitespace-nowrap cols2:text-[2.25rem] short:whitespace-nowrap short:text-[2rem]">
                     {balance < 0 ? formatSignedAmount(balance, "expense") : formatCurrency(balance)}
                   </p>
                 </div>
@@ -305,7 +308,7 @@ const Dashboard = () => {
           )}
         </section>
 
-        <section className="surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="where-money-goes">
+        <section className="spending-card surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="where-money-goes">
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="where-money-goes" className="text-lg font-bold cols2:text-base short:text-base">{t("dashboard.whereMoneyGoes")}</h2>
             <Link to="/analytics" className="text-sm font-semibold text-primary hover:underline">{t("navbar.analytics")}</Link>
@@ -324,9 +327,11 @@ const Dashboard = () => {
                   const rowBody = (
                     <>
                       <span className="h-2.5 w-2.5 shrink-0 rounded-[4px]" style={{ background: item.color }} aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate font-semibold">{item.label}</span>
-                      <span className="font-semibold tabular-nums" data-amount="true">{formatCurrency(item.amount)}</span>
-                      <span className="w-10 text-right tabular-nums text-muted-foreground">{Math.round(item.percentage)}%</span>
+                      <span className="spending-name min-w-0 flex-1 truncate font-semibold">{item.label}</span>
+                      <span className="spending-figures flex shrink-0 items-center gap-3">
+                        <span className="font-semibold tabular-nums" data-amount="true">{formatCurrency(item.amount)}</span>
+                        <span className="w-10 text-right tabular-nums text-muted-foreground">{Math.round(item.percentage)}%</span>
+                      </span>
                       {item.category !== "remaining" && (
                         <FiChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
                       )}
@@ -334,7 +339,7 @@ const Dashboard = () => {
                   );
                   if (item.category === "remaining") {
                     return (
-                      <li key={item.category} className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 text-sm">
+                      <li key={item.category} className="spending-row flex items-center gap-3 rounded-xl px-1.5 py-1.5 text-sm">
                         {rowBody}
                       </li>
                     );
@@ -344,7 +349,7 @@ const Dashboard = () => {
                     <li key={item.category}>
                       <Link
                         to={`/transactions?${query}`}
-                        className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 text-sm transition-colors hover:bg-muted/60"
+                        className="spending-row flex items-center gap-3 rounded-xl px-1.5 py-1.5 text-sm transition-colors hover:bg-muted/60"
                       >
                         {rowBody}
                       </Link>

@@ -266,7 +266,11 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
 
   return (
     <form onSubmit={handleSubmit} className={cn("flex min-h-0 flex-1 flex-col", className)} noValidate>
-      <div className="flex-1 space-y-6 overflow-y-auto px-5 pb-6 pt-1 short:space-y-4 short:pb-4">
+      {/* One column; two on wide but short screens, so nothing needs
+          scrolling there: how much and when on the left (type, amount, date,
+          repeat), what on the right (description, category). */}
+      <div className="flex-1 space-y-6 overflow-y-auto px-5 pb-6 pt-1 short:space-y-4 short:pb-4 wideshort:grid wideshort:grid-cols-2 wideshort:grid-rows-[auto_1fr] wideshort:items-start wideshort:gap-x-8 wideshort:gap-y-4 wideshort:space-y-0">
+        <div className="space-y-6 short:space-y-4 wideshort:col-start-1 wideshort:row-start-1">
         <div
           role="radiogroup"
           aria-label={t("transactionModal.type")}
@@ -332,7 +336,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
             </button>
           )}
           <div className="flex max-w-full flex-wrap items-center justify-center gap-2">
-            <div className="flex max-w-full gap-2 overflow-x-auto scrollbar-none" data-swipe-ignore="true">
+            <div className="flex max-w-full gap-2 overflow-x-auto scrollbar-none wideshort:flex-wrap wideshort:justify-center wideshort:overflow-visible" data-swipe-ignore="true">
               {(preferences?.quickAmounts || [5, 10, 20, 50, 100]).map((value) => (
                 <button key={value} type="button" className="chip h-9 px-3.5 text-[13px]" onClick={() => setField("amount", String(value))}>
                   {formatCompactCurrency(value, i18n.language)}
@@ -355,7 +359,9 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
             </div>
           </div>
         </div>
+        </div>
 
+        <div className="space-y-6 short:space-y-4 wideshort:col-start-2 wideshort:row-span-2 wideshort:row-start-1">
         <div className="space-y-2">
           <div className="flex items-baseline gap-1.5">
             <label htmlFor={`${idPrefix}-description`} className="text-sm font-bold">{t("transactionModal.description")}</label>
@@ -424,7 +430,9 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
           </div>
           )}
         </fieldset>
+        </div>
 
+        <div className="space-y-6 short:space-y-4 wideshort:col-start-1 wideshort:row-start-2">
         <fieldset className="space-y-3">
           <legend className="mb-3 text-sm font-bold short:mb-2">{t("transactionModal.date")}</legend>
           <div
@@ -530,6 +538,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
             )}
           </section>
         )}
+        </div>
       </div>
 
       <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 short:flex-row short:pb-[calc(0.75rem+env(safe-area-inset-bottom))] short:pt-3 sm:flex-row sm:justify-end sm:pb-4">

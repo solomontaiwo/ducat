@@ -16,6 +16,10 @@ export default {
         // Short phone-class screens (iPhone Duo outer and inner landscape,
         // phones in landscape): tighter vertical rhythm. Listed last so it wins.
         short: { raw: "(max-height: 740px) and (max-width: 1023.98px)" },
+        // Wide but short (iPhone Duo inner screen, phones in landscape, short
+        // desktop windows): forms use two columns instead of scrolling.
+        // Listed after `short`, so it wins where both apply.
+        wideshort: { raw: "(min-width: 768px) and (max-height: 740px)" },
       },
       fontFamily: {
         sans: ["Figtree Variable", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],

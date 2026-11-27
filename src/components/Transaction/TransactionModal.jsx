@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { FiTrash2 } from "react-icons/fi";
@@ -7,7 +7,10 @@ import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import TransactionForm from "./TransactionForm.jsx";
 
-/** Full-screen sheet on phones, centred dialog from `sm` up. */
+/**
+ * Full-screen sheet on phones, centred dialog from `sm` up, wider with the
+ * form in two columns on wide but short screens.
+ */
 const TransactionModal = ({ show, onClose, onSubmit, onDelete, transaction, initialDraft }) => {
   // Keep the last open payload while closing so the form does not flash or reset during the exit animation.
   const [snapshot, setSnapshot] = useState({ transaction, initialDraft });
@@ -19,6 +22,16 @@ const TransactionModal = ({ show, onClose, onSubmit, onDelete, transaction, init
   const isEdit = !!activeTransaction;
   const { addTransaction, updateTransaction } = useUnifiedTransactions();
   const { t } = useTranslation();
+  const contentRef = useRef(null);
+
+  // Focus lands on the dialog itself, not on its first button: opened from the
+  // iOS tab bar or a Home Screen quick action there is no touch in the page,
+  // so WebKit would treat that focus as keyboard focus and ring the button.
+  // Tab still moves to the first control.
+  const focusDialog = useCallback((event) => {
+    event.preventDefault();
+    contentRef.current?.focus({ preventScroll: true });
+  }, []);
 
   const handleSubmit = useCallback(async (payload) => {
     const success = onSubmit
@@ -32,7 +45,12 @@ const TransactionModal = ({ show, onClose, onSubmit, onDelete, transaction, init
 
   return (
     <Dialog open={show} onOpenChange={(open) => (!open ? onClose() : null)}>
-      <DialogContent variant="sheet" className="flex h-full flex-col overflow-hidden p-0 sm:h-fit">
+      <DialogContent
+        ref={contentRef}
+        variant="sheet"
+        onOpenAutoFocus={focusDialog}
+        className="flex h-full flex-col overflow-hidden p-0 sm:h-fit wideshort:max-w-3xl"
+      >
         <DialogHeader className="shrink-0 px-5 pb-4 pt-5 text-left short:pb-2 short:pt-3">
           <DialogTitle className="pr-10 text-xl">
             {isEdit ? t("transactionModal.editTitle") : t("transactionModal.newTitle")}

@@ -128,6 +128,7 @@ const AppLayout = ({ children }) => {
         className="flex min-h-screen flex-col text-foreground"
         style={{ "--mobile-nav-height": `${BOTTOM_NAV_HEIGHT_PX}px` }}
       >
+        {showNavigation && <div className="top-scroll-fade" aria-hidden="true" />}
         {showNavigation && !isMobile && (
           <Suspense fallback={null}>
             <Sidebar onAdd={openAddTransaction} addDisabled={addDisabled} />

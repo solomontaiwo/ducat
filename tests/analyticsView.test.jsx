@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   t: (key, options) => options?.defaultValue ?? key,
   i18n: { language: "it" },
   state: { isDemo: false, user: { uid: "owner" } },
+  exportCsv: vi.fn(async () => {}),
+  exportPdf: vi.fn(async () => {}),
 }));
 
 vi.mock("../src/components/Layout/HeaderProfileButton.jsx", () => ({ default: () => null }));
@@ -39,6 +41,10 @@ vi.mock("../src/utils/categories.jsx", () => ({
   }),
 }));
 vi.mock("../src/utils/ThemeProvider.jsx", () => ({ useTheme: () => ({ isDarkMode: false }) }));
+vi.mock("../src/utils/analyticsExport", () => ({
+  exportAnalyticsCsv: (...args) => mocks.exportCsv(...args),
+  exportAnalyticsPdf: (...args) => mocks.exportPdf(...args),
+}));
 vi.mock("../src/utils/downloadUtils.jsx", () => ({
   getCurrentProfileName: async () => "ada",
   generateExportFileName: () => "report.csv",
@@ -103,6 +109,30 @@ describe("TransactionAnalytics", () => {
     mocks.fetchAll.mockResolvedValue([]);
     render(<TransactionAnalytics />);
     expect(await screen.findByRole("button", { name: "analytics.exportCsv" })).toBeDisabled();
+  });
+
+  it("offers both formats from one Export button on narrow screens", async () => {
+    mocks.fetchAll.mockResolvedValue([tx("a", "expense", "cibo", 100, 1)]);
+    mocks.exportCsv.mockClear();
+    mocks.exportPdf.mockClear();
+    render(<TransactionAnalytics />);
+    fireEvent.click(await screen.findByRole("button", { name: "analytics.export" }));
+    const sheet = await screen.findByRole("dialog", { name: "analytics.export" });
+    expect(within(sheet).getByText("analytics.exportDescription")).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole("button", { name: "analytics.exportPdf" }));
+    await waitFor(() => expect(mocks.exportPdf).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "analytics.export" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "analytics.exportCsv" }));
+    await waitFor(() => expect(mocks.exportCsv).toHaveBeenCalledTimes(1));
+    expect(mocks.exportPdf).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the Export button disabled without data", async () => {
+    mocks.fetchAll.mockResolvedValue([]);
+    render(<TransactionAnalytics />);
+    expect(await screen.findByRole("button", { name: "analytics.export" })).toBeDisabled();
   });
 
   it("does not query Firestore for a signed-out visitor", async () => {

@@ -42,6 +42,13 @@ it("offers deletion in an editable transaction modal but not in a new transactio
   expect(screen.queryByRole("button", { name: "transactions.actions.delete" })).not.toBeInTheDocument();
 });
 
+it("focuses the dialog itself when it opens, so no control shows a focus ring", async () => {
+  render(<TransactionModal show onClose={() => {}} />);
+  const dialog = await screen.findByRole("dialog");
+  await waitFor(() => expect(document.activeElement).toBe(dialog));
+  expect(screen.getByRole("radio", { name: "transactionModal.expense" })).not.toHaveFocus();
+});
+
 it("keeps the real form mounted and retains values and request ID after a failed save", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   let rejectSave;

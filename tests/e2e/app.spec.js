@@ -326,6 +326,75 @@ test("iPhone Duo outer screen: transaction actions rise from the bottom and the 
   await context.close();
 });
 
+const openDuoDemo = async (browser, viewport, transactions) => {
+  const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true, locale: "it-IT" });
+  const page = await context.newPage();
+  await page.goto(".");
+  await page.evaluate((items) => {
+    localStorage.setItem("ducat-demo-enabled", "true");
+    localStorage.setItem("ducat-demo-transactions", JSON.stringify(items));
+  }, transactions.map((item) => ({ currency: "EUR", dateKey: new Date().toISOString().slice(0, 10), isSample: false, ...item })));
+  return { context, page };
+};
+
+const duoSpending = [
+  { id: "duo-salary", type: "income", amountMinor: 653400, description: "Stipendio", category: "stipendio" },
+  { id: "duo-laptop", type: "expense", amountMinor: 1234567, description: "Portatile", category: "shopping" },
+  { id: "duo-bills", type: "expense", amountMinor: 43810, description: "Bollette", category: "casa" },
+];
+
+test("iPhone Duo inner screen: the new transaction form fits in two columns", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "Sets its own viewport: one project is enough");
+  const { context, page } = await openDuoDemo(browser, { width: 951, height: 669 }, duoSpending);
+  await page.goto("dashboard");
+  await page.getByRole("button", { name: "Nuovo movimento" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Nuovo movimento" });
+  await expect(dialog).toBeVisible();
+  await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+  // The window itself has focus, not its first button.
+  await expect(dialog).toBeFocused();
+  const [amount, description, repeat, box] = await Promise.all([
+    dialog.getByRole("textbox", { name: /importo/i }).boundingBox(),
+    dialog.getByRole("textbox", { name: "Descrizione" }).boundingBox(),
+    dialog.getByText("Si ripete").boundingBox(),
+    dialog.boundingBox(),
+  ]);
+  // Amount on the left, description on the right, side by side.
+  expect(description.x).toBeGreaterThan(amount.x + amount.width);
+  expect(Math.abs(description.y - amount.y)).toBeLessThan(120);
+  // Repeat, the last section, is in view without scrolling.
+  expect(repeat.y + repeat.height).toBeLessThanOrEqual(box.y + box.height);
+  await context.close();
+});
+
+test("iPhone Duo outer screen: one Export button offers both formats", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "Sets its own viewport: one project is enough");
+  const { context, page } = await openDuoDemo(browser, { width: 466, height: 678 }, duoSpending);
+  await page.goto("analytics");
+  await expect(page.getByRole("heading", { name: "Analisi", level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Esporta CSV" })).toBeHidden();
+  await page.getByRole("button", { name: "Esporta", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "Esporta" });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Esporta PDF" })).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Esporta CSV" })).toBeVisible();
+  await context.close();
+});
+
+test("iPhone Duo inner screen: the four insight figures share a row without overflowing", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "Sets its own viewport: one project is enough");
+  const { context, page } = await openDuoDemo(browser, { width: 951, height: 669 }, duoSpending);
+  await page.goto("analytics");
+  const tiles = page.getByRole("region", { name: /indicatori del periodo/i }).locator(":scope > div");
+  await expect(tiles).toHaveCount(4);
+  const boxes = await tiles.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
+  expect(Math.max(...boxes) - Math.min(...boxes)).toBeLessThan(2);
+  // Even "€12.345,67" stays on one line inside its tile.
+  const overflow = await tiles.locator(".amount").evaluateAll((items) => items.map((item) => item.scrollWidth - item.clientWidth));
+  expect(Math.max(...overflow)).toBeLessThanOrEqual(0);
+  await context.close();
+});
+
 test("main tabs stay as they were left and switch without skeletons", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Uses the mobile tab bar");
   await page.goto(".");

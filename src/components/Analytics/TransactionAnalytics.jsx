@@ -32,7 +32,8 @@ import { Link, useOptionalNavigate } from "../../router/RouterProvider";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
 import PullToRefresh from "../ui/PullToRefresh.jsx";
-import { FiChevronLeft, FiChevronRight, FiDownload } from "react-icons/fi";
+import Sheet from "../ui/sheet";
+import { FiChevronLeft, FiChevronRight, FiDownload, FiFileText, FiGrid } from "react-icons/fi";
 
 const PERIODS = ["month", "lastMonth", "last3Months", "year", "custom"];
 
@@ -51,9 +52,11 @@ const DELTA_TONE = {
 const KpiTile = ({ label, value, note, tone, delta, maskNote = false }) => {
   const [showDetail, setShowDetail] = useState(false);
   return (
-    <div className="surface flex flex-col gap-1 p-4 sm:p-5">
+    <div className="surface flex flex-col gap-1 p-4 [container-type:inline-size] sm:p-5 cols2:p-4">
       <span className="text-[13px] font-semibold text-muted-foreground">{label}</span>
-      <span className={cn("amount text-2xl sm:text-[1.75rem]", tone === "income" && "text-income")}>{value}</span>
+      {/* Four tiles in a row on `cols2` screens: the figure shrinks with its
+          tile, so even five-digit amounts fit on one line. */}
+      <span className={cn("amount text-2xl sm:text-[1.75rem] cols2:whitespace-nowrap cols2:[font-size:clamp(1.0625rem,15cqi,1.75rem)]", tone === "income" && "text-income")}>{value}</span>
       {note && <span className="text-xs font-medium text-muted-foreground" data-amount={maskNote ? "true" : undefined}>{note}</span>}
       {delta && (
         <button
@@ -92,6 +95,7 @@ const TransactionAnalytics = () => {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [exportSheetOpen, setExportSheetOpen] = useState(false);
   const { budgets, ready: planningReady, preferences } = usePlanning();
   const startDay = preferences?.monthStartDay || 1;
   const showBudgetInvite = planningReady && categoryType === "expense" && Object.keys(budgets).length === 0;
@@ -241,19 +245,38 @@ const TransactionAnalytics = () => {
         <div className="mobile-glass-header flex flex-wrap items-center justify-between gap-3">
           <h1 className="pl-1 text-[1.75rem] font-extrabold leading-tight md:pl-0 md:text-3xl">{t("analytics.title")}</h1>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={exportCsv} disabled={!canExport} aria-label={t("analytics.exportCsv")}>
-              <FiDownload aria-hidden="true" className="sm:hidden" />
-              <span className="sm:hidden">CSV</span>
-              <span className="hidden sm:inline">{t("analytics.exportCsv")}</span>
+            {/* Narrow screens: one button opening a choice of formats. */}
+            <Button variant="outline" size="sm" onClick={() => setExportSheetOpen(true)} disabled={!canExport} className="sm:hidden">
+              <FiDownload aria-hidden="true" />
+              {t("analytics.export")}
             </Button>
-            <Button variant="outline" size="sm" onClick={exportPdf} disabled={!canExport} aria-label={t("analytics.exportPdf")}>
-              <FiDownload aria-hidden="true" className="sm:hidden" />
-              <span className="sm:hidden">PDF</span>
-              <span className="hidden sm:inline">{t("analytics.exportPdf")}</span>
+            <Button variant="outline" size="sm" onClick={exportCsv} disabled={!canExport} className="hidden sm:inline-flex">
+              {t("analytics.exportCsv")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportPdf} disabled={!canExport} className="hidden sm:inline-flex">
+              {t("analytics.exportPdf")}
             </Button>
             <HeaderProfileButton className="ml-1" />
           </div>
         </div>
+        <Sheet
+          open={exportSheetOpen}
+          onOpenChange={setExportSheetOpen}
+          title={t("analytics.export")}
+          description={t("analytics.exportDescription")}
+          className="sm:max-w-sm"
+        >
+          <div className="grid gap-2">
+            <Button variant="outline" className="h-12 justify-start" onClick={() => { setExportSheetOpen(false); exportPdf(); }}>
+              <FiFileText aria-hidden="true" />
+              {t("analytics.exportPdf")}
+            </Button>
+            <Button variant="outline" className="h-12 justify-start" onClick={() => { setExportSheetOpen(false); exportCsv(); }}>
+              <FiGrid aria-hidden="true" />
+              {t("analytics.exportCsv")}
+            </Button>
+          </div>
+        </Sheet>
         <div
           role="radiogroup"
           aria-label={t("analytics.period")}
@@ -309,7 +332,7 @@ const TransactionAnalytics = () => {
         )}
       </header>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4" aria-label={t("analytics.summary")}>
+      <section className="grid grid-cols-2 gap-3 cols2:grid-cols-4 lg:grid-cols-4 lg:gap-4" aria-label={t("analytics.summary")}>
         <KpiTile
           label={t("dashboard.income")}
           value={formatCurrency(stats.totalIncome)}
@@ -385,7 +408,7 @@ const TransactionAnalytics = () => {
             </div>
           </div>
           {hasTrend ? (
-            <div className="h-72 w-full min-w-0 sm:h-80 lg:h-96" data-swipe-ignore="true">
+            <div className="h-72 w-full min-w-0 sm:h-80 lg:h-96 short:h-60" data-swipe-ignore="true">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={trend} margin={{ top: 8, right: 4, left: 0, bottom: 0 }} barGap={4} barCategoryGap="22%">
                   <CartesianGrid vertical={false} stroke={chart.grid} />

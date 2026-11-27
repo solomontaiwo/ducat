@@ -262,9 +262,50 @@
       border-right: 1px solid hsl(var(--border));
     }
   }
-  @container (min-width: 37em) {
+  /* Reached by the iPhone Duo inner screen in landscape (sidebar, side bar
+     and 17pt system text leave it about 36em), where the compact `cols2`
+     sizes of the summary card apply. */
+  @container (min-width: 34em) {
+    .dashboard-summary {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+  /* Wider, the summary card takes a little more room. */
+  @container (min-width: 44em) {
     .dashboard-summary {
       grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    }
+  }
+  /*
+   * "Where your money goes" beside the summary card (iPhone Duo inner screen,
+   * iPad in portrait): in a narrow card the amount and the share stack on the
+   * right, so the category name keeps room. Phones stay above the threshold.
+   */
+  .spending-card {
+    container-type: inline-size;
+  }
+  /* Scoped to the card so these win over the rows' utility classes. */
+  @container (max-width: 17.5rem) {
+    .spending-card .spending-row {
+      gap: 0.5rem;
+    }
+    .spending-card .spending-figures {
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0;
+      line-height: 1.2;
+    }
+    .spending-card .spending-figures > :last-child {
+      width: auto;
+      font-size: 0.75rem;
+    }
+    /* The row is two lines tall anyway: the name may use both. */
+    .spending-card .spending-name {
+      display: -webkit-box;
+      white-space: normal;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-height: 1.2;
     }
   }
   .quick-add {
@@ -297,6 +338,32 @@
     padding-top: calc(env(safe-area-inset-top) + 1rem);
     padding-left: var(--page-gutter-left);
     padding-right: var(--page-gutter-right);
+  }
+  /*
+   * Touch screens: content scrolling up fades out under the top edge (the
+   * status bar on iPhone) instead of showing above the floating header. Solid
+   * down to the header's top edge, then a short fade under it. It sits under
+   * the header, the side bar and the refresh spinner, and never takes touches.
+   */
+  .top-scroll-fade { display: none; }
+  @media (hover: none) and (pointer: coarse) {
+    .top-scroll-fade {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      height: calc(env(safe-area-inset-top) + 1.25rem);
+      pointer-events: none;
+      /* Opaque down to where the floating header starts, then fading. */
+      background: linear-gradient(
+        to bottom,
+        hsl(var(--background)) 0,
+        hsl(var(--background)) calc(env(safe-area-inset-top) + 0.5rem),
+        hsl(var(--background) / 0) 100%
+      );
+    }
   }
   /*
    * A horizontally scrolling row (filter and period chips) that runs to the
