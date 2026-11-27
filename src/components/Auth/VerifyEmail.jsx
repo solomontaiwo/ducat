@@ -27,6 +27,12 @@ const VerifyEmail = () => {
     return () => window.clearInterval(timer);
   }, [cooldownSeconds]);
 
+  useEffect(() => {
+    if (currentUser?.emailVerified) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [currentUser?.emailVerified, navigate]);
+
   const checkVerification = async () => {
     setChecking(true);
     try {
@@ -34,6 +40,10 @@ const VerifyEmail = () => {
       if (refreshed?.emailVerified) {
         notification.success(t("auth.verifyEmail.verified"));
         navigate("/dashboard", { replace: true });
+      } else if (refreshed?.needsSignIn) {
+        await logout();
+        notification.info(t("auth.verifyEmail.desktopHint"));
+        navigate("/login", { replace: true });
       } else {
         notification.info(t("auth.verifyEmail.notVerified"));
       }
@@ -89,15 +99,15 @@ const VerifyEmail = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {currentUser?.pending && (
-            <>
-              <p className="text-sm text-muted-foreground">{t("auth.verifyEmail.desktopHint")}</p>
-              <Button className="w-full" onClick={returnToLogin}>{t("auth.verifyEmail.desktopLogin")}</Button>
-            </>
-          )}
           <Button className="w-full" onClick={checkVerification} disabled={checking}>
             {checking ? t("auth.verifyEmail.checking") : t("auth.verifyEmail.check")}
           </Button>
+          {currentUser?.pending && (
+            <>
+              <p className="text-sm text-muted-foreground">{t("auth.verifyEmail.desktopHint")}</p>
+              <Button className="w-full" variant="outline" onClick={returnToLogin}>{t("auth.verifyEmail.desktopLogin")}</Button>
+            </>
+          )}
           <Button className="w-full" variant="outline" onClick={resend} disabled={sending || cooldownSeconds > 0}>
             {sending ? t("auth.verifyEmail.sending") : cooldownSeconds > 0 ? t("auth.verifyEmail.resendIn", { seconds: cooldownSeconds }) : t("auth.verifyEmail.resend")}
           </Button>

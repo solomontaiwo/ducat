@@ -36,7 +36,7 @@ const Login = () => {
       navigate(user?.emailVerified ? "/dashboard" : "/verify-email", { replace: true });
     } catch (err) {
       if (err.code === "auth/email-not-verified") {
-        markPendingVerification(email);
+        markPendingVerification(email, password);
         navigate("/verify-email", { replace: true });
         return;
       }

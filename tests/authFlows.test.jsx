@@ -86,7 +86,7 @@ describe("Login", () => {
     fill("password", "secret-pass");
     submit();
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/verify-email", { replace: true }));
-    expect(mocks.markPendingVerification).toHaveBeenCalledWith("ada@example.com");
+    expect(mocks.markPendingVerification).toHaveBeenCalledWith("ada@example.com", "secret-pass");
   });
 
   it.each([
@@ -149,7 +149,7 @@ describe("Register", () => {
     fillAll();
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/verify-email", { replace: true }));
     expect(mocks.signUp).toHaveBeenCalledWith({ email: "ada@example.com", password: "long-enough-1", displayName: "Ada Lovelace" });
-    expect(mocks.markPendingVerification).toHaveBeenCalledWith("ada@example.com");
+    expect(mocks.markPendingVerification).toHaveBeenCalledWith("ada@example.com", "long-enough-1");
     expect(mocks.notification.success).toHaveBeenCalled();
   });
 
@@ -246,6 +246,24 @@ describe("VerifyEmail", () => {
     fireEvent.click(screen.getByRole("button", { name: "auth.verifyEmail.check" }));
     await waitFor(() => expect(mocks.notification.info).toHaveBeenCalledWith("auth.verifyEmail.notVerified"));
     expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("redirects to login instead of falsely claiming unverified when no local session or in-memory password exists", async () => {
+    mocks.currentUser = { email: "ada@example.com", pending: true };
+    mocks.logout.mockResolvedValue();
+    mocks.refreshCurrentUser.mockResolvedValue({ email: "ada@example.com", emailVerified: false, pending: true, needsSignIn: true });
+    render(<VerifyEmail />);
+    fireEvent.click(screen.getByRole("button", { name: "auth.verifyEmail.check" }));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/login", { replace: true }));
+    expect(mocks.logout).toHaveBeenCalled();
+    expect(mocks.notification.info).toHaveBeenCalledWith("auth.verifyEmail.desktopHint");
+    expect(mocks.notification.info).not.toHaveBeenCalledWith("auth.verifyEmail.notVerified");
+  });
+
+  it("navigates automatically once the session becomes verified", async () => {
+    mocks.currentUser = { uid: "u1", email: "ada@example.com", emailVerified: true };
+    render(<VerifyEmail />);
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/dashboard", { replace: true }));
   });
 
   it("reports a failed check", async () => {
