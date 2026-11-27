@@ -310,18 +310,29 @@ public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificati
         ]
     }
 
+    private static func persistArchiveKey(_ data: Data, baseQuery: [String: Any]) -> OSStatus {
+        // Delete first so any legacy entry with .userPresence ACL is replaced cleanly.
+        SecItemDelete(baseQuery as CFDictionary)
+        var item = baseQuery
+        item[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        item[kSecValueData as String] = data
+        return SecItemAdd(item as CFDictionary, nil)
+    }
+
     @objc func archiveKeyStatus(_ call: CAPPluginCall) {
         guard let baseQuery = Self.archiveQuery(call) else { return }
         DispatchQueue.global(qos: .userInitiated).async {
             var query = baseQuery
             let context = LAContext()
-            let available = context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
             context.interactionNotAllowed = true
             query[kSecUseAuthenticationContext as String] = context
             let status = SecItemCopyMatching(query as CFDictionary, nil)
+            let available = status == errSecSuccess || status == errSecItemNotFound || status == errSecInteractionNotAllowed
+            let configured = status == errSecSuccess || status == errSecInteractionNotAllowed
             call.resolve([
-                "available": available && (status == errSecSuccess || status == errSecItemNotFound || status == errSecInteractionNotAllowed),
-                "configured": available && (status == errSecSuccess || status == errSecInteractionNotAllowed),
+                "available": available,
+                "configured": configured,
+                "requiresPrompt": status == errSecInteractionNotAllowed,
             ])
         }
     }
@@ -329,36 +340,66 @@ public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificati
     @objc func unlockArchiveKey(_ call: CAPPluginCall) {
         guard let baseQuery = Self.archiveQuery(call) else { return }
         let reason = call.getString("reason") ?? "Unlock your Ducat archive"
-        let context = LAContext()
-        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { authenticated, error in
-            guard authenticated else {
-                switch (error as? LAError)?.code {
-                case .userCancel, .systemCancel, .appCancel:
-                    call.reject("Authentication cancelled", "userCancel")
-                default:
-                    call.reject("Archive authentication failed", "keychainError")
+        DispatchQueue.global(qos: .userInitiated).async {
+            let silentContext = LAContext()
+            silentContext.interactionNotAllowed = true
+            var silentQuery = baseQuery
+            silentQuery[kSecUseAuthenticationContext as String] = silentContext
+            silentQuery[kSecReturnData as String] = true
+            var silentResult: CFTypeRef?
+            let silentStatus = SecItemCopyMatching(silentQuery as CFDictionary, &silentResult)
+            switch silentStatus {
+            case errSecSuccess:
+                guard let data = silentResult as? Data, data.count == 32 else {
+                    call.reject("Invalid archive key", "keychainError")
+                    return
                 }
+                call.resolve(["value": data.base64EncodedString()])
+                return
+            case errSecItemNotFound:
+                call.resolve(["value": NSNull()])
+                return
+            case errSecInteractionNotAllowed:
+                break
+            default:
+                call.reject("Archive unlock failed (\(silentStatus))", "keychainError")
                 return
             }
-            DispatchQueue.global(qos: .userInitiated).async {
-                var query = baseQuery
-                query[kSecUseAuthenticationContext as String] = context
-                query[kSecReturnData as String] = true
-                var result: CFTypeRef?
-                let status = SecItemCopyMatching(query as CFDictionary, &result)
-                switch status {
-                case errSecSuccess:
-                    guard let data = result as? Data, data.count == 32 else {
-                        call.reject("Invalid archive key", "keychainError")
-                        return
+
+            // Legacy entry created with .userPresence: authenticate once and migrate
+            // it to a silent WhenUnlockedThisDeviceOnly Keychain entry.
+            let context = LAContext()
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { authenticated, error in
+                guard authenticated else {
+                    switch (error as? LAError)?.code {
+                    case .userCancel, .systemCancel, .appCancel:
+                        call.reject("Authentication cancelled", "userCancel")
+                    default:
+                        call.reject("Archive authentication failed", "keychainError")
                     }
-                    call.resolve(["value": data.base64EncodedString()])
-                case errSecItemNotFound:
-                    call.resolve(["value": NSNull()])
-                case errSecUserCanceled:
-                    call.reject("Authentication cancelled", "userCancel")
-                default:
-                    call.reject("Archive unlock failed (\(status))", "keychainError")
+                    return
+                }
+                DispatchQueue.global(qos: .userInitiated).async {
+                    var query = baseQuery
+                    query[kSecUseAuthenticationContext as String] = context
+                    query[kSecReturnData as String] = true
+                    var result: CFTypeRef?
+                    let status = SecItemCopyMatching(query as CFDictionary, &result)
+                    switch status {
+                    case errSecSuccess:
+                        guard let data = result as? Data, data.count == 32 else {
+                            call.reject("Invalid archive key", "keychainError")
+                            return
+                        }
+                        _ = Self.persistArchiveKey(data, baseQuery: baseQuery)
+                        call.resolve(["value": data.base64EncodedString()])
+                    case errSecItemNotFound:
+                        call.resolve(["value": NSNull()])
+                    case errSecUserCanceled:
+                        call.reject("Authentication cancelled", "userCancel")
+                    default:
+                        call.reject("Archive unlock failed (\(status))", "keychainError")
+                    }
                 }
             }
         }
@@ -371,22 +412,7 @@ public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificati
             return
         }
         DispatchQueue.global(qos: .userInitiated).async {
-            let protection = ProcessInfo.processInfo.isiOSAppOnMac
-                ? kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-                : kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
-            guard let access = SecAccessControlCreateWithFlags(nil, protection, .userPresence, nil) else {
-                call.reject("Archive protection is unavailable", "keychainError")
-                return
-            }
-
-            var item = query
-            item[kSecAttrAccessControl as String] = access
-            item[kSecValueData as String] = data
-            let added = SecItemAdd(item as CFDictionary, nil)
-            let status = added == errSecDuplicateItem
-                ? SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-                : added
-
+            let status = Self.persistArchiveKey(data, baseQuery: query)
             if status == errSecSuccess {
                 call.resolve()
             } else {

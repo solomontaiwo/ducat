@@ -7,7 +7,7 @@ import { archiveKeychain } from "../../platform/authStorage.js";
 import { clearOfflineForUser } from "../../utils/offlineCache.js";
 import { createRecoveryVault, decodeBytes, encodeBytes, isVaultPin, newRecoveryCode, unwrapVaultKey } from "../../utils/vaultCrypto.js";
 import { clearVaultDeviceSession, isVaultPinLocked, loadVaultPin, rememberVaultDeviceSession, resumeVaultDeviceSession, saveVaultPin, verifyVaultPin } from "../../utils/vaultDeviceUnlock.js";
-import { loadVaultAccount, openVault, startVault, vaultAuthSession, watchVaultAccount } from "../../services/vaultService.js";
+import { loadVaultAccount, openVault, startVault, watchVaultAccount } from "../../services/vaultService.js";
 import { hasLegacyVaultQueue, runVaultQueue } from "../../services/vaultQueue.js";
 import { currentVault, setCurrentVault } from "../../services/vaultSession.js";
 import { Button } from "../ui/button.jsx";
@@ -31,10 +31,10 @@ const VaultAccess = ({ uid, logout, children }) => {
   const [confirmation, setConfirmation] = useState("");
   const [code, setCode] = useState("");
   const [savedCode, setSavedCode] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [deviceKey, setDeviceKey] = useState(null);
   const [pinEntry, setPinEntry] = useState(null);
-  const [keepSession, setKeepSession] = useState(false);
+  const [keepSession, setKeepSession] = useState(true);
   const [showPairing, setShowPairing] = useState(false);
   const [paired, setPaired] = useState(false);
   const pairedKey = useRef(null);
@@ -71,7 +71,7 @@ const VaultAccess = ({ uid, logout, children }) => {
         if (alive.current && !saved) notification.warning(t("vault.deviceSaveError"));
       }
       if (trustedPin && alive.current) {
-        await vaultAuthSession(uid).then((session) => rememberVaultDeviceSession(uid, trustedPin, bytes, session)).catch(() => notification.warning(t("vault.sessionSaveError")));
+        await rememberVaultDeviceSession(uid, trustedPin, bytes).catch(() => notification.warning(t("vault.sessionSaveError")));
         if (!alive.current) await clearVaultDeviceSession(uid);
       }
       if (!alive.current) return;
@@ -100,7 +100,6 @@ const VaultAccess = ({ uid, logout, children }) => {
     try {
       const current = await loadVaultAccount(uid);
       if (!alive.current) return;
-      setAccount(current);
       if (!current && setupEnabled) setCode((previous) => previous || newRecoveryCode());
       const [localKey, localPin] = await Promise.all([
         archiveKeychain.status(uid).catch(() => null),
@@ -109,14 +108,35 @@ const VaultAccess = ({ uid, logout, children }) => {
       if (!alive.current) return;
       setDeviceKey(localKey);
       setPinEntry(localPin);
-      if (current?.active && localPin) {
-        const secret = await vaultAuthSession(uid).then((session) => resumeVaultDeviceSession(uid, localPin, session)).catch(() => null);
-        if (secret) {
+      if (current?.active && localKey?.configured && !localKey.requiresPrompt) {
+        const remembered = await archiveKeychain.get(uid, t("vault.deviceReason")).catch(() => null);
+        if (remembered) {
+          const secret = decodeBytes(remembered);
           try { if (alive.current) await unlock(current, secret, false); }
-          catch { await clearVaultDeviceSession(uid); }
+          catch (autoError) {
+            if (autoError?.name === "OperationError" || /Invalid archive/i.test(autoError?.message || "")) {
+              await archiveKeychain.remove(uid).catch(() => {});
+              if (alive.current) setDeviceKey({ ...localKey, configured: false });
+            }
+          }
           finally { secret.fill(0); }
         }
       }
+      if (!alive.current) return;
+      if (!currentVault(uid) && current?.active && localPin) {
+        const secret = await resumeVaultDeviceSession(uid, localPin).catch(() => null);
+        if (secret) {
+          try { if (alive.current) await unlock(current, secret, false); }
+          catch (autoError) {
+            if (autoError?.name === "OperationError" || /Invalid archive/i.test(autoError?.message || "")) {
+              await clearVaultDeviceSession(uid);
+            }
+          }
+          finally { secret.fill(0); }
+        }
+      }
+      if (!alive.current) return;
+      setAccount(current);
     } catch (failure) {
       if (!alive.current) return;
       if (!setupEnabled && (navigator.onLine === false || ["42P01", "PGRST205"].includes(failure.code))) setAccount(null);
@@ -125,7 +145,7 @@ const VaultAccess = ({ uid, logout, children }) => {
       processing.current = false;
       if (alive.current) setBusy(false);
     }
-  }, [uid, unlock]);
+  }, [t, uid, unlock]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -205,7 +225,7 @@ const VaultAccess = ({ uid, logout, children }) => {
           localPin = null;
         }
       }
-      await unlock(current, bytes, remember, !deviceKey?.available && keepSession && localPin);
+      await unlock(current, bytes, Boolean(deviceKey?.available) && (remember || Boolean(deviceKey?.requiresPrompt)), !deviceKey?.available && keepSession && localPin);
     } catch {
       if (alive.current) setError(current?.active ? "unavailable" : "migrationError");
     } finally {

@@ -14,7 +14,7 @@
     "deviceReason": "Unlock your Ducat archive",
     "deviceUnavailable": "Device unlock failed. Try again or use your archive credentials.",
     "deviceSaveError": "Could not enable device unlock. Your archive is open and you can try again next time.",
-    "remember": "Enable unlock with this device",
+    "remember": "Remember unlock on this device",
     "activate": "Enable encryption",
     "unlock": "Unlock",
     "opening": "Opening archive…",

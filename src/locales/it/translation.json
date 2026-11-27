@@ -14,7 +14,7 @@
     "deviceReason": "Sblocca il tuo archivio Ducat",
     "deviceUnavailable": "Lo sblocco con il dispositivo non è riuscito. Riprova oppure usa le credenziali dell’archivio.",
     "deviceSaveError": "Impossibile attivare lo sblocco con il dispositivo. L’archivio è aperto e puoi riprovare al prossimo accesso.",
-    "remember": "Abilita lo sblocco con il dispositivo",
+    "remember": "Ricorda lo sblocco su questo dispositivo",
     "activate": "Attiva la cifratura",
     "unlock": "Sblocca",
     "opening": "Apertura dell’archivio in corso…",

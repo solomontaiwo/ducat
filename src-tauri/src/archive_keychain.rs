@@ -3,7 +3,7 @@ use security_framework::{
     access_control::{ProtectionMode, SecAccessControl},
     item::{ItemClass, ItemSearchOptions},
     passwords::{
-        AccessControlOptions, PasswordOptions, delete_generic_password_options, generic_password,
+        PasswordOptions, delete_generic_password_options, generic_password,
         set_generic_password_options,
     },
 };
@@ -14,9 +14,11 @@ const ITEM_NOT_FOUND: i32 = -25300;
 const USER_CANCELLED: i32 = -128;
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct KeyStatus {
     available: bool,
     configured: bool,
+    requires_prompt: bool,
 }
 
 #[derive(Serialize)]
@@ -45,6 +47,18 @@ fn key_options(uid: &str) -> Result<PasswordOptions, &'static str> {
     Ok(options)
 }
 
+fn persist_archive_key(uid: &str, bytes: &[u8]) -> Result<(), &'static str> {
+    let _ = delete_generic_password_options(key_options(uid)?);
+    let mut options = key_options(uid)?;
+    let access = SecAccessControl::create_with_protection(
+        Some(ProtectionMode::AccessibleWhenUnlockedThisDeviceOnly),
+        0,
+    )
+    .map_err(|_| "keychainError")?;
+    options.set_access_control(access);
+    set_generic_password_options(bytes, options).map_err(|_| "keychainError")
+}
+
 #[tauri::command]
 pub async fn archive_key_status(uid: String) -> Result<KeyStatus, &'static str> {
     if !valid_uid(&uid) {
@@ -62,10 +76,12 @@ pub async fn archive_key_status(uid: String) -> Result<KeyStatus, &'static str> 
         Ok(entries) => KeyStatus {
             available: true,
             configured: !entries.is_empty(),
+            requires_prompt: false,
         },
         Err(error) => KeyStatus {
             available: error.code() == ITEM_NOT_FOUND,
             configured: false,
+            requires_prompt: false,
         },
     })
 }
@@ -88,20 +104,13 @@ pub async fn unlock_archive_key(uid: String) -> Result<KeyValue, &'static str> {
 
 #[tauri::command]
 pub async fn save_archive_key(uid: String, value: String) -> Result<(), &'static str> {
-    let mut options = key_options(&uid)?;
     let mut bytes = STANDARD.decode(value).map_err(|_| "invalidArgument")?;
     if bytes.len() != 32 {
         return Err("invalidArgument");
     }
-    let access = SecAccessControl::create_with_protection(
-        Some(ProtectionMode::AccessibleWhenUnlockedThisDeviceOnly),
-        AccessControlOptions::USER_PRESENCE.bits(),
-    )
-    .map_err(|_| "keychainError")?;
-    options.set_access_control(access);
-    let result = set_generic_password_options(&bytes, options);
+    let result = persist_archive_key(&uid, &bytes);
     bytes.fill(0);
-    result.map_err(|_| "keychainError")
+    result
 }
 
 #[tauri::command]
