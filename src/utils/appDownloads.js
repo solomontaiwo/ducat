@@ -1,13 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { isWeb } from "../platform/index.js";
+import { APP_VERSION } from "./appVersion.js";
 
 const RELEASES_REPO = import.meta.env.VITE_RELEASES_REPO || "solomontaiwo/ducat";
 export const RELEASES_URL = `https://github.com/${RELEASES_REPO}/releases/latest`;
 export const DEFAULT_IOS_DOWNLOAD_URL = "https://testflight.apple.com/join/C3BV5sCa";
-const RELEASES_API = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`;
 
-let cachedReleasePromise = null;
-let cachedRelease = null;
+/**
+ * Stable download links on our own domain. `public/_redirects` sends each one
+ * to the fixed-name installer in the latest GitHub release, so the links never
+ * change between versions and the page needs no GitHub API call.
+ */
+export const DOWNLOAD_URLS = Object.freeze({
+  macos: "https://ducatapp.com/download/macos",
+  windowsX64: "https://ducatapp.com/download/windows",
+  windowsArm64: "https://ducatapp.com/download/windows-arm64",
+});
 
 export const sanitizeHttpsUrl = (raw) => {
   if (!raw || typeof raw !== "string") return null;
@@ -51,83 +59,31 @@ export const detectClientPlatform = (nav = typeof navigator !== "undefined" ? na
   return { platform: "other", arch: null };
 };
 
-/** Picks direct installer URLs from a GitHub Release payload. */
-export const pickReleaseDownloads = (release) => {
-  const assets = Array.isArray(release?.assets) ? release.assets : [];
-  const findAsset = (pattern) => {
-    const match = assets.find((asset) => pattern.test(asset?.name || ""));
-    return sanitizeHttpsUrl(match?.browser_download_url);
-  };
-  const macosDmg = findAsset(/macos-arm64\.dmg$/i) || findAsset(/\.dmg$/i);
-  const windowsX64 = findAsset(/windows-x64-setup\.exe$/i) || findAsset(/x86_64-setup\.exe$/i);
-  const windowsArm64 = findAsset(/windows-arm64-setup\.exe$/i) || findAsset(/aarch64-setup\.exe$/i);
-  const version = typeof release?.tag_name === "string" ? release.tag_name.replace(/^v/i, "") : null;
-  return { macosDmg, windowsX64, windowsArm64, version };
-};
-
-export const fetchLatestReleaseDownloads = async () => {
-  if (cachedRelease) return cachedRelease;
-  if (cachedReleasePromise) return cachedReleasePromise;
-  if (typeof fetch !== "function") return {};
-
-  cachedReleasePromise = fetch(RELEASES_API, {
-    headers: { Accept: "application/vnd.github+json" },
-  })
-    .then((response) => (response.ok ? response.json() : null))
-    .then((data) => {
-      if (!data) return {};
-      cachedRelease = pickReleaseDownloads(data);
-      return cachedRelease;
-    })
-    .catch(() => ({}))
-    .finally(() => {
-      cachedReleasePromise = null;
-    });
-
-  return cachedReleasePromise;
-};
-
-export const resetReleaseDownloadsCache = () => {
-  cachedRelease = null;
-  cachedReleasePromise = null;
-};
-
 /**
  * Resolves native download links for web visitors. Returns `available: false`
  * inside the iOS and desktop apps so store builds never offer external installs.
  */
-export const useAppDownloads = ({ enabled = true } = {}) => {
+export const useAppDownloads = () => {
   const available = isWeb();
   const { platform, arch } = useMemo(() => detectClientPlatform(), []);
   const iosUrl = getConfiguredIosUrl();
-  const [release, setRelease] = useState(() => cachedRelease || {});
-
-  useEffect(() => {
-    if (!available || !enabled || cachedRelease) return undefined;
-    let cancelled = false;
-    fetchLatestReleaseDownloads().then((resolved) => {
-      if (!cancelled && resolved && Object.keys(resolved).length) setRelease(resolved);
-    });
-    return () => { cancelled = true; };
-  }, [available, enabled]);
-
-  const macosUrl = release.macosDmg || RELEASES_URL;
-  const preferWindowsArm = platform === "windows" && arch === "arm64";
-  const windowsUrl = (preferWindowsArm ? release.windowsArm64 || release.windowsX64 : release.windowsX64 || release.windowsArm64) || RELEASES_URL;
+  const macosUrl = DOWNLOAD_URLS.macos;
+  const windowsUrl = platform === "windows" && arch === "arm64" ? DOWNLOAD_URLS.windowsArm64 : DOWNLOAD_URLS.windowsX64;
 
   const primary = useMemo(() => {
     if (!available) return null;
-    if (platform === "macos") return { platform: "macos", href: macosUrl, direct: Boolean(release.macosDmg) };
-    if (platform === "windows") return { platform: "windows", href: windowsUrl, direct: Boolean(release.windowsX64 || release.windowsArm64) };
+    if (platform === "macos") return { platform: "macos", href: macosUrl, direct: true };
+    if (platform === "windows") return { platform: "windows", href: windowsUrl, direct: true };
     if (platform === "ios" && iosUrl) return { platform: "ios", href: iosUrl, direct: true };
     return null;
-  }, [available, platform, macosUrl, windowsUrl, iosUrl, release.macosDmg, release.windowsX64, release.windowsArm64]);
+  }, [available, platform, macosUrl, windowsUrl, iosUrl]);
 
   return {
     available,
     platform,
     arch,
-    version: release.version || null,
+    // The site and the desktop release share package.json's version.
+    version: APP_VERSION,
     iosUrl,
     macosUrl,
     windowsUrl,

@@ -47,6 +47,7 @@
       "requireSignedVersion": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhENEQwN0RGMzhBNDBCNjEKUldSaEM2UTQzd2ROaldWUDdkdGlxanF0U1hEbk5wOW5POTdwSll6aVdodzlNT0hFMTRaak5Ec0gK",
       "endpoints": [
+        "https://ducatapp.com/download/latest.json",
         "https://github.com/solomontaiwo/ducat/releases/latest/download/latest.json"
       ]
     }

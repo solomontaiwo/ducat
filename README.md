@@ -53,12 +53,15 @@ The database schema, row level security policies and helper functions live in `s
 
 ## Desktop app
 
-Download the installer for your platform from the [latest release](https://github.com/solomontaiwo/ducat/releases/latest):
+Download the installer for your platform; the links always point at the [latest release](https://github.com/solomontaiwo/ducat/releases/latest):
 
 | Platform | Installer |
 |---|---|
-| macOS Apple Silicon | `.dmg` |
-| Windows x64 / ARM64 | `-setup.exe` |
+| macOS Apple Silicon | [`.dmg`](https://ducatapp.com/download/macos) |
+| Windows x64 | [`-setup.exe`](https://ducatapp.com/download/windows) |
+| Windows ARM64 | [`-setup.exe`](https://ducatapp.com/download/windows-arm64) |
+
+The `ducatapp.com/download/*` links are redirects defined in `public/_redirects` to the fixed-name installers (`Ducat-macos-arm64.dmg`, `Ducat-windows-x64-setup.exe`, `Ducat-windows-arm64-setup.exe`) that the desktop workflow attaches to every release.
 
 Releases no longer include macOS Intel or Linux installers; older packages remain available in their original releases and do not receive updates. How updates work is described in [docs/UPDATER.md](docs/UPDATER.md).
 

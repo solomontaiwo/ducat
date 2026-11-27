@@ -1,26 +1,39 @@
-import { renderHook, waitFor } from "@testing-library/react";
+/* global process */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_IOS_DOWNLOAD_URL,
-  RELEASES_URL,
+  DOWNLOAD_URLS,
   detectClientPlatform,
-  fetchLatestReleaseDownloads,
-  pickReleaseDownloads,
-  resetReleaseDownloadsCache,
   sanitizeHttpsUrl,
 } from "../src/utils/appDownloads.js";
+import { version } from "../package.json";
 
-const SAMPLE_RELEASE = {
-  tag_name: "v4.0.65",
-  assets: [
-    { name: "Ducat-4.0.65-macos-arm64.dmg", browser_download_url: "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-macos-arm64.dmg" },
-    { name: "Ducat-4.0.65-windows-x64-setup.exe", browser_download_url: "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-windows-x64-setup.exe" },
-    { name: "Ducat-4.0.65-windows-arm64-setup.exe", browser_download_url: "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-windows-arm64-setup.exe" },
-  ],
+const readRepoFile = (path) => readFileSync(resolve(process.cwd(), path), "utf8");
+
+/** Parses `public/_redirects` into { source: { destination, status } }. */
+const parseRedirects = (text) => Object.fromEntries(
+  text.split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .map((line) => {
+      const [source, destination, status] = line.split(/\s+/);
+      return [source, { destination, status }];
+    })
+);
+
+const loadHook = async ({ userAgent, platform, mode = "production" }) => {
+  vi.resetModules();
+  vi.stubEnv("MODE", mode);
+  vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
+  vi.spyOn(navigator, "platform", "get").mockReturnValue(platform);
+  const { useAppDownloads } = await import("../src/utils/appDownloads.js");
+  return renderHook(() => useAppDownloads()).result.current;
 };
 
 afterEach(() => {
-  resetReleaseDownloadsCache();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -51,63 +64,61 @@ describe("appDownloads", () => {
     expect(sanitizeHttpsUrl("")).toBeNull();
   });
 
-  it("extracts direct installer URLs and version from a GitHub release", () => {
-    expect(pickReleaseDownloads(SAMPLE_RELEASE)).toEqual({
-      macosDmg: "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-macos-arm64.dmg",
-      windowsX64: "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-windows-x64-setup.exe",
-      windowsArm64: "https://github.com/solomontaiwo/ducat/releases/download/v4.0.65/Ducat-4.0.65-windows-arm64-setup.exe",
-      version: "4.0.65",
-    });
-  });
-
-  it("falls back cleanly when GitHub Releases fetch fails", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
-    expect(await fetchLatestReleaseDownloads()).toEqual({});
-  });
-
-  it("resolves the direct macOS .dmg link on web and hides downloads in native apps", async () => {
-    vi.unstubAllEnvs();
-    vi.resetModules();
-    vi.stubEnv("MODE", "production");
-    vi.stubEnv("VITE_IOS_DOWNLOAD_URL", "");
+  it("links every installer to a ducatapp.com redirect, without calling GitHub", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
     vi.stubEnv("VITE_IOS_DOWNLOAD_URL", "https://testflight.apple.com/join/Test1234");
-    vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
-    vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => SAMPLE_RELEASE }));
+    const mac = await loadHook({ userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", platform: "MacIntel" });
+    expect(mac.available).toBe(true);
+    expect(mac.version).toBe(version);
+    expect(mac.iosUrl).toBe("https://testflight.apple.com/join/Test1234");
+    expect(mac.macosUrl).toBe("https://ducatapp.com/download/macos");
+    expect(mac.windowsUrl).toBe("https://ducatapp.com/download/windows");
+    expect(mac.primary).toEqual({ platform: "macos", href: "https://ducatapp.com/download/macos", direct: true });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 
-    const { useAppDownloads } = await import("../src/utils/appDownloads.js");
-    const { result } = renderHook(() => useAppDownloads());
-    expect(result.current.available).toBe(true);
-    expect(result.current.iosUrl).toBe("https://testflight.apple.com/join/Test1234");
-    expect(result.current.macosUrl).toBe(RELEASES_URL);
-    await waitFor(() => expect(result.current.macosUrl).toBe(SAMPLE_RELEASE.assets[0].browser_download_url));
-    expect(result.current.primary).toEqual({
-      platform: "macos",
-      href: SAMPLE_RELEASE.assets[0].browser_download_url,
-      direct: true,
-    });
+  it("offers the ARM64 installer to Windows on ARM", async () => {
+    const windows = await loadHook({ userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", platform: "Win32" });
+    expect(windows.primary).toEqual({ platform: "windows", href: DOWNLOAD_URLS.windowsX64, direct: true });
 
-    vi.unstubAllEnvs();
-    vi.resetModules();
-    vi.stubEnv("MODE", "production");
+    const windowsArm = await loadHook({ userAgent: "Mozilla/5.0 (Windows NT 10.0; ARM64)", platform: "Win32" });
+    expect(windowsArm.windowsUrl).toBe(DOWNLOAD_URLS.windowsArm64);
+    expect(windowsArm.primary).toEqual({ platform: "windows", href: DOWNLOAD_URLS.windowsArm64, direct: true });
+  });
+
+  it("points iPhone visitors at TestFlight and hides downloads in native apps", async () => {
     vi.stubEnv("VITE_IOS_DOWNLOAD_URL", "");
-    vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (iPhone; CPU iPhone OS 27_2 like Mac OS X)");
-    vi.spyOn(navigator, "platform", "get").mockReturnValue("iPhone");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
-    const iosWebMod = await import("../src/utils/appDownloads.js");
-    const iosWebHook = renderHook(() => iosWebMod.useAppDownloads()).result.current;
-    expect(iosWebHook.iosUrl).toBe(DEFAULT_IOS_DOWNLOAD_URL);
-    expect(iosWebHook.primary).toEqual({
-      platform: "ios",
-      href: DEFAULT_IOS_DOWNLOAD_URL,
-      direct: true,
-    });
+    const iosWeb = await loadHook({ userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 27_2 like Mac OS X)", platform: "iPhone" });
+    expect(iosWeb.iosUrl).toBe(DEFAULT_IOS_DOWNLOAD_URL);
+    expect(iosWeb.primary).toEqual({ platform: "ios", href: DEFAULT_IOS_DOWNLOAD_URL, direct: true });
 
-    vi.resetModules();
-    vi.stubEnv("MODE", "mobile");
-    const mobileMod = await import("../src/utils/appDownloads.js");
-    const mobileHook = renderHook(() => mobileMod.useAppDownloads()).result.current;
-    expect(mobileHook.available).toBe(false);
-    expect(mobileHook.primary).toBeNull();
+    const mobile = await loadHook({ userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 27_2 like Mac OS X)", platform: "iPhone", mode: "mobile" });
+    expect(mobile.available).toBe(false);
+    expect(mobile.primary).toBeNull();
+  });
+
+  it("keeps the download links, _redirects and the release asset names in sync", () => {
+    const redirects = parseRedirects(readRepoFile("public/_redirects"));
+    const workflow = readRepoFile(".github/workflows/desktop.yml");
+    // Installer names the release job publishes: `copy_one <artifact> '<glob>' <name>`.
+    const published = [...workflow.matchAll(/^\s*copy_one \S+ '[^']+' (\S+)$/gm)].map(([, name]) => `Ducat-${name}`);
+    expect(published).toHaveLength(Object.keys(DOWNLOAD_URLS).length);
+
+    const latest = "https://github.com/solomontaiwo/ducat/releases/latest/download/";
+    const targets = Object.values(DOWNLOAD_URLS).map((url) => {
+      const { origin, pathname } = new URL(url);
+      expect(origin).toBe("https://ducatapp.com");
+      const rule = redirects[pathname];
+      expect(rule, `missing redirect for ${pathname}`).toBeDefined();
+      expect(rule.status).toBe("302");
+      expect(rule.destination.startsWith(latest)).toBe(true);
+      return rule.destination.slice(latest.length);
+    });
+    expect(targets.sort()).toEqual(published.sort());
+
+    // The updater's first endpoint resolves through the same file.
+    expect(redirects["/download/latest.json"]).toEqual({ destination: `${latest}latest.json`, status: "302" });
+    expect(workflow).toContain('"endpoints":["https://ducatapp.com/download/latest.json","https://github.com/');
   });
 });
