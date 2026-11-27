@@ -20,7 +20,7 @@ const PasswordField = ({ id, label, value, onChange, autoComplete, placeholder, 
           placeholder={placeholder}
           value={value}
           onChange={onChange}
-          className="border-0 shadow-none focus-visible:ring-0"
+          bare
           autoComplete={autoComplete}
           minLength={minLength}
           required={required}

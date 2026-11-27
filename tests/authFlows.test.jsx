@@ -113,6 +113,8 @@ describe("Login", () => {
 
   it("toggles password visibility with an accessible label", () => {
     render(<Login />);
+    expect(document.getElementById("email").className).not.toContain("focus-visible:ring-2");
+    expect(document.getElementById("password").className).not.toContain("focus-visible:ring-2");
     const toggle = screen.getByRole("button", { name: "auth.showPassword" });
     fireEvent.click(toggle);
     expect(document.getElementById("password")).toHaveAttribute("type", "text");
