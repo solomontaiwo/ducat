@@ -7,7 +7,7 @@
     "migrationDescription": "Sblocca l’archivio per completare la cifratura dei dati salvati.",
     "passphrase": "Passphrase dell’archivio",
     "recovery": "Codice di recupero",
-    "recoveryHelp": "Ti serve se dimentichi il PIN o perdi l’accesso ai tuoi dispositivi. Salvalo in un posto sicuro e tienilo per te.",
+    "recoveryHelp": "Ti serve se dimentichi il PIN o perdi l’accesso ai tuoi dispositivi. Salvalo in un posto sicuro. Se perdi il codice e l’accesso a tutti i dispositivi approvati, Ducat non può riaprire l’archivio per te.",
     "savedRecovery": "Ho salvato il codice di recupero",
     "deviceDescription": "Sblocca con Face ID o Touch ID. Se serve, il sistema ti chiederà il codice o la password del dispositivo.",
     "unlockWithDevice": "Sblocca con il dispositivo",
@@ -186,15 +186,16 @@
     "login": "Accedi",
     "demoNote": "La demo non chiede email: i dati restano sul tuo dispositivo.",
     "sections": "Sezioni",
-    "previewLabel": "Anteprima della panoramica di Ducat",
     "preview": {
-      "greeting": "Buongiorno, Giulia",
-      "month": "Ottobre 2026",
-      "split": "Casa 45% · Spesa 25% · Trasporti 18%",
-      "rent": "Affitto",
-      "suggestion": "«Netflix» → Abbonamenti",
-      "budgetTitle": "Budget Spesa",
-      "budgetValue": "320 € di 400 €"
+      "desktop": "Panoramica di Ducat in una finestra desktop con dati di esempio",
+      "phone": "Panoramica di Ducat sullo schermo esterno di iPhone Duo con dati di esempio"
+    },
+    "security": {
+      "nav": "Sicurezza",
+      "title": "I tuoi movimenti, leggibili solo da te",
+      "body": "Quando attivi l’archivio cifrato, Ducat cifra i movimenti sul tuo dispositivo prima di sincronizzarli. Chi gestisce Ducat o il database può vedere che hai un account, ma non può leggere il contenuto dell’archivio cifrato.",
+      "devices": "Su un nuovo dispositivo puoi sbloccare l’archivio approvandolo da uno già sbloccato oppure usando il tuo codice di recupero.",
+      "privacy": "Leggi l’informativa privacy"
     },
     "how": {
       "title": "Come funziona",

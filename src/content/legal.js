@@ -68,6 +68,7 @@ export const PRIVACY_SECTIONS = {
       title: "Sicurezza",
       paragraphs: [
         "Il traffico è cifrato con HTTPS. Il database applica regole di accesso per riga: ogni account vede e modifica solo i propri dati. Le password sono gestite da Supabase e non sono mai visibili all’app.",
+        "Se attivi l’archivio cifrato, movimenti, ricorrenze, budget e preferenze finanziarie vengono cifrati sul dispositivo prima della sincronizzazione. Supabase conserva l’associazione con il tuo account, ma gli amministratori non possono leggere il contenuto dell’archivio cifrato. Eventuali copie tecniche precedenti alla migrazione seguono i tempi di conservazione del fornitore.",
       ],
     },
     {
@@ -133,6 +134,7 @@ export const PRIVACY_SECTIONS = {
       title: "Security",
       paragraphs: [
         "Traffic is encrypted with HTTPS. The database enforces row level security: each account can only read and change its own data. Passwords are handled by Supabase and are never visible to the app.",
+        "If you enable the encrypted archive, transactions, recurring items, budgets and financial preferences are encrypted on your device before syncing. Supabase keeps the archive linked to your account, but administrators can’t read its encrypted contents. Earlier technical backups follow the database provider’s retention schedule.",
       ],
     },
     {

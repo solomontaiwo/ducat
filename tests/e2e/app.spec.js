@@ -22,6 +22,12 @@ test("landing supports demo navigation without serious accessibility violations"
   });
   await page.goto(".");
   await expect(page).toHaveTitle(/Ducat/i);
+  const preview = page.getByRole("img", { name: /panoramica di ducat/i });
+  await expect(preview).toHaveCount(2);
+  await expect.poll(() => preview.evaluateAll((images) => images.every((image) => image.naturalWidth > 0))).toBe(true);
+  const security = page.getByRole("region", { name: "I tuoi movimenti, leggibili solo da te" });
+  await expect(security).toContainText("prima di sincronizzarli");
+  await expect(security.getByRole("link", { name: "Leggi l’informativa privacy" })).toHaveAttribute("href", "/privacy");
   const demo = page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first();
   await expect(demo).toBeVisible();
   await page.locator(".animate-page-in").evaluateAll((elements) =>

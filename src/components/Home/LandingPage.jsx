@@ -1,12 +1,11 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
-import { FiAward, FiCalendar, FiCheck, FiDownload, FiExternalLink, FiFileText, FiMinus, FiMonitor, FiMoon, FiSearch, FiSmartphone } from "react-icons/fi";
+import { FiAward, FiCalendar, FiCheck, FiDownload, FiExternalLink, FiFileText, FiMinus, FiMonitor, FiMoon, FiSearch, FiShield, FiSmartphone } from "react-icons/fi";
 import { Link, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider.jsx";
 import { Button } from "../ui/button";
-import { CategoryBadge } from "../Transaction/TransactionRow.jsx";
 import { useAppDownloads } from "../../utils/appDownloads.js";
 import { useInstallPrompt } from "../../utils/installPrompt.js";
 import { cn } from "../../lib/utils.js";
@@ -27,42 +26,37 @@ const COMPARISON = [
   { key: "backup", demo: false, account: true },
 ];
 
-/** Illustrative overview (not user data), in the app's own components and colours. */
 const ProductPreview = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const suffix = i18n.language?.startsWith("en") ? "-en" : "";
+  const screenshots = `${import.meta.env.BASE_URL}landing/`;
+
   return (
-    <figure className="relative mx-auto w-full max-w-[22rem] lg:max-w-md" aria-label={t("landing.previewLabel")}>
-      <div className="relative rounded-[2.6rem] border-[7px] border-foreground/90 bg-background p-3.5 shadow-[0_30px_60px_rgb(20_25_36/0.25)] dark:border-white/15">
-        <p className="px-1 text-xs font-semibold text-muted-foreground">{t("landing.preview.greeting")}</p>
-        <p className="mb-2.5 px-1 font-display text-lg font-extrabold">{t("landing.preview.month")}</p>
-        <div className="space-y-2 rounded-[22px] bg-hero p-4 text-hero-foreground">
-          <p className="text-xs font-semibold text-hero-muted">{t("dashboard.leftThisMonth")}</p>
-          <p className="amount text-[2rem] leading-none">1.240,50 €</p>
-          <div className="h-2 rounded-full bg-white/20"><div className="h-full w-[58%] rounded-full bg-warning" /></div>
+    <figure className="relative isolate mx-auto w-full max-w-2xl pb-8 pr-[10%] pt-4 sm:pb-11 lg:pr-[8%]">
+      <div className="pointer-events-none absolute inset-[-12%_-10%_-12%_-12%] -z-10 rounded-[50%] bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.23),transparent_66%)]" aria-hidden="true" />
+      <div className="overflow-hidden rounded-xl border border-white/20 bg-[#20242c] p-1 shadow-[0_26px_54px_-18px_rgb(12_19_36/0.7)] sm:rounded-2xl sm:p-1.5">
+        <div className="flex h-4 items-center gap-1 px-2 sm:h-6 sm:gap-1.5 sm:px-2.5" aria-hidden="true">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#ff665f]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-[#ffbf49]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-[#36c877]" />
         </div>
-        <div className="surface mt-2.5 space-y-2 rounded-2xl p-3">
-          <p className="text-xs font-bold">{t("dashboard.whereMoneyGoes")}</p>
-          <div className="flex h-2 gap-[2px] overflow-hidden rounded-full" aria-hidden="true">
-            <span className="bg-[hsl(var(--cat-1))]" style={{ flexGrow: 45 }} />
-            <span className="bg-[hsl(var(--cat-2))]" style={{ flexGrow: 25 }} />
-            <span className="bg-[hsl(var(--cat-3))]" style={{ flexGrow: 18 }} />
-            <span className="bg-[hsl(var(--cat-4))]" style={{ flexGrow: 12 }} />
-          </div>
-          <p className="text-[11px] text-muted-foreground">{t("landing.preview.split")}</p>
-        </div>
-        <div className="surface mt-2.5 flex items-center gap-2.5 rounded-2xl p-2.5">
-          <CategoryBadge category="casa" type="expense" size="sm" />
-          <span className="min-w-0 flex-1 text-xs"><strong className="font-semibold">{t("landing.preview.rent")}</strong> · {t("recurring.tomorrow")}</span>
-          <span className="rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground">{t("recurring.register")}</span>
-        </div>
+        <img
+          src={`${screenshots}overview-desktop${suffix}.webp`}
+          alt={t("landing.preview.desktop")}
+          width="1240"
+          height="800"
+          fetchPriority="high"
+          className="block h-auto w-full rounded-md"
+        />
       </div>
-      <div className="glass absolute -bottom-6 -right-2 w-44 rounded-2xl px-3 py-2.5 text-xs sm:-right-10" aria-hidden="true">
-        <p className="font-bold text-accent-foreground">{t("transactionModal.suggested")}</p>
-        <p>{t("landing.preview.suggestion")}</p>
-      </div>
-      <div className="glass absolute -left-2 -top-5 w-40 rounded-2xl px-3 py-2.5 text-xs sm:-left-10" aria-hidden="true">
-        <p className="font-bold text-warning-strong">{t("landing.preview.budgetTitle")}</p>
-        <p>{t("landing.preview.budgetValue")}</p>
+      <div className="absolute bottom-0 right-0 w-[31%] overflow-hidden rounded-[16px] border border-white/25 bg-[#20242c] p-[3px] shadow-[0_16px_28px_-9px_rgb(10_16_29/0.8)] sm:rounded-[23px] sm:p-1">
+        <img
+          src={`${screenshots}overview-phone${suffix}.webp`}
+          alt={t("landing.preview.phone")}
+          width="699"
+          height="1017"
+          className="block h-auto w-full rounded-[12px] sm:rounded-[18px]"
+        />
       </div>
     </figure>
   );
@@ -106,6 +100,7 @@ const LandingPage = () => {
         </span>
         <nav className="hidden items-center gap-6 text-[15px] font-semibold text-foreground/75 md:flex" aria-label={t("landing.sections")}>
           <button type="button" onClick={() => scrollTo("how")} className="hover:text-foreground">{t("landing.how.title")}</button>
+          <button type="button" onClick={() => scrollTo("security")} className="hover:text-foreground">{t("landing.security.nav")}</button>
           <button type="button" onClick={() => scrollTo("compare")} className="hover:text-foreground">{t("landing.compare.title")}</button>
           {downloads.available && (
             <button type="button" onClick={() => scrollTo("download")} className="hover:text-foreground">{t("landing.download.nav")}</button>
@@ -116,7 +111,7 @@ const LandingPage = () => {
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-20 px-5 pb-12 pt-10 sm:space-y-28 lg:pt-16">
-        <section className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16">
+        <section className="grid grid-cols-1 items-center gap-9 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-10">
           <div className="animate-page-in space-y-6">
             <p className="inline-flex rounded-full border border-white/80 bg-card/70 px-3.5 py-1.5 text-[13px] font-bold text-accent-foreground backdrop-blur dark:border-white/10">
               {t("landing.badge")}
@@ -169,7 +164,7 @@ const LandingPage = () => {
               </div>
             )}
           </div>
-          <div className="animate-page-in px-4 sm:px-10">
+          <div className="animate-page-in">
             <ProductPreview />
           </div>
         </section>
@@ -204,6 +199,23 @@ const LandingPage = () => {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section id="security" className="surface relative isolate scroll-mt-24 overflow-hidden p-6 sm:p-10" aria-labelledby="security-title">
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.16),transparent_65%)]" aria-hidden="true" />
+          <div className="grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-6">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground" aria-hidden="true">
+              <FiShield className="h-6 w-6" />
+            </span>
+            <div className="max-w-3xl space-y-3">
+              <h2 id="security-title" className="text-2xl font-extrabold tracking-tight sm:text-3xl">{t("landing.security.title")}</h2>
+              <p className="leading-relaxed text-muted-foreground">{t("landing.security.body")}</p>
+              <p className="leading-relaxed text-muted-foreground">{t("landing.security.devices")}</p>
+              <Link to="/privacy" className="inline-flex items-center gap-2 pt-1 font-semibold text-primary underline-offset-4 hover:underline">
+                {t("landing.security.privacy")} <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+          </div>
         </section>
 
         <section id="compare" className="grid scroll-mt-24 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]" aria-labelledby="compare-title">
