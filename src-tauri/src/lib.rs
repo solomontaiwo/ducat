@@ -1,3 +1,6 @@
+#[cfg(target_os = "macos")]
+mod archive_keychain;
+
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -167,6 +170,14 @@ pub fn run() {
     // plugin for iOS or Android, so the registration has to match.
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+
+    #[cfg(target_os = "macos")]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        archive_keychain::archive_key_status,
+        archive_keychain::unlock_archive_key,
+        archive_keychain::save_archive_key,
+        archive_keychain::remove_archive_key
+    ]);
 
     builder
         .setup(|app| {

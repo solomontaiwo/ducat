@@ -3,14 +3,15 @@ import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../context/AuthProvider.jsx";
 import { useNotification } from "../../utils/notificationUtils.jsx";
-import { parseAccountBackup } from "../../utils/accountExport.js";
+import { parseAccountBackupFile } from "../../utils/accountExport.js";
 import { BackupService } from "../../services/backupService.js";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import Sheet from "../ui/sheet";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Base64 and the envelope add about one third to an encrypted export.
+const MAX_FILE_SIZE = 14 * 1024 * 1024;
 
 const RestoreBackupSheet = ({ onClose }) => {
   const { currentUser } = useAuth();
@@ -35,7 +36,7 @@ const RestoreBackupSheet = ({ onClose }) => {
     if (file.size > MAX_FILE_SIZE) { setError(t("backupRestore.tooLarge")); return; }
     setReading(true);
     try {
-      const parsed = parseAccountBackup(await file.text(), currentUser.uid);
+      const parsed = await parseAccountBackupFile(await file.text(), currentUser.uid);
       if (request === requestRef.current) setBackup(parsed);
     } catch (error) {
       if (request === requestRef.current) setError(t(error.code === "backup/wrong-account" ? "backupRestore.wrongAccount" : "backupRestore.invalid"));

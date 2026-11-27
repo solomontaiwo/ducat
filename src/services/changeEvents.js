@@ -24,7 +24,7 @@ let channelSequence = 0;
  * Calls `reload` now, after every local write on `topic` and after every
  * Realtime change to `table` rows owned by `userId`. Bursts are coalesced.
  */
-export const watchTable = ({ supabase, table, topic = table, userId, reload, delayMs = 60 }) => {
+export const watchTable = ({ supabase, table, topic = table, userId, reload, delayMs = 60, watchDeletes = true }) => {
   let active = true;
   let timer = null;
   const schedule = () => {
@@ -38,10 +38,10 @@ export const watchTable = ({ supabase, table, topic = table, userId, reload, del
     channelSequence += 1;
     channel = supabase
       .channel(`${table}:${userId}:${channelSequence}`)
-      .on("postgres_changes", { event: "*", schema: "public", table, filter: `user_id=eq.${userId}` }, schedule)
-      // Delete payloads can lack user_id; reload through the owner's RLS-protected query.
-      .on("postgres_changes", { event: "DELETE", schema: "public", table }, schedule)
-      .subscribe((status) => { if (status === "SUBSCRIBED") schedule(); });
+      .on("postgres_changes", { event: "*", schema: "public", table, filter: `user_id=eq.${userId}` }, schedule);
+    // Legacy subscriptions reload through the owner's RLS-protected query.
+    if (watchDeletes) channel.on("postgres_changes", { event: "DELETE", schema: "public", table }, schedule);
+    channel.subscribe((status) => { if (status === "SUBSCRIBED") schedule(); });
   } catch (error) {
     console.warn(`Realtime unavailable for ${table}`, error);
   }

@@ -25,6 +25,7 @@ import { CategoriesSheet, DownloadAppSheet, EmailSheet, ExportSheet, InstallShee
 import UpdateChecker from "../Update/UpdateChecker";
 import { downloadJson } from "../../utils/accountExport.js";
 import { deleteCurrentAccount } from "../../services/accountService.js";
+import { currentVault } from "../../services/vaultSession.js";
 import { removeLocalValue } from "../../utils/storage.js";
 import { loadEnglish } from "../../utils/loadEnglish.js";
 import { useAppDownloads } from "../../utils/appDownloads.js";
@@ -54,6 +55,7 @@ import {
 // Account deletion is required by the App Store (5.1.1(v)) for any app that
 // lets people create an account, so it is on unless it is explicitly disabled.
 const ACCOUNT_DELETION_ENABLED = import.meta.env.VITE_ENABLE_ACCOUNT_DELETION !== "false";
+const ApproveDeviceSheet = lazy(() => import("./ApproveDeviceSheet.jsx"));
 const RestoreBackupSheet = lazy(() => import("./RestoreBackupSheet.jsx"));
 const ImportCsvSheet = lazy(() => import("./ImportCsvSheet.jsx"));
 const BACKUP_REMINDER_DAYS = 30;
@@ -532,6 +534,9 @@ const Profile = () => {
           </SettingsGroup>
 
           <SettingsGroup title={t("profilePage.security")}>
+            {currentUser?.emailVerified && currentVault(currentUser.uid)?.canPair() && (
+              <SettingsRow icon={FiSmartphone} title={t("pairing.approve")} onClick={() => setSheet("approveDevice")} />
+            )}
             {/* iOS 18+ locks apps itself: point there instead of a second lock.
                 Anyone who already turned the in-app lock on keeps its switch. */}
             {biometricAvailable && systemAppLock && !biometricEnabled && (
@@ -596,6 +601,7 @@ const Profile = () => {
       {downloads.available && (
         <DownloadAppSheet open={sheet === "downloadApp"} onClose={close} downloads={downloads} />
       )}
+      {sheet === "approveDevice" && <Suspense fallback={null}><ApproveDeviceSheet uid={currentUser.uid} onClose={close} /></Suspense>}
       {sheet === "restore" && <Suspense fallback={null}><RestoreBackupSheet onClose={close} /></Suspense>}
       {sheet === "importCsv" && <Suspense fallback={null}><ImportCsvSheet onClose={close} /></Suspense>}
       {ACCOUNT_DELETION_ENABLED && (

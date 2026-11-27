@@ -29,12 +29,25 @@ Le migrazioni vanno applicate nell'ordine del nome del file:
 |---|---|
 | `20261010000000_initial_schema.sql` | tabelle, RLS, trigger, Realtime, funzione `delete_my_account` |
 | `20261011000000_audit_reliability.sql` | salvataggio di movimento e ricorrenza nella stessa transazione, avanzamento atomico delle scadenze, aggiornamento delle preferenze per campi, lettura e ripristino del backup completo |
+| `20261127000000_encrypted_vault.sql` | archivio cifrato per account, sincronizzazione a revisioni, migrazione dello storico |
+| `20261127000001_vault_recovery_keys.sql` | formato per i nuovi archivi, con chiave protetta dal codice di recupero e PIN per dispositivo |
+| `20261127000002_vault_pairing.sql` | richieste di abbinamento con scadenza e trasferimento cifrato della chiave |
 
 In alternativa al terminale: **SQL Editor → New query**, esegui i file uno alla volta nell'ordine. Questa modalità crea lo schema ma non registra le migrazioni nella cronologia usata dalla CLI e da Supabase Preview. Non rieseguire solo lo schema iniziale dopo la seconda migrazione: sostituirebbe la funzione di eliminazione con la versione precedente.
 
 La migrazione iniziale può essere rieseguita su uno schema equivalente: conserva tabelle e dati esistenti, aggiorna funzioni e trigger e aggiunge solo indici, policy e associazioni Realtime mancanti. Le modifiche successive allo schema vanno in nuove migrazioni.
 
-Controllo: in **Table Editor** devono esserci `profiles`, `transactions`, `recurring`, `budgets`, `preferences`, tutte con l'etichetta RLS attiva.
+Controllo: in **Table Editor** devono esserci `profiles`, `transactions`, `recurring`, `budgets`, `preferences`, tutte con l'etichetta RLS attiva. La terza migrazione aggiunge `vault_accounts` e `vault_records`, anch’esse con RLS.
+
+### Attivazione dell’archivio cifrato
+
+1. Applica la migrazione dell’archivio su un progetto di prova. Verifica un account con movimenti esistenti, budget, preferenze e almeno una ricorrenza. Le migrazioni eseguite dalla CLI preparano lo schema. La migrazione dei dati parte sul dispositivo dell’utente quando attiva l’archivio.
+2. Distribuisci client compatibili su web, desktop e iOS prima di attivare la cifratura per gli utenti. Imposta `VITE_ENABLE_ENCRYPTED_VAULT=true` al momento della build per consentire nuove attivazioni. I workflow leggono la variabile GitHub Actions con lo stesso nome. Puoi disattivare le nuove attivazioni mantenendo l’accesso agli archivi già creati con un client compatibile.
+3. Sul progetto di prova, verifica l’attivazione con una versione aggiornata, interrompi e riprendi una migrazione, poi sblocca lo stesso account da un secondo dispositivo. Verifica i totali, una ricorrenza, la coda offline e il ripristino di un backup precedente. Controlla che le tabelle legacy siano vuote per quell’utente dopo la migrazione e che `vault_records` contenga ID opachi, revisioni e cifrati.
+
+Ducat blocca le scritture legacy per l’account dall’inizio della migrazione. Il dispositivo confronta i record cifrati riletti dal server con gli originali prima del passaggio definitivo. Da quel momento le vecchie versioni dell’app non possono accedere allo storico migrato. Le copie preesistenti nei backup di Supabase seguono il periodo di conservazione del progetto.
+
+Supabase conserva l’associazione tra account e archivio cifrato. Per i nuovi archivi l’utente può approvare un dispositivo da Profilo → Sicurezza su un dispositivo già sbloccato oppure usare il codice di recupero. L’abbinamento usa due codici confrontati tra dispositivi, scade dopo dieci minuti e trasferisce la chiave già cifrata. Dopo l’abbinamento, l’utente sceglie un PIN sul nuovo dispositivo. Il PIN rimane sul dispositivo e dopo cinque errori serve di nuovo il codice di recupero. Su iOS e macOS si può abilitare lo sblocco tramite portachiavi. Dove il portachiavi non è disponibile, si può ricordare lo sblocco nel browser finché resta valida la stessa sessione di accesso. Il logout rimuove lo sblocco ricordato. Gli archivi già attivati con una passphrase continuano ad accettarla. I nuovi backup di account sono cifrati con quella stessa chiave. Il ripristino di un backup precedente in chiaro avviene sul dispositivo. Il reset della password di accesso non modifica la chiave dell’archivio.
 
 ### Supabase Preview: `relation "profiles" already exists`
 

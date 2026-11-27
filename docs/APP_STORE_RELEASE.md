@@ -69,6 +69,10 @@ Cosa cambia rispetto alla build GitHub:
   all'updater (`src/platform/index.js` → `isStoreBuild`);
 - `createUpdaterArtifacts: false`, quindi nessun `.sig` e nessun manifest.
 
+### Portachiavi per l’archivio cifrato su macOS
+
+Lo script Mac App Store aggiunge alla firma l’identificatore applicazione autorizzato dal profilo di provisioning. Il portachiavi Data Protection lo usa per proteggere la chiave locale con Touch ID o con la password di macOS. Per le distribuzioni Developer ID serve un profilo macOS che autorizzi lo stesso identificatore, incluso nel bundle firmato. Le build ad hoc continuano ad aprire l’archivio con passphrase o codice di recupero. [Firma per la distribuzione su macOS](https://developer.apple.com/documentation/xcode/creating-distribution-signed-code-for-the-mac/)
+
 ## 4. Segreti GitHub
 
 Settings → Secrets and variables → Actions:

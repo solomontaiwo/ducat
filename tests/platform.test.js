@@ -3,7 +3,7 @@ import { DESKTOP, MOBILE, WEB, isDesktop, isMobile, isStoreBuild, isWeb, runtime
 import { blobToBase64, safeFilename, saveFile } from "../src/platform/files.js";
 import { isAllowedExternalUrl, openExternal } from "../src/platform/links.js";
 import { hapticSuccess, hapticTap } from "../src/platform/haptics.js";
-import { authStorage, hasStoredAuthSession, nativeAuthStorage } from "../src/platform/authStorage.js";
+import { archiveKeychain, authStorage, hasStoredAuthSession, nativeAuthStorage } from "../src/platform/authStorage.js";
 import { buildFeedbackMailto } from "../src/utils/feedback.js";
 
 const shareMock = vi.fn(async () => ({}));
@@ -14,6 +14,19 @@ const writeTauriFileMock = vi.fn(async () => undefined);
 const browserOpenMock = vi.fn(async () => undefined);
 const impactMock = vi.fn(async () => undefined);
 const notificationHapticMock = vi.fn(async () => undefined);
+const archiveMock = vi.hoisted(() => ({
+  removeSecret: vi.fn(async () => undefined),
+  archiveKeyStatus: vi.fn(async () => ({ available: true, configured: true })),
+  unlockArchiveKey: vi.fn(async () => ({ value: "archive-key" })),
+  saveArchiveKey: vi.fn(async () => undefined),
+  removeArchiveKey: vi.fn(async () => undefined),
+}));
+const invokeMock = vi.hoisted(() => vi.fn());
+vi.mock("@capacitor/core", async (importOriginal) => ({
+  ...await importOriginal(),
+  registerPlugin: () => archiveMock,
+}));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 const preferencesMock = vi.hoisted(() => ({
   get: vi.fn(async () => ({ value: "stored" })),
   set: vi.fn(async () => undefined),
@@ -40,6 +53,7 @@ const pdf = () => new Blob([new Uint8Array([37, 80, 68, 70])], { type: "applicat
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
@@ -209,5 +223,43 @@ describe("auth storage", () => {
     localStorage.setItem("sb-web", '{"access_token":"tok"}');
     await expect(hasStoredAuthSession("sb-web")).resolves.toBe(true);
     localStorage.clear();
+  });
+});
+
+
+describe("protected archive key", () => {
+  it("removes the previous iOS entry and opens only through the protected Keychain", async () => {
+    vi.stubEnv("MODE", "mobile");
+    await expect(archiveKeychain.status("u1")).resolves.toEqual({ available: true, configured: true });
+    expect(archiveMock.removeSecret).toHaveBeenCalledWith({ key: "ducat-archive-key:u1" });
+    expect(archiveMock.unlockArchiveKey).not.toHaveBeenCalled();
+    await expect(archiveKeychain.get("u1", "Unlock")).resolves.toBe("archive-key");
+    expect(archiveMock.unlockArchiveKey).toHaveBeenCalledWith({ uid: "u1", reason: "Unlock" });
+    await expect(archiveKeychain.set("u1", "archive-key")).resolves.toBe(true);
+    expect(archiveMock.saveArchiveKey).toHaveBeenCalledWith({ uid: "u1", value: "archive-key" });
+    await archiveKeychain.remove("u1");
+    expect(archiveMock.removeArchiveKey).toHaveBeenCalledWith({ uid: "u1" });
+    expect(preferencesMock.set).not.toHaveBeenCalled();
+  });
+
+  it("uses native archive commands on macOS and keeps cancellation available for manual unlock", async () => {
+    vi.stubEnv("MODE", "desktop");
+    vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
+    invokeMock.mockResolvedValueOnce({ available: true, configured: true }).mockRejectedValueOnce("userCancel");
+    await expect(archiveKeychain.status("u1")).resolves.toEqual({ available: true, configured: true });
+    await expect(archiveKeychain.get("u1", "Unlock")).rejects.toBe("userCancel");
+    expect(invokeMock).toHaveBeenNthCalledWith(1, "archive_key_status", { uid: "u1" });
+    expect(invokeMock).toHaveBeenNthCalledWith(2, "unlock_archive_key", { uid: "u1" });
+    expect(invokeMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([["production", "MacIntel"], ["desktop", "Win32"]])("keeps archive keys out of platform storage on %s / %s", async (mode, platform) => {
+    vi.stubEnv("MODE", mode);
+    vi.spyOn(navigator, "platform", "get").mockReturnValue(platform);
+    await expect(archiveKeychain.status("u1")).resolves.toEqual({ available: false, configured: false });
+    await expect(archiveKeychain.get("u1", "Unlock")).resolves.toBeNull();
+    await expect(archiveKeychain.set("u1", "archive-key")).resolves.toBe(false);
+    expect(invokeMock).not.toHaveBeenCalled();
+    expect(archiveMock.saveArchiveKey).not.toHaveBeenCalled();
   });
 });

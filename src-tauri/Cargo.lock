@@ -866,7 +866,9 @@ dependencies = [
 name = "ducat"
 version = "4.0.68"
 dependencies = [
+ "base64 0.23.1",
  "log",
+ "security-framework",
  "serde",
  "serde_json",
  "tauri",

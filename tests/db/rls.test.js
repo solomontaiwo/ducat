@@ -1,7 +1,35 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+
+import { createRecoveryVault, createVaultPairing, decryptVaultPairing, createVaultKeys, newRecoveryCode, unwrapVaultKey, vaultCrypto } from "../../src/utils/vaultCrypto.js";
+import { loadVaultAccount, openVault, startVault } from "../../src/services/vaultService.js";
+import { setCurrentVault, vaultRecord } from "../../src/services/vaultSession.js";
+import { TransactionService } from "../../src/services/transactionService.jsx";
+import { PlanningService, registerEncryptedOccurrence } from "../../src/services/planningService.js";
+import { BackupService } from "../../src/services/backupService.js";
+import { parseAccountBackupFile } from "../../src/utils/accountExport.js";
+
+vi.mock("../../src/utils/supabaseClient.js", () => ({
+  unwrap: (response) => response.data,
+  toDataError: (error) => error,
+  supabase: {
+    from: () => ({ select: () => ({ eq: (_column, uid) => ({
+      maybeSingle: async () => ({ data: (await db.query(
+        "select keys, active, revision from public.vault_accounts where user_id = $1", [uid]
+      )).rows[0] ?? null }),
+    }) }) }),
+    async rpc(name, input) {
+      const args = Object.values(input || {}).map((value) => typeof value === "object" ? JSON.stringify(value) : value);
+      const suffix = args.map((_, index) => `$${index + 1}`).join(", ");
+      const returnsRows = name === "read_vault_changes" || name === "read_vault_legacy";
+      const sql = returnsRows ? `select * from public.${name}(${suffix})` : `select public.${name}(${suffix}) as result`;
+      const { rows } = await db.query(sql, args);
+      return { data: returnsRows ? rows : rows[0].result };
+    },
+  },
+}));
 
 const root = join(import.meta.dirname, "..", "..");
 const migrationsDir = join(root, "supabase", "migrations");
@@ -397,5 +425,181 @@ describe('server-enforced recent authentication', () => {
     await expect(db.query('select public.delete_my_account()')).rejects.toThrow(/recent password/);
     await asAdmin();
     expect((await db.query('select id from auth.users where id = $1', [ALICE])).rows).toHaveLength(1);
+  });
+});
+
+
+describe("encrypted archive", () => {
+  const passphrase = "archive test passphrase only";
+  const user = { uid: ALICE, email: "alice@example.com", emailVerified: true };
+  const ruleId = "00000000-0000-4000-8000-000000000123";
+
+  it("resumes a staged migration, keeps the original history and syncs encrypted changes across devices", async () => {
+    await asUser(ALICE);
+    const original = transaction({ description: "legacy transaction only in the ciphertext" });
+    await insertTransaction(original);
+    await insertTransaction(transaction({ id: "legacy-1", type: "income", date_key: "2026-10-02", amount_minor: 992 }));
+    await db.query(`insert into public.recurring (id, type, amount_minor, description, category, frequency, anchor_date_key)
+      values ($1, 'expense', 89000, 'Affitto', 'housing', 'monthly', '2026-01-31')`, [ruleId]);
+    await db.query(`insert into public.budgets (limits) values ('{"food": 30000}')`);
+    await db.query(`insert into public.preferences (data) values ('{"monthStartDay": 27}')`);
+    const legacyBackup = await BackupService.fetch(user);
+    const code = newRecoveryCode();
+    const keys = await createVaultKeys(ALICE, passphrase, code);
+    expect(await startVault(ALICE, keys)).toBe(true);
+    expect(await startVault(ALICE, keys)).toBe(false);
+    await expect(insertTransaction(transaction({ id: "late-legacy-write" }))).rejects.toMatchObject({ code: "42501" });
+    await expect(db.query("select public.finish_vault($1, 0)", [ALICE])).rejects.toMatchObject({ code: "22023" });
+    await expect(unwrapVaultKey(ALICE, keys, "wrong passphrase")).rejects.toBeDefined();
+    const passwordKey = await unwrapVaultKey(ALICE, keys, passphrase);
+    const fallbackKey = await unwrapVaultKey(ALICE, keys, code, true);
+    expect(fallbackKey).toEqual(passwordKey);
+
+    const firstDevice = await openVault(ALICE, passwordKey);
+    const staged = (await db.query("select * from public.read_vault_legacy($1, '', '')", [ALICE])).rows[0];
+    await db.query("select public.write_vault($1,0,false,$2)", [ALICE, JSON.stringify([{ id: "b".repeat(64), ciphertext: null }])]);
+    await firstDevice.initialize(await loadVaultAccount(ALICE));
+    const recordId = await vaultCrypto(ALICE, passwordKey);
+    const opaqueId = await recordId.id(staged.kind, staged.id);
+    const ciphertext = await recordId.seal(staged, "record", opaqueId);
+    await db.query("select public.write_vault($1,1,false,$2)", [ALICE, JSON.stringify([{ id: opaqueId, ciphertext }])]);
+    firstDevice.close();
+
+    const secondDevice = await openVault(ALICE, fallbackKey);
+    await secondDevice.initialize(await loadVaultAccount(ALICE));
+    await secondDevice.migrate();
+    setCurrentVault(secondDevice);
+    try {
+      expect(await loadVaultAccount(ALICE)).toMatchObject({ active: true });
+      for (const table of ["transactions", "recurring", "budgets", "preferences"]) {
+        expect((await db.query(`select * from public.${table}`)).rows).toEqual([]);
+      }
+      const serialized = JSON.stringify((await db.query("select * from public.vault_records")).rows);
+      for (const value of [original.id, original.description, original.date_key, "Affitto", '"category":"food"']) {
+        expect(serialized).not.toContain(value);
+      }
+      expect(await TransactionService.getTotals(ALICE)).toEqual({ count: 2, incomeMinor: 992, expenseMinor: 1250 });
+      const page = await TransactionService.fetchPage(ALICE, { pageSize: 1 });
+      expect(page.items[0].id).toBe("legacy-1");
+      const lastPage = await TransactionService.fetchPage(ALICE, { pageSize: 1, cursor: page.nextCursor });
+      expect(lastPage.items[0].id).toBe(original.id);
+      const amountPage = await TransactionService.fetchPage(ALICE, { pageSize: 1, sortBy: "amount-desc" });
+      expect(amountPage.items[0].id).toBe(original.id);
+      expect((await TransactionService.fetchPage(ALICE, { pageSize: 1, sortBy: "amount-desc", cursor: amountPage.nextCursor })).items[0].id).toBe("legacy-1");
+      expect(await BackupService.restore(user, legacyBackup, { restoreSettings: true })).toEqual({ transactions: 0, recurring: 0 });
+      const exported = await BackupService.fetch(user);
+      expect(exported).toMatchObject({ format: "ducat-encrypted-backup", version: 1 });
+      expect(JSON.stringify(exported)).not.toContain(original.description);
+      expect(await parseAccountBackupFile(JSON.stringify(exported), ALICE)).toMatchObject({ budgets: { food: 30000 }, preferences: { monthStartDay: 27 } });
+
+      const otherDevice = await openVault(ALICE, passwordKey);
+      try {
+        await otherDevice.initialize(await loadVaultAccount(ALICE));
+        await Promise.all([
+          PlanningService.savePreferences(ALICE, { monthStartDay: 15 }),
+          otherDevice.change(({ get }) => ({ changes: [vaultRecord("preferences", "settings", { ...get("preferences", "settings"), lastBackupAt: 1234 })] })),
+        ]);
+        const results = await Promise.all([
+          PlanningService.registerOccurrence(ruleId, 1), registerEncryptedOccurrence(otherDevice, ruleId, 1),
+        ]);
+        expect(results.sort()).toEqual([false, true]);
+        expect(await otherDevice.read(({ list, get }) => ({
+          count: list("transactions").length,
+          rule: get("recurring", ruleId),
+          preferences: get("preferences", "settings"),
+        }), true)).toMatchObject({ count: 3, rule: { next_index: 2 }, preferences: { monthStartDay: 15, lastBackupAt: 1234 } });
+        expect(await TransactionService.fetchAll(ALICE)).toEqual(expect.arrayContaining([expect.objectContaining({ dateKey: "2026-02-28" })]));
+        await TransactionService.update(original.id, { amountMinor: 1400 });
+        expect(await otherDevice.read(({ get }) => get("transactions", original.id), true)).toMatchObject({ amount_minor: 1400 });
+        await TransactionService.delete(original.id);
+        expect(await otherDevice.read(({ get }) => get("transactions", original.id), true)).toBeUndefined();
+        expect(await BackupService.restore(user, legacyBackup)).toEqual({ transactions: 1, recurring: 0 });
+        expect(await otherDevice.read(({ get }) => get("transactions", original.id), true)).toMatchObject({ amount_minor: 1250 });
+      } finally {
+        otherDevice.close();
+      }
+    } finally {
+      setCurrentVault(null);
+    }
+  });
+
+  it("accepts a recovery-only envelope and rejects a synced PIN or passphrase field", async () => {
+    await asUser(ALICE);
+    const code = newRecoveryCode();
+    const { secret, keys } = await createRecoveryVault(ALICE, code);
+    try {
+      await expect(startVault(ALICE, { ...keys, pin: "123456" })).rejects.toMatchObject({ code: "23514" });
+      await expect(startVault(ALICE, { ...keys, password: "a".repeat(80) })).rejects.toMatchObject({ code: "23514" });
+      expect(await startVault(ALICE, keys)).toBe(true);
+      expect((await loadVaultAccount(ALICE)).keys).toEqual(keys);
+      await expect(unwrapVaultKey(ALICE, keys, "123456")).rejects.toThrow("Unsupported archive credential");
+      await expect(unwrapVaultKey(ALICE, keys, code, true)).resolves.toEqual(secret);
+    } finally {
+      secret.fill(0);
+    }
+  });
+
+  it("authorizes an ephemeral device transfer for the owner and hides expired or consumed requests", async () => {
+    await asUser(ALICE);
+    const { secret, keys } = await createRecoveryVault(ALICE, newRecoveryCode());
+    expect(await startVault(ALICE, keys)).toBe(true);
+    const request = await createVaultPairing();
+    const start = () => db.query("select public.start_vault_pairing($1,$2,$3) as created", [ALICE, request.id, request.publicKey]);
+    expect((await start()).rows[0].created).toBe(false);
+    await db.query("select public.finish_vault($1, 0)", [ALICE]);
+    expect((await start()).rows[0].created).toBe(true);
+    const archive = await openVault(ALICE, secret);
+    try {
+      await archive.initialize(await loadVaultAccount(ALICE));
+      const encrypted = await archive.pairDevice(request.id, request.publicKey);
+      await asUser(BOB);
+      expect((await db.query("select * from public.vault_pairings")).rows).toEqual([]);
+      await expect(start()).rejects.toMatchObject({ code: "42501" });
+      await asUser(ALICE);
+      const approve = (receiver) => db.query("select public.approve_vault_pairing($1,$2,$3,$4,$5) as approved",
+        [ALICE, request.id, receiver, encrypted.sender, encrypted.ciphertext]);
+      expect((await approve((await createVaultPairing()).publicKey)).rows[0].approved).toBe(false);
+      expect((await approve(request.publicKey)).rows[0].approved).toBe(true);
+      expect((await approve(request.publicKey)).rows[0].approved).toBe(false);
+      const [response] = (await db.query("select * from public.vault_pairings")).rows;
+      expect(JSON.stringify(response)).not.toContain(encrypted.confirmation);
+      await expect(decryptVaultPairing(ALICE, request, response, "000000000000")).rejects.toThrow("confirmation");
+      await expect(decryptVaultPairing(ALICE, request, response, encrypted.confirmation)).resolves.toEqual(secret);
+      await db.query("select public.remove_vault_pairing($1,$2)", [ALICE, request.id]);
+      expect((await db.query("select * from public.vault_pairings")).rows).toEqual([]);
+      expect((await start()).rows[0].created).toBe(true);
+      await asAdmin();
+      await db.query("update public.vault_pairings set expires_at = now() - interval '1 second'");
+      await asUser(ALICE);
+      expect((await db.query("select * from public.vault_pairings")).rows).toEqual([]);
+      expect((await approve(request.publicKey)).rows[0].approved).toBe(false);
+    } finally {
+      secret.fill(0);
+      archive.close();
+    }
+  });
+
+  it("keeps encrypted records isolated and cascades account deletion", async () => {
+    await asUser(CAROL);
+    await expect(startVault(CAROL, { v: 1 })).rejects.toMatchObject({ code: "42501" });
+    await asUser(ALICE);
+    await expect(startVault(ALICE, { v: 1 })).rejects.toMatchObject({ code: "23514" });
+    const keys = await createVaultKeys(ALICE, passphrase, newRecoveryCode());
+    expect(await startVault(ALICE, keys)).toBe(true);
+    const id = "a".repeat(64);
+    await db.query("select public.finish_vault($1, 0)", [ALICE]);
+    await db.query("select public.write_vault($1,0,true,$2)", [ALICE, JSON.stringify([{ id, ciphertext: "a".repeat(40) }])]);
+    await expect(insertTransaction(transaction())).rejects.toMatchObject({ code: "42501" });
+    await asUser(BOB);
+    expect((await db.query("select * from public.vault_accounts")).rows).toEqual([]);
+    expect((await db.query("select * from public.vault_records")).rows).toEqual([]);
+    await expect(startVault(ALICE, { v: 1 })).rejects.toMatchObject({ code: "42501" });
+    await expect(db.query("select public.write_vault($1,1,true,'[]')", [ALICE])).rejects.toMatchObject({ code: "42501" });
+    await expect(db.query("update public.vault_records set ciphertext = null")).rejects.toMatchObject({ code: "42501" });
+    await asUser(ALICE, { amr: [{ method: "password", timestamp: Math.floor(Date.now() / 1000) }] });
+    await db.query("select public.delete_my_account()");
+    await asAdmin();
+    expect((await db.query("select * from public.vault_records")).rows).toEqual([]);
+    expect((await db.query("select * from public.vault_accounts")).rows).toEqual([]);
   });
 });
