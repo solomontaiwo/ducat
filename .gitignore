@@ -34,3 +34,6 @@ src-tauri/gen/
 
 # Xcode derived data from `xcodebuild -derivedDataPath build`
 /build/
+
+# Supabase CLI local metadata
+supabase/.temp/

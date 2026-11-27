@@ -7,7 +7,7 @@
     "migrationDescription": "Unlock your archive to finish encrypting your saved data.",
     "passphrase": "Archive passphrase",
     "recovery": "Recovery code",
-    "recoveryHelp": "Keep this code private. Use it if you forget your PIN or lose access to your devices.",
+    "recoveryHelp": "You’ll need it if you forget your PIN or lose access to your devices. Keep it somewhere safe. If you lose both the code and access to all approved devices, Ducat can’t reopen the archive for you.",
     "savedRecovery": "I saved the recovery code",
     "deviceDescription": "Unlock with Face ID or Touch ID. If needed, the system will ask for your device passcode or password.",
     "unlockWithDevice": "Unlock with this device",
@@ -186,15 +186,16 @@
     "login": "Log in",
     "demoNote": "The demo asks for no email: your data stays on your device.",
     "sections": "Sections",
-    "previewLabel": "Preview of the Ducat overview",
     "preview": {
-      "greeting": "Good morning, Giulia",
-      "month": "October 2026",
-      "split": "Home 45% · Groceries 25% · Transport 18%",
-      "rent": "Rent",
-      "suggestion": "“Netflix” → Subscriptions",
-      "budgetTitle": "Groceries budget",
-      "budgetValue": "€320 of €400"
+      "desktop": "Ducat overview in a desktop window with sample data",
+      "phone": "Ducat overview on the iPhone Duo outer display with sample data"
+    },
+    "security": {
+      "nav": "Security",
+      "title": "Your transactions, readable only by you",
+      "body": "When you enable the encrypted archive, Ducat encrypts your transactions on your device before syncing them. Ducat and database administrators can see that you have an account, but can’t read the contents of your encrypted archive.",
+      "devices": "To unlock your archive on a new device, approve it from a device that’s already unlocked or use your recovery code.",
+      "privacy": "Read the privacy policy"
     },
     "how": {
       "title": "How it works",
