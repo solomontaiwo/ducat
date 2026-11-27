@@ -126,12 +126,12 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
       )}
 
       {currentUser && !isDemo && (
-        <div className="flex items-center gap-1">
+        <div className="flex flex-col gap-2">
           <Link
             to="/profile"
             aria-current={location.pathname === "/profile" ? "page" : undefined}
             className={cn(
-              "flex min-w-0 flex-1 items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-foreground/5",
+              "flex min-w-0 items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-foreground/5",
               location.pathname === "/profile" && "glass-active"
             )}
           >
@@ -139,18 +139,17 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
               {(displayName || "?").charAt(0).toUpperCase()}
             </span>
             <span className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-bold">{displayName}</span>
+              <span className="text-sm font-bold leading-tight [overflow-wrap:anywhere]">{displayName}</span>
               <span className="text-xs font-medium leading-tight text-muted-foreground">{t("navbar.profileAndSettings")}</span>
             </span>
           </Link>
           <button
             type="button"
             onClick={handleLogout}
-            aria-label={t("navbar.logout")}
-            title={t("navbar.logout")}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <FiLogOut className="h-[18px] w-[18px]" aria-hidden="true" />
+            {t("navbar.logout")}
           </button>
         </div>
       )}

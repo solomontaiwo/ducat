@@ -360,22 +360,24 @@ const Profile = () => {
             </p>
             {memberSince && <p className="text-[13px] text-muted-foreground/80">{t("profilePage.memberSince", { date: memberSince })}</p>}
 
-            <dl className="mt-4 grid w-full grid-cols-3 border-t border-border pt-4" aria-label={t("profilePage.summary")}>
-              {[
-                { label: t("profilePage.movements"), value: summary ? summary.count.toLocaleString(i18n.language) : "–" },
-                { label: t("profilePage.months"), value: summary ? summary.months : "–" },
-                {
-                  label: t("profilePage.averageSaving"),
-                  value: summary ? formatSignedCompact(Math.abs(summary.averageSaving), summary.averageSaving >= 0 ? "income" : "expense", i18n.language) : "–",
-                  tone: summary && summary.averageSaving >= 0 ? "text-income" : "",
-                },
-              ].map((item, index) => (
-                <div key={item.label} className={cn("flex flex-col gap-0.5 px-1", index < 2 && "border-r border-border")}>
-                  <dd className={cn("amount text-xl", item.tone)}>{item.value}</dd>
-                  <dt className="text-xs font-semibold text-muted-foreground">{item.label}</dt>
-                </div>
-              ))}
-            </dl>
+            <div className="profile-summary mt-4 w-full border-t border-border pt-4">
+              <dl className="profile-summary-list" aria-label={t("profilePage.summary")}>
+                {[
+                  { label: t("profilePage.movements"), value: summary ? summary.count.toLocaleString(i18n.language) : "–" },
+                  { label: t("profilePage.months"), value: summary ? summary.months : "–" },
+                  {
+                    label: t("profilePage.averageSaving"),
+                    value: summary ? formatSignedCompact(Math.abs(summary.averageSaving), summary.averageSaving >= 0 ? "income" : "expense", i18n.language) : "–",
+                    tone: summary && summary.averageSaving >= 0 ? "text-income" : "",
+                  },
+                ].map((item) => (
+                  <div key={item.label} className="profile-summary-item">
+                    <dd className={cn("amount min-w-0 overflow-x-auto whitespace-nowrap text-xl", item.tone)}>{item.value}</dd>
+                    <dt className="text-xs font-semibold text-muted-foreground">{item.label}</dt>
+                  </div>
+                ))}
+              </dl>
+            </div>
           </section>
 
           <SettingsGroup title={t("budgets.planning")}>
