@@ -183,6 +183,19 @@ describe("app layout with the native tab bar", () => {
     await waitFor(() => expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ visible: false })));
   });
 
+  it("hides the native bar while any dialog is open", async () => {
+    await renderLayout();
+    // Same module instance as the layout loaded after `vi.resetModules()`.
+    const { trackOpenDialog } = await import("../src/components/ui/dialogStack.js");
+    act(() => mocks.native.subscribe.onAvailability(true));
+    expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ visible: true }));
+    let release;
+    act(() => { release = trackOpenDialog(); });
+    expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ visible: false }));
+    act(() => release());
+    expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ visible: true }));
+  });
+
   it("shows the demo counter and disables adding at the demo limit", async () => {
     mocks.user = null;
     mocks.unified = {

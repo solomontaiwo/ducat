@@ -2,17 +2,17 @@ import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 
 /** Confirmation step shown before a transaction is permanently deleted. */
 const DeleteTransactionDialog = ({ open, transaction, formatDate, getCategoryLabel, onCancel, onConfirm, busy = false }) => {
   const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !busy && onCancel()}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{t("confirmDelete")}</DialogTitle>
-          <DialogDescription>{t("transactions.deleteConfirm")}</DialogDescription>
+          <DialogTitle className="pr-10">{t("transactions.deleteTitle")}</DialogTitle>
+          <DialogDescription>{t("transactions.deleteDescription")}</DialogDescription>
         </DialogHeader>
 
         {transaction && (
@@ -27,10 +27,11 @@ const DeleteTransactionDialog = ({ open, transaction, formatDate, getCategoryLab
           </div>
         )}
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={busy}>{t("cancel")}</Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={busy}>{t("transactions.deleteConfirm")}</Button>
-        </DialogFooter>
+        {/* One row everywhere: on a short screen both buttons stay in view. */}
+        <div className="flex gap-2 sm:justify-end">
+          <Button variant="outline" className="flex-1 sm:flex-none" onClick={onCancel} disabled={busy}>{t("cancel")}</Button>
+          <Button variant="destructive" className="flex-1 sm:flex-none" onClick={onConfirm} disabled={busy}>{t("transactions.deleteConfirm")}</Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

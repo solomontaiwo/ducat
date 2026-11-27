@@ -185,6 +185,21 @@ describe("iOS submission requirements", () => {
     expect(scene).toContain("verticalBarEdge != .unspecified");
   });
 
+  it("translates the Home Screen quick actions into every app language", () => {
+    const titles = [...infoPlist.matchAll(/<key>UIApplicationShortcutItemTitle<\/key>\s*<string>([^<]+)<\/string>/g)].map((match) => match[1]);
+    expect(titles).toEqual(["New Expense", "New Income"]);
+    expect(pbxproj).toContain("InfoPlist.strings in Resources");
+    expect(pbxproj).toMatch(/knownRegions = \([^)]*\bit,/);
+    for (const language of ["en", "it"]) {
+      expect(pbxproj).toContain(`path = ${language}.lproj/InfoPlist.strings;`);
+      const strings = read(`ios/App/App/${language}.lproj/InfoPlist.strings`);
+      // The English title is the lookup key; every language must define it.
+      for (const title of titles) expect(strings).toMatch(new RegExp(`^"${title}" = "[^"]+";$`, "m"));
+      expect(strings).toMatch(/^"NSFaceIDUsageDescription" = "[^"]+";$/m);
+    }
+    expect(read("ios/App/App/it.lproj/InfoPlist.strings")).toContain('"New Expense" = "Nuova uscita";');
+  });
+
   it("points Capacitor at the shared Xcode scheme and names the product Ducat", () => {
     expect(existsSync(join(root, `ios/App/App.xcodeproj/xcshareddata/xcschemes/${capacitor.ios.scheme}.xcscheme`))).toBe(true);
     expect(pbxproj.match(/PRODUCT_NAME = Ducat;/g)).toHaveLength(2);

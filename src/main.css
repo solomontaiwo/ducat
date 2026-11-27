@@ -349,6 +349,48 @@
   .dark .segmented > button[aria-pressed="true"] {
     @apply bg-input;
   }
+
+  /*
+   * Dialog placement. Centred cards sit in the middle of the safe area, not of
+   * the whole screen, so they never run under the iPhone Duo vertical bar or
+   * the notch of a phone in landscape, and they scroll inside instead of
+   * growing past a short screen. Placement uses inset and margin only, which
+   * leaves `transform` free for the open and close animations.
+   */
+  .dialog-place-center {
+    position: fixed;
+    inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    margin: auto;
+    height: fit-content;
+    width: calc(92vw - env(safe-area-inset-left) - env(safe-area-inset-right));
+    max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem);
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem);
+  }
+  /* Phones: full-screen sheet. */
+  .dialog-place-sheet {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+  }
+  /* Phones: sheet rising from the bottom edge. */
+  .dialog-place-bottom {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: min(92vh, calc(100dvh - env(safe-area-inset-top) - 0.5rem));
+  }
+  @media (min-width: 640px) {
+    .dialog-place-sheet,
+    .dialog-place-bottom {
+      inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      margin: auto;
+      height: fit-content;
+      width: calc(92vw - env(safe-area-inset-left) - env(safe-area-inset-right));
+      max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem);
+      max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem);
+    }
+  }
 }
 
 /*

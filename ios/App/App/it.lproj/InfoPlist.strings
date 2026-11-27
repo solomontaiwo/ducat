@@ -1,0 +1,6 @@
+/* Azioni rapide della schermata Home (UIApplicationShortcutItemTitle in Info.plist). */
+"New Expense" = "Nuova uscita";
+"New Income" = "Nuova entrata";
+
+/* Richiesta di autorizzazione Face ID. */
+"NSFaceIDUsageDescription" = "Usa Face ID per proteggere saldi e movimenti quando apri Ducat.";

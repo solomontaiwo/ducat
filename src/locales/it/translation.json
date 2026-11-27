@@ -350,6 +350,8 @@
     "demoMode": "Modalità Demo",
     "transactions": "movimenti",
     "deleteConfirm": "Elimina Definitivamente",
+    "deleteTitle": "Eliminare questo movimento?",
+    "deleteDescription": "L'operazione non si può annullare.",
     "loadMore": "Carica cronologia completa",
     "actions": {
       "description": "Cosa vuoi fare con questo movimento?",

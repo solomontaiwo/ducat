@@ -74,7 +74,7 @@
 			<key>UIApplicationShortcutItemType</key>
 			<string>app.ducat.quick-expense</string>
 			<key>UIApplicationShortcutItemTitle</key>
-			<string>Nuova uscita</string>
+			<string>New Expense</string>
 			<key>UIApplicationShortcutItemIconSymbolName</key>
 			<string>minus.circle</string>
 		</dict>
@@ -82,7 +82,7 @@
 			<key>UIApplicationShortcutItemType</key>
 			<string>app.ducat.quick-income</string>
 			<key>UIApplicationShortcutItemTitle</key>
-			<string>Nuova entrata</string>
+			<string>New Income</string>
 			<key>UIApplicationShortcutItemIconSymbolName</key>
 			<string>plus.circle</string>
 		</dict>

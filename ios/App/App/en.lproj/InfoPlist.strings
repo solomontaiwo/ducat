@@ -1,0 +1,6 @@
+/* Home Screen quick actions (UIApplicationShortcutItemTitle in Info.plist). */
+"New Expense" = "New Expense";
+"New Income" = "New Income";
+
+/* Face ID permission prompt. */
+"NSFaceIDUsageDescription" = "Use Face ID to protect your balances and transactions when opening Ducat.";

@@ -4,6 +4,7 @@ import { FiX } from "react-icons/fi";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils.js";
+import { trackOpenDialog } from "./dialogStack.js";
 
 const Dialog = DialogPrimitive.Root;
 const DialogPortal = DialogPrimitive.Portal;
@@ -21,6 +22,12 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 DialogOverlay.propTypes = { className: PropTypes.string };
 
+/** Mounted with the dialog content, also during its closing animation. */
+const OpenDialogTracker = () => {
+  React.useEffect(() => trackOpenDialog(), []);
+  return null;
+};
+
 /**
  * DialogContent supports an optional `variant` prop:
  *   - "default" – centered modal
@@ -29,6 +36,9 @@ DialogOverlay.propTypes = { className: PropTypes.string };
  */
 const DialogContent = React.forwardRef(({ className, children, variant = "default", ...props }, ref) => {
   const { t } = useTranslation();
+  // `cn` does not merge conflicting classes: the default width cap applies
+  // only when the caller does not set its own.
+  const ownMaxWidth = /(^|\s)(sm:)?max-w-/.test(className ?? "");
   return (
   <DialogPortal>
     <DialogOverlay />
@@ -36,24 +46,29 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
       ref={ref}
       className={cn(
         "text-foreground motion-reduce:animate-none",
+        // Placement (`dialog-place-*` in main.css): centred within the safe
+        // area, so nothing runs under the iPhone Duo vertical bar or a notch.
         // ── bottom sheet variant ───────────────────────────────────────────
         variant === "bottom" && [
-          "dialog-motion-sheet glass-thick fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-[30px] border-0 outline-none",
+          "dialog-place-bottom dialog-motion-sheet glass-thick z-50 flex flex-col rounded-t-[30px] border-0 outline-none",
           "pb-[env(safe-area-inset-bottom)] dialog-safe-x",
-          "sm:inset-0 sm:m-auto sm:h-fit sm:max-h-[85vh] sm:w-[92vw] sm:max-w-md sm:rounded-[28px] sm:pb-0",
+          !ownMaxWidth && "sm:max-w-md",
+          "sm:rounded-[28px] sm:pb-0",
         ],
         // ── sheet variant ──────────────────────────────────────────────────
         variant === "sheet" && [
           // Mobile: full-screen modal sliding up from the bottom; pad top for iOS notch/status bar
-          "dialog-motion-sheet fixed inset-0 z-50 w-full rounded-none border-0 outline-none",
+          "dialog-place-sheet dialog-motion-sheet z-50 rounded-none border-0 outline-none",
           "[padding-top:env(safe-area-inset-top)] sm:pt-0 dialog-safe-x",
           "glass-thick",
-          // Desktop (sm+): centred via inset-0 + margin:auto so transform stays free for animations
-          "sm:m-auto sm:h-fit sm:w-[92vw] sm:max-w-lg sm:rounded-[28px]",
+          // sm+: centred card; transform stays free for the animations
+          !ownMaxWidth && "sm:max-w-lg",
+          "sm:rounded-[28px]",
         ],
         // ── default variant ────────────────────────────────────────────────
         variant === "default" && [
-          "dialog-motion-center fixed inset-0 z-50 m-auto grid h-fit max-h-[90vh] w-[92vw] max-w-2xl gap-4 overflow-y-auto",
+          "dialog-place-center dialog-motion-center z-50 grid gap-4 overflow-y-auto overscroll-contain",
+          !ownMaxWidth && "max-w-2xl",
           "glass-thick p-5 sm:p-6",
           "rounded-[28px]",
         ],
@@ -61,6 +76,7 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
       )}
       {...props}
     >
+      <OpenDialogTracker />
       {children}
       <DialogPrimitive.Close className={cn("absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted", variant === "sheet" && "dialog-close-safe [margin-top:env(safe-area-inset-top)] sm:mt-0")}>
         <FiX className="h-5 w-5" aria-hidden="true" />

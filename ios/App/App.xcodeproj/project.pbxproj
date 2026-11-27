@@ -21,6 +21,7 @@
 		E1B0000000000000000000B3 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A4 /* MainViewController.swift */; };
 		E1B0000000000000000000B4 /* NativeFeaturesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A5 /* NativeFeaturesPlugin.swift */; };
 		E1B0000000000000000000B6 /* VerticalBarNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A7 /* VerticalBarNavigation.swift */; };
+		E1B0000000000000000000B7 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = E1A0000000000000000000A8 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,8 @@
 		E1A0000000000000000000A4 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		E1A0000000000000000000A5 /* NativeFeaturesPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeFeaturesPlugin.swift; sourceTree = "<group>"; };
 		E1A0000000000000000000A7 /* VerticalBarNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerticalBarNavigation.swift; sourceTree = "<group>"; };
+		E1A0000000000000000000A9 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		E1A0000000000000000000AA /* it */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = it; path = it.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,6 +89,7 @@
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
+				E1A0000000000000000000A8 /* InfoPlist.strings */,
 				E1A0000000000000000000A1 /* PrivacyInfo.xcprivacy */,
 				E1A0000000000000000000A2 /* App.entitlements */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
@@ -140,6 +144,7 @@
 			knownRegions = (
 				en,
 				Base,
+				it,
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
@@ -166,6 +171,7 @@
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
 				E1B0000000000000000000B1 /* PrivacyInfo.xcprivacy in Resources */,
+				E1B0000000000000000000B7 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -202,6 +208,15 @@
 				504EC3111FED79650016851F /* Base */,
 			);
 			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		E1A0000000000000000000A8 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				E1A0000000000000000000A9 /* en */,
+				E1A0000000000000000000AA /* it */,
+			);
+			name = InfoPlist.strings;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */

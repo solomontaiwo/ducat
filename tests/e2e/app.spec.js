@@ -281,6 +281,51 @@ for (const [name, viewport, columns] of [
   });
 }
 
+test("iPhone Duo outer screen: transaction actions rise from the bottom and the delete prompt fits", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "Sets its own viewport: one project is enough");
+  const viewport = { width: 466, height: 678 };
+  const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true, locale: "it-IT" });
+  const page = await context.newPage();
+  await page.goto(".");
+  await page.evaluate(() => {
+    localStorage.setItem("ducat-demo-enabled", "true");
+    localStorage.setItem("ducat-demo-transactions", JSON.stringify([{
+      id: "duo-lunch", type: "expense", amountMinor: 1250, currency: "EUR", description: "Pranzo al sacco",
+      category: "alimentazione", dateKey: new Date().toISOString().slice(0, 10), isSample: false,
+    }]));
+  });
+  await page.goto("transactions");
+  await page.getByRole("button", { name: /Pranzo al sacco/ }).click();
+
+  const sheet = page.getByRole("dialog", { name: "Pranzo al sacco" });
+  await expect(sheet).toBeVisible();
+  await sheet.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+  const box = await sheet.boundingBox();
+  // Full width, resting on the bottom edge.
+  expect(Math.abs(box.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.width - viewport.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.y + box.height - viewport.height)).toBeLessThanOrEqual(1);
+
+  await sheet.getByRole("button", { name: /^elimina$/i }).click();
+  const prompt = page.getByRole("dialog", { name: /eliminare questo movimento/i });
+  await expect(prompt).toBeVisible();
+  await prompt.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+  const [card, cancel, confirm, close] = await Promise.all([
+    prompt.boundingBox(),
+    prompt.getByRole("button", { name: /^annulla$/i }).boundingBox(),
+    prompt.getByRole("button", { name: /elimina definitivamente/i }).boundingBox(),
+    prompt.getByRole("button", { name: /chiudi|close/i }).boundingBox(),
+  ]);
+  for (const part of [card, cancel, confirm, close]) {
+    expect(part.x).toBeGreaterThanOrEqual(0);
+    expect(part.x + part.width).toBeLessThanOrEqual(viewport.width);
+    expect(part.y + part.height).toBeLessThanOrEqual(viewport.height);
+  }
+  // Cancel and delete share one row.
+  expect(Math.abs(cancel.y - confirm.y)).toBeLessThan(2);
+  await context.close();
+});
+
 test("main tabs stay as they were left and switch without skeletons", async ({ page, isMobile }) => {
   test.skip(!isMobile, "Uses the mobile tab bar");
   await page.goto(".");

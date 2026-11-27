@@ -350,6 +350,8 @@
     "demoMode": "Demo Mode",
     "transactions": "transactions",
     "deleteConfirm": "Delete Permanently",
+    "deleteTitle": "Delete this transaction?",
+    "deleteDescription": "This action cannot be undone.",
     "loadMore": "Load full history",
     "actions": {
       "description": "What do you want to do with this transaction?",

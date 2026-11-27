@@ -7,6 +7,7 @@ import { usePrivacy } from "../../context/PrivacyProvider.jsx";
 import { AddTransactionContext } from "../../context/AddTransactionContext.jsx";
 import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus.js";
+import { useAnyDialogOpen } from "../ui/dialogStack.js";
 import { isMobile as isMobileApp } from "../../platform/index.js";
 import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
@@ -34,6 +35,8 @@ const AppLayout = ({ children }) => {
   const { t } = useTranslation();
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const [showAddModal, setShowAddModal] = useState(false);
+  // The native tab bar steps aside while any dialog or sheet is open.
+  const anyDialogOpen = useAnyDialogOpen();
   const [hasOpenedAddModal, setHasOpenedAddModal] = useState(false);
   const [addDraft, setAddDraft] = useState(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -190,7 +193,7 @@ const AppLayout = ({ children }) => {
           <Suspense fallback={null}>
             <NativeNavigationBridge
               onAvailabilityChange={setNativeNavigation}
-              visible={Boolean(showNavigation && isMobile && !showAddModal && !(hasAccount && locked))}
+              visible={Boolean(showNavigation && isMobile && !showAddModal && !anyDialogOpen && !(hasAccount && locked))}
               layout={isMobile ? "phone" : "sidebar"}
               path={location.pathname}
               badge={isDemo ? `${transactions.filter((item) => !item.isSample).length}/${maxTransactions}` : null}

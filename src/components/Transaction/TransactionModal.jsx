@@ -32,7 +32,7 @@ const TransactionModal = ({ show, onClose, onSubmit, onDelete, transaction, init
 
   return (
     <Dialog open={show} onOpenChange={(open) => (!open ? onClose() : null)}>
-      <DialogContent variant="sheet" className="flex h-full flex-col overflow-hidden p-0 sm:h-fit sm:max-h-[92vh]">
+      <DialogContent variant="sheet" className="flex h-full flex-col overflow-hidden p-0 sm:h-fit">
         <DialogHeader className="shrink-0 px-5 pb-4 pt-5 text-left short:pb-2 short:pt-3">
           <DialogTitle className="pr-10 text-xl">
             {isEdit ? t("transactionModal.editTitle") : t("transactionModal.newTitle")}
