@@ -31,9 +31,13 @@ class MainViewController: CAPBridgeViewController {
         webView?.scrollView.backgroundColor = .systemBackground
         // Once the page has a background, the area revealed by a pull (pull to
         // refresh, rubber band) uses the same colour and follows the in-app theme.
-        pageBackgroundObservation = webView?.observe(\.underPageBackgroundColor, options: [.new]) { webView, _ in
+        pageBackgroundObservation = webView?.observe(\.underPageBackgroundColor, options: [.new]) { [weak self] webView, _ in
             DispatchQueue.main.async {
-                webView.scrollView.backgroundColor = webView.underPageBackgroundColor
+                let color = webView.underPageBackgroundColor
+                webView.scrollView.backgroundColor = color
+                if let color {
+                    self?.view.backgroundColor = color
+                }
             }
         }
         webViewLoadingObservation = webView?.observe(\.isLoading, options: [.new]) { [weak self] _, change in
@@ -42,12 +46,21 @@ class MainViewController: CAPBridgeViewController {
                 self?.syncTopCornerBarMetrics(force: true)
             }
         }
-        // iOS apps running on Mac may lack the UIKit bar layout symbols.
-        if !ProcessInfo.processInfo.isiOSAppOnMac, #available(iOS 27.1, *) {
+        if ProcessInfo.processInfo.isiOSAppOnMac {
+            disableKeyboardResizeOnMac()
+        } else if #available(iOS 27.1, *) {
+            // iOS apps running on Mac may lack the UIKit bar layout symbols.
             installTopBarRegionObserver()
             registerForTraitChanges(UITraitCollection.systemTraitsAffectingVerticalBarEdge) { (controller: MainViewController, _) in
                 controller.syncTopCornerBarMetrics()
             }
+        }
+    }
+
+    override open func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if ProcessInfo.processInfo.isiOSAppOnMac {
+            disableKeyboardResizeOnMac()
         }
     }
 
@@ -75,6 +88,19 @@ class MainViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(NativeFeaturesPlugin())
         bridge?.registerPluginInstance(NativeNavigationPlugin())
         bridge?.registerPluginInstance(NativeRefreshPlugin())
+    }
+
+    /// On Apple silicon Mac there is no software keyboard, yet UIKit still
+    /// posts keyboard frame notifications; `@capacitor/keyboard` (`resize: native`)
+    /// computes a bogus height against the full Mac screen and shrinks the
+    /// WebView, exposing an empty bar at the bottom of the window.
+    private func disableKeyboardResizeOnMac() {
+        guard let keyboardPlugin = bridge?.plugin(withName: "Keyboard") else { return }
+        let nc = NotificationCenter.default
+        nc.removeObserver(keyboardPlugin, name: UIResponder.keyboardWillShowNotification, object: nil)
+        nc.removeObserver(keyboardPlugin, name: UIResponder.keyboardDidShowNotification, object: nil)
+        nc.removeObserver(keyboardPlugin, name: UIResponder.keyboardWillHideNotification, object: nil)
+        nc.removeObserver(keyboardPlugin, name: UIResponder.keyboardDidHideNotification, object: nil)
     }
 
     /// Attaches a hidden, non-interactive probe view to the system top bar
