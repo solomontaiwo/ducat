@@ -101,12 +101,6 @@ export const AuthProvider = ({ children }) => {
       }
     }
     if (uid) {
-      const { clearVaultDeviceSession } = await import("../utils/vaultDeviceUnlock.js");
-      await clearVaultDeviceSession(uid);
-      if (["mobile", "desktop"].includes(import.meta.env.MODE)) {
-        const { archiveKeychain } = await import("../platform/authStorage.js");
-        await archiveKeychain.remove(uid).catch(() => {});
-      }
       import("../utils/offlineCache.js")
         .then(({ clearOfflineForUser }) => clearOfflineForUser(uid))
         .catch(() => {});

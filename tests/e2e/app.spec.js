@@ -222,7 +222,7 @@ test("activates an archive with a device PIN and resumes or recovers on demand",
   expect(recoveryCode).toMatch(/^[a-f0-9-]{71}$/);
   await fillPin(page, pin);
   await page.getByLabel("Ho salvato il codice di recupero").check();
-  await page.getByLabel("Ricorda lo sblocco su questo dispositivo").check();
+  await expect(page.getByLabel("Ricorda lo sblocco su questo dispositivo")).toBeChecked();
   await page.getByRole("button", { name: "Attiva la cifratura" }).click();
   await ready(page);
   expect(fixture.getKeys()).toEqual({ v: 2, recovery: expect.stringMatching(/^[A-Za-z0-9+/]{80}$/) });
@@ -256,10 +256,12 @@ test("activates an archive with a device PIN and resumes or recovers on demand",
   await expect(page.getByLabel("Codice di recupero", { exact: true })).toBeVisible();
   await page.getByLabel("Codice di recupero", { exact: true }).fill(recoveryCode);
   await fillPin(page, "135791");
+  await page.getByLabel("Ricorda lo sblocco su questo dispositivo").uncheck();
   await unlock(page);
   await ready(page);
   await page.reload();
   await page.getByLabel("PIN del dispositivo", { exact: true }).fill("135791");
+  await page.getByLabel("Ricorda lo sblocco su questo dispositivo").uncheck();
   await unlock(page);
   await ready(page);
 
@@ -302,7 +304,7 @@ test("activates an archive with a device PIN and resumes or recovers on demand",
       localStorage.setItem("ducat-auth", JSON.stringify(auth));
     });
     await tab.reload();
-    await expect(tab.getByLabel("PIN del dispositivo", { exact: true })).toBeVisible();
+    await ready(tab);
   } finally {
     await second.close();
   }

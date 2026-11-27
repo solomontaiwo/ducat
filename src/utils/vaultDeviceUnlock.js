@@ -47,23 +47,22 @@ export const verifyVaultPin = async (uid, keys, pin) => {
   throw new Error("Archive PIN changed on another tab");
 };
 
-export const rememberVaultDeviceSession = async (uid, entry, secret, session) => {
-  if (!session) throw new Error("There is no authenticated device session");
+export const rememberVaultDeviceSession = async (uid, entry, secret) => {
   const cryptography = await deviceSessionCrypto(uid, entry);
-  const sealed = await cryptography.seal({ secret: encodeBytes(secret), session });
-  await storeVaultLocal(uid, DEVICE_UNLOCK, { sealed, session });
+  const sealed = await cryptography.seal({ secret: encodeBytes(secret), recovery: entry.recovery });
+  await storeVaultLocal(uid, DEVICE_UNLOCK, { sealed });
 };
 
-export const resumeVaultDeviceSession = async (uid, entry, session) => {
-  if (!session || !entry || isVaultPinLocked(entry)) return null;
+export const resumeVaultDeviceSession = async (uid, entry) => {
+  if (!entry || isVaultPinLocked(entry)) return null;
   const stored = await readVaultLocal(uid, DEVICE_UNLOCK);
-  if (stored?.session !== session) return null;
+  if (!stored?.sealed) return null;
   try {
     const cryptography = await deviceSessionCrypto(uid, entry);
     const saved = await cryptography.open(stored.sealed);
-    return saved.session === session ? decodeBytes(saved.secret) : null;
+    return typeof saved?.secret === "string" ? decodeBytes(saved.secret) : null;
   } catch {
-    // A changed PIN or key invalidates the trusted session.
+    // A changed PIN or key invalidates the remembered device unlock.
     return null;
   }
 };
