@@ -11,9 +11,11 @@ export default function AccountAccess({ children }) {
   const { pathname } = useLocation();
   const { t } = useTranslation();
   if (!currentUser?.emailVerified || pathname === "/reset-password") return children;
-  const loading = <main className="flex min-h-screen items-center justify-center" role="status">
-    {t("common.loadingPage")}
-  </main>;
+  const loading = (
+    <main className="flex min-h-[100dvh] items-center justify-center bg-background" role="status" aria-label={t("common.loadingPage")}>
+      <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </main>
+  );
   return <Suspense fallback={loading}><VaultGate>{children}</VaultGate></Suspense>;
 }
 

@@ -50,7 +50,26 @@ export const startNativeShell = async ({ onActive, onInactive } = {}) => {
     });
     cleanups.push(() => listener.remove());
 
-    await SplashScreen.hide({ fadeDuration: 150 });
+    let hidden = false;
+    const hideSplash = () => {
+      if (hidden) return;
+      hidden = true;
+      SplashScreen.hide({ fadeDuration: 150 }).catch(() => {});
+    };
+    if (window.__ducatReady) {
+      hideSplash();
+    } else {
+      const fallback = window.setTimeout(hideSplash, 1800);
+      const onReady = () => {
+        window.clearTimeout(fallback);
+        hideSplash();
+      };
+      window.addEventListener("ducat:ready", onReady, { once: true });
+      cleanups.push(() => {
+        window.clearTimeout(fallback);
+        window.removeEventListener("ducat:ready", onReady);
+      });
+    }
   } catch {
     // A missing plugin must never break the app: the UI is already mounted.
   }
