@@ -51,13 +51,13 @@ const MobileWelcome = () => {
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col justify-between overflow-x-clip px-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-[calc(env(safe-area-inset-top)+1.5rem)] text-foreground">
+    <div className="relative flex min-h-[100dvh] flex-col justify-between overflow-x-clip pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[calc(env(safe-area-inset-top)+1.5rem)] text-foreground">
       <header className="flex items-center justify-center gap-2.5">
         <img src={logo} alt="" width="36" height="36" className="h-9 w-9 rounded-[11px] shadow-sm" />
         <span className="font-display text-2xl font-extrabold tracking-tight">{t("appName")}</span>
       </header>
 
-      <main className="mx-auto my-auto flex w-full max-w-sm flex-col items-center py-8 text-center">
+      <section className="mx-auto my-auto flex w-full max-w-sm flex-col items-center py-8 text-center" aria-label={t("mobileWelcome.highlights")}>
         <div key={slide.key} className="animate-page-in flex flex-col items-center space-y-5">
           <span className={cn("flex h-16 w-16 items-center justify-center rounded-3xl", slide.tone)} aria-hidden="true">
             <Icon className="h-8 w-8" />
@@ -98,12 +98,12 @@ const MobileWelcome = () => {
             <FiChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
-      </main>
+      </section>
 
       <footer className="mx-auto w-full max-w-sm space-y-3">
         <Button
           size="lg"
-          className="h-13 w-full rounded-2xl text-base"
+          className="h-12 w-full rounded-2xl text-base"
           onClick={() => {
             hapticTap("medium");
             navigate("/register");
@@ -114,7 +114,7 @@ const MobileWelcome = () => {
         <Button
           size="lg"
           variant="outline"
-          className="h-13 w-full rounded-2xl bg-card/80 text-base"
+          className="h-12 w-full rounded-2xl bg-card/80 text-base"
           onClick={() => {
             hapticTap();
             navigate("/login");

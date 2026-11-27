@@ -283,8 +283,12 @@
       },
       "category": "Category",
       "allTime": "All time",
+      "advanced": "Filters",
+      "minAmount": "Min €",
+      "maxAmount": "Max €",
       "reset": "Clear filters"
     },
+    "scheduledBadge": "Scheduled",
     "empty": {
       "title": "No transactions found",
       "tryFilters": "Try modifying your search filters",
@@ -310,8 +314,12 @@
     },
     "bulk": {
       "select": "Select",
+      "selectAll": "All",
+      "clearAll": "None",
       "selected": "{{count}} selected",
       "recategorize": "Change category…",
+      "mixedTypes": "Same type only",
+      "deleteTitle": "Delete {{count}} transactions?",
       "updated": "Updated {{count}} transactions",
       "deleted": "Deleted {{count}} transactions"
     }
@@ -848,6 +856,7 @@
     "search": "Search transactions",
     "privacy": "Toggle hide amounts",
     "navigate": "Switch section",
+    "saveForm": "Save in form",
     "help": "This help"
   },
   "csvImport": {
@@ -861,6 +870,10 @@
     "summary": "From bank or spreadsheet",
     "description": "Pick a CSV file, verify columns and import without duplicates.",
     "file": "CSV file",
+    "debit": "Debit / Outflow",
+    "credit": "Credit / Inflow",
+    "typeCol": "Type",
+    "defaultExpense": "Treat unsigned amounts as expenses",
     "tooLarge": "File exceeds 5 MB.",
     "empty": "No rows to import.",
     "invalid": "Unable to read CSV file.",

@@ -11,16 +11,18 @@ import { readLocalValue, writeLocalValue } from "../../utils/storage.js";
 import { transactionComparator } from "../../utils/transactionOrder.js";
 import { formatGroupDate as formatGroupDateLabel, formatRowDate, groupNetAmount, groupTransactionsByDate } from "../../utils/transactionGrouping.js";
 import { groupTransactionsByMonth, mergeTransactions } from "../../utils/transactionSearch.js";
-import { FiCheckSquare, FiChevronDown, FiCopy, FiSearch, FiTrash2, FiX } from "react-icons/fi";
+import { FiCheckSquare, FiChevronDown, FiCopy, FiSearch, FiSliders, FiTrash2, FiX } from "react-icons/fi";
 import { useCategories } from "../../utils/categories.jsx";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { Button } from "../ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Input } from "../ui/input";
 import MonthSwitcher from "../ui/MonthSwitcher.jsx";
 import { useMonthRange } from "../../hooks/useMonthRange.js";
 import { useTransactionFilter } from "../../hooks/useTransactionFilter.jsx";
-import { getPeriodRange } from "../../utils/statsUtils.jsx";
+import { dateKeyToDate, isDateKey } from "../../utils/dateUtils.js";
 import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
 import { cn } from "../../lib/utils.js";
 import { useNotification } from "../../utils/notificationUtils";
@@ -76,6 +78,10 @@ const TransactionList = () => {
   const [actionTransaction, setActionTransaction] = useState(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const hasSidebar = useMediaQuery({ minWidth: 768 });
   const [preferTable, setPreferTable] = useState(() => readLocalValue("ducat-transaction-view") === "table");
   const [tableFits, setTableFits] = useState(false);
@@ -109,11 +115,17 @@ const TransactionList = () => {
   const initialFilters = useMemo(() => parseInitialFilters(routeSearch), [routeSearch]);
   const monthRange = useMonthRange(initialFilters.month);
   const [allTime, setAllTime] = useState(initialFilters.allTime);
+  const hasCustomDates = isDateKey(customFrom) || isDateKey(customTo);
   const { startDate, endDate } = useMemo(() => {
-    if (!allTime) return { startDate: monthRange.startDate, endDate: monthRange.endDate };
-    const range = getPeriodRange("all");
-    return { startDate: range.start, endDate: range.end };
-  }, [allTime, monthRange.startDate, monthRange.endDate]);
+    if (hasCustomDates) {
+      const start = isDateKey(customFrom) ? dateKeyToDate(customFrom) : null;
+      const end = isDateKey(customTo) ? new Date(dateKeyToDate(customTo).setHours(23, 59, 59, 999)) : null;
+      if (start && end && start > end) return { startDate: end, endDate: start };
+      return { startDate: start, endDate: end };
+    }
+    if (allTime) return { startDate: null, endDate: null };
+    return { startDate: monthRange.startDate, endDate: monthRange.endDate };
+  }, [hasCustomDates, customFrom, customTo, allTime, monthRange.startDate, monthRange.endDate]);
 
   const getCategoryLabel = useCallback((category) => {
     const categoryData = [...expenseCategories, ...incomeCategories].find((c) => c.value === category);
@@ -154,6 +166,10 @@ const TransactionList = () => {
     setSelectedType,
     sortBy,
     setSortBy,
+    minAmount,
+    setMinAmount,
+    maxAmount,
+    setMaxAmount,
   } = useTransactionFilter(
     visibleTransactions,
     { startDate, endDate },
@@ -166,13 +182,13 @@ const TransactionList = () => {
   );
 
   const hasSearch = Boolean(searchTerm.trim());
-  const searchScope = isSearching ? "history" : `${startDate.getTime()}:${endDate.getTime()}`;
+  const searchScope = isSearching ? "history" : `${startDate?.getTime() ?? "start"}:${endDate?.getTime() ?? "end"}`;
   const historyReady = historyOwner === userId && historyRevision === recentRevision && historyScope === searchScope;
   const pageFilters = useMemo(() => ({
     startDate, endDate, category: selectedCategory, type: selectedType,
   }), [startDate, endDate, selectedCategory, selectedType]);
 
-  const pageKey = JSON.stringify([userId, +startDate, +endDate, selectedType, selectedCategory, sortBy]);
+  const pageKey = JSON.stringify([userId, startDate?.getTime() ?? null, endDate?.getTime() ?? null, selectedType, selectedCategory, sortBy]);
   const pageReady = loadedPageKey.current === pageKey;
   const resultsReady = isDemo || (hasSearch ? historyReady : pageReady);
   const filteredTransactions = resultsReady ? matchingTransactions : EMPTY_ROWS;
@@ -500,22 +516,30 @@ const TransactionList = () => {
     [filteredTransactions, selectedIds]
   );
 
+  const selectedTypes = useMemo(() => new Set(selectedItems.map((item) => item.type)), [selectedItems]);
+  const hasMixedBulkTypes = selectedTypes.size > 1;
   const bulkCategories = useMemo(() => {
-    const types = new Set(selectedItems.map((item) => item.type));
-    if (types.size === 1 && types.has("income")) return incomeCategories;
+    if (selectedTypes.size === 1 && selectedTypes.has("income")) return incomeCategories;
     return expenseCategories;
-  }, [selectedItems, expenseCategories, incomeCategories]);
+  }, [selectedTypes, expenseCategories, incomeCategories]);
+
+  const allVisibleSelected = filteredTransactions.length > 0 && filteredTransactions.every((item) => selectedIds.has(item.id));
+  const toggleSelectAll = useCallback(() => {
+    if (allVisibleSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filteredTransactions.map((item) => item.id)));
+  }, [allVisibleSelected, filteredTransactions]);
 
   const handleBulkCategory = useCallback(async (nextCategory) => {
-    if (!nextCategory || !selectedItems.length || bulkBusy) return;
+    if (!nextCategory || !selectedItems.length || bulkBusy || hasMixedBulkTypes) return;
     setBulkBusy(true);
     let updated = 0;
     try {
       for (const item of selectedItems) {
-        const ok = await updateTransaction(item.id, { category: nextCategory });
+        const ok = await updateTransaction(item.id, { category: nextCategory }, { silent: true });
         if (ok) {
           updated += 1;
           setAllLoadedTransactions((prev) => prev.map((row) => (row.id === item.id ? { ...row, category: nextCategory } : row)));
+          setHistoryIndex((prev) => prev && prev.map((row) => (row.id === item.id ? { ...row, category: nextCategory } : row)));
         }
       }
       if (updated) notification.success(t("transactions.bulk.updated", { count: updated }));
@@ -523,26 +547,65 @@ const TransactionList = () => {
     } finally {
       setBulkBusy(false);
     }
-  }, [selectedItems, bulkBusy, updateTransaction, notification, t, exitSelection]);
+  }, [selectedItems, bulkBusy, hasMixedBulkTypes, updateTransaction, notification, t, exitSelection]);
 
-  const handleBulkDelete = useCallback(async () => {
-    if (!selectedItems.length || bulkBusy) return;
-    setBulkBusy(true);
-    let deleted = 0;
-    try {
-      for (const item of selectedItems) {
-        const ok = await deleteTransaction(item.id, { silent: true });
-        if (ok) {
-          deleted += 1;
-          setAllLoadedTransactions((prev) => prev.filter((row) => row.id !== item.id));
+  const confirmBulkDelete = useCallback(() => {
+    const ids = selectedItems.map((item) => item.id);
+    setBulkDeleteConfirm(false);
+    if (!ids.length) return;
+    exitSelection();
+    setSelectedTransaction((current) => (current && ids.includes(current.id) ? null : current));
+
+    setRemovedIds((previous) => {
+      const next = new Set(previous);
+      ids.forEach((id) => next.add(id));
+      return next;
+    });
+    let undone = false;
+
+    const commitDeletes = async () => {
+      for (const id of ids) {
+        const ok = await deleteTransaction(id, { silent: true });
+        if (!ok) {
+          setRemovedIds((previous) => {
+            const next = new Set(previous);
+            next.delete(id);
+            return next;
+          });
+        } else {
+          setAllLoadedTransactions((prev) => prev.filter((item) => item.id !== id));
         }
       }
-      if (deleted) notification.success(t("transactions.bulk.deleted", { count: deleted }));
-      exitSelection();
-    } finally {
-      setBulkBusy(false);
-    }
-  }, [selectedItems, bulkBusy, deleteTransaction, notification, t, exitSelection]);
+    };
+
+    const flushOnExit = (event) => {
+      if (event.persisted || undone) return;
+      window.removeEventListener("pagehide", flushOnExit);
+      ids.forEach((id) => deleteTransaction(id, { silent: true }));
+    };
+    window.addEventListener("pagehide", flushOnExit);
+    const stopListening = () => window.removeEventListener("pagehide", flushOnExit);
+
+    notification.success(t("transactions.bulk.deleted", { count: ids.length }), {
+      duration: 6000,
+      action: {
+        label: t("notifications.undo"),
+        onClick: () => {
+          undone = true;
+          stopListening();
+          setRemovedIds((previous) => {
+            const next = new Set(previous);
+            ids.forEach((id) => next.delete(id));
+            return next;
+          });
+        },
+      },
+      onClose: () => {
+        stopListening();
+        if (!undone) commitDeletes();
+      },
+    });
+  }, [selectedItems, exitSelection, deleteTransaction, notification, t]);
 
   const loadedTotals = useMemo(() => filteredTransactions.reduce(
     (sum, item) => {
@@ -552,11 +615,12 @@ const TransactionList = () => {
     },
     { income: 0, expense: 0 }
   ), [filteredTransactions]);
+  const hasAmountFilter = Boolean(minAmount.trim() || maxAmount.trim());
   const completeLocalRows = isDemo || (hasSearch ? historyReady : !hasMore && !isLoadingInitial && pageReady && !loadError);
   const exact = serverTotals?.filters === pageFilters && serverTotals.owner === userId ? serverTotals.values : null;
-  const totals = !isDemo && !hasSearch && exact
+  const totals = !isDemo && !hasSearch && !hasAmountFilter && exact
     ? { count: exact.count, income: exact.incomeMinor / 100, expense: exact.expenseMinor / 100 }
-    : completeLocalRows ? { count: filteredTransactions.length, ...loadedTotals } : null;
+    : completeLocalRows || hasAmountFilter ? { count: filteredTransactions.length, ...loadedTotals } : null;
 
   const handleRefresh = useCallback(async () => {
     if (isDemo || !currentUser) return;
@@ -598,7 +662,8 @@ const TransactionList = () => {
     ? groupTransactionsByMonth(filteredTransactions, i18n.language)
     : groupTransactionsByDate(filteredTransactions, formatGroupDate);
   const isAmountSorted = sortBy !== "date-desc";
-  const hasFilters = searchTerm || selectedCategory !== "all" || selectedType !== "all" || isAmountSorted;
+  const hasAdvancedActive = hasCustomDates || hasAmountFilter;
+  const hasFilters = searchTerm || selectedCategory !== "all" || selectedType !== "all" || isAmountSorted || hasAdvancedActive;
   const showPanel = isDesktop && selectedTransaction && !selectionMode;
   const demoCount = transactions.filter((item) => !item.isSample).length;
 
@@ -622,8 +687,8 @@ const TransactionList = () => {
               month={monthRange.month}
               onPrevious={monthRange.goToPrevious}
               onNext={monthRange.goToNext}
-              canGoNext={!monthRange.isCurrentMonth}
-              disabled={allTime || isSearching}
+              canGoNext={monthRange.canGoNext}
+              disabled={allTime || isSearching || hasCustomDates}
               className="w-fit rounded-full border border-border bg-card px-0.5"
             />
           </div>
@@ -696,6 +761,16 @@ const TransactionList = () => {
             <button
               type="button"
               className="chip"
+              aria-pressed={showAdvancedFilters || hasAdvancedActive}
+              onClick={() => setShowAdvancedFilters((open) => !open)}
+              data-testid="toggle-advanced-filters"
+            >
+              <FiSliders className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("transactions.filters.advanced")}
+            </button>
+            <button
+              type="button"
+              className="chip"
               aria-pressed={selectionMode}
               onClick={() => (selectionMode ? exitSelection() : setSelectionMode(true))}
               data-testid="toggle-bulk-select"
@@ -718,6 +793,10 @@ const TransactionList = () => {
                   setSelectedCategory("all");
                   setSelectedType("all");
                   setSortBy("date-desc");
+                  setCustomFrom("");
+                  setCustomTo("");
+                  setMinAmount("");
+                  setMaxAmount("");
                 }}
               >
                 <FiX className="h-3.5 w-3.5" aria-hidden="true" />
@@ -725,37 +804,79 @@ const TransactionList = () => {
               </button>
             )}
           </div>
+          {showAdvancedFilters && (
+            <div data-testid="advanced-filters-panel" className="surface grid grid-cols-2 gap-3 p-3.5 sm:grid-cols-4">
+              <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+                {t("analytics.from")}
+                <Input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} className="h-10 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+                {t("analytics.to")}
+                <Input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className="h-10 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+                {t("transactions.filters.minAmount")}
+                <Input
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={minAmount}
+                  onChange={(event) => setMinAmount(event.target.value.replace(/[^0-9.,]/g, ""))}
+                  className="h-10 text-sm tabular-nums"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+                {t("transactions.filters.maxAmount")}
+                <Input
+                  inputMode="decimal"
+                  placeholder="—"
+                  value={maxAmount}
+                  onChange={(event) => setMaxAmount(event.target.value.replace(/[^0-9.,]/g, ""))}
+                  className="h-10 text-sm tabular-nums"
+                />
+              </label>
+            </div>
+          )}
           {selectionMode && (
             <div
               data-testid="bulk-action-bar"
               className="surface flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 text-sm"
             >
-              <span className="font-bold tabular-nums">
-                {t("transactions.bulk.selected", { count: selectedItems.length })}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold tabular-nums">
+                  {t("transactions.bulk.selected", { count: selectedItems.length })}
+                </span>
+                {filteredTransactions.length > 0 && (
+                  <Button type="button" size="sm" variant="ghost" onClick={toggleSelectAll} disabled={bulkBusy}>
+                    {allVisibleSelected ? t("transactions.bulk.clearAll") : t("transactions.bulk.selectAll")}
+                  </Button>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-2">
-                <select
-                  aria-label={t("transactions.bulk.recategorize")}
-                  defaultValue=""
-                  disabled={!selectedItems.length || bulkBusy}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    event.target.value = "";
-                    handleBulkCategory(value);
-                  }}
-                  className="chip h-9 pr-3 text-xs"
-                >
-                  <option value="" disabled>{t("transactions.bulk.recategorize")}</option>
-                  {bulkCategories.map((cat) => (
-                    <option key={cat.value} value={cat.value}>{cat.label}</option>
-                  ))}
-                </select>
+                <label className="relative shrink-0">
+                  <select
+                    aria-label={t("transactions.bulk.recategorize")}
+                    defaultValue=""
+                    disabled={!selectedItems.length || bulkBusy || hasMixedBulkTypes}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      event.target.value = "";
+                      handleBulkCategory(value);
+                    }}
+                    className="chip h-9 appearance-none pr-8 text-xs"
+                  >
+                    <option value="" disabled>{hasMixedBulkTypes ? t("transactions.bulk.mixedTypes") : t("transactions.bulk.recategorize")}</option>
+                    {bulkCategories.map((cat) => (
+                      <option key={cat.value} value={cat.value}>{cat.label}</option>
+                    ))}
+                  </select>
+                  <FiChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                </label>
                 <Button
                   type="button"
                   size="sm"
                   variant="destructive"
                   disabled={!selectedItems.length || bulkBusy}
-                  onClick={handleBulkDelete}
+                  onClick={() => setBulkDeleteConfirm(true)}
                 >
                   <FiTrash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   {t("transactions.actions.delete")}
@@ -771,7 +892,7 @@ const TransactionList = () => {
         <div className="surface grid grid-cols-3 divide-x divide-border py-3 text-center">
           <div className="px-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("transactions.summary.label")}</p>
-            <p className="amount text-base sm:text-lg">{totals?.count ?? "—"}</p>
+            <p className="font-display text-base font-bold tabular-nums tracking-[-0.01em] sm:text-lg">{totals?.count ?? "—"}</p>
           </div>
           <div className="px-2">
             <p className="text-xs font-semibold text-muted-foreground">{t("dashboard.income")}</p>
@@ -950,6 +1071,19 @@ const TransactionList = () => {
         onCancel={() => setDeleteConfirm(null)}
         onConfirm={confirmDelete}
       />
+
+      <Dialog open={bulkDeleteConfirm} onOpenChange={(open) => !open && setBulkDeleteConfirm(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="pr-10">{t("transactions.bulk.deleteTitle", { count: selectedItems.length })}</DialogTitle>
+            <DialogDescription>{t("transactions.deleteDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-2 sm:justify-end">
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setBulkDeleteConfirm(false)}>{t("cancel")}</Button>
+            <Button variant="destructive" className="flex-1 sm:flex-none" onClick={confirmBulkDelete}>{t("transactions.deleteConfirm")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
     </PullToRefresh>
   );

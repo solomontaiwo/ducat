@@ -78,7 +78,13 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
     >
       <OpenDialogTracker />
       {children}
-      <DialogPrimitive.Close className={cn("absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted", variant === "sheet" && "dialog-close-safe [margin-top:env(safe-area-inset-top)] sm:mt-0")}>
+      <DialogPrimitive.Close
+        className={cn(
+          "absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted",
+          (variant === "sheet" || variant === "bottom") && "dialog-close-safe",
+          variant === "sheet" && "[margin-top:env(safe-area-inset-top)] sm:mt-0"
+        )}
+      >
         <FiX className="h-5 w-5" aria-hidden="true" />
         <span className="sr-only">{t("common.close", { defaultValue: "Chiudi" })}</span>
       </DialogPrimitive.Close>

@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { FiCheck, FiClock, FiDownload, FiRefreshCw } from "react-icons/fi";
 import { useUpdaterContext } from "../../context/UpdaterProvider";
 import { Button } from "../ui/button";
+import Switch from "../ui/switch";
+import BackButton from "../Planning/BackButton.jsx";
 import { InlineSegmented } from "../Profile/SettingsList";
 import { APP_VERSION } from "../../utils/appVersion";
 import { readUpdaterSettings, writeUpdaterSettings } from "../../utils/updaterSettings";
@@ -53,7 +55,10 @@ const UpdatesPage = () => {
     return (
       <div className="page-shell">
         <header className="mobile-glass-header flex items-center justify-between gap-2">
-          <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("updater.title")}</h1>
+          <div className="flex items-center gap-2">
+            <BackButton />
+            <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("updater.title")}</h1>
+          </div>
           {versionBadge}
         </header>
         <section className="surface p-6 text-sm text-muted-foreground" role="status">{t("common.loadingPage")}</section>
@@ -65,6 +70,7 @@ const UpdatesPage = () => {
     return (
       <div className="page-shell">
         <header className="mobile-glass-header flex items-center gap-2">
+          <BackButton />
           <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("updater.title")}</h1>
         </header>
         <section className="surface p-6 text-sm text-muted-foreground">{t("updates.desktopOnly")}</section>
@@ -77,9 +83,12 @@ const UpdatesPage = () => {
     return (
       <div className="page-shell">
         <header className="mobile-glass-header flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("updater.title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("updates.subtitle")}</p>
+          <div className="flex items-center gap-2">
+            <BackButton />
+            <div>
+              <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("updater.title")}</h1>
+              <p className="text-sm text-muted-foreground">{t("updates.subtitle")}</p>
+            </div>
           </div>
           {versionBadge}
         </header>
@@ -101,9 +110,12 @@ const UpdatesPage = () => {
   return (
     <div className="page-shell">
       <header className="mobile-glass-header flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("updater.title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("updates.subtitle")}</p>
+        <div className="flex items-center gap-2">
+          <BackButton />
+          <div>
+            <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("updater.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("updates.subtitle")}</p>
+          </div>
         </div>
         <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-foreground">v{APP_VERSION}</span>
       </header>
@@ -186,25 +198,11 @@ const UpdatesPage = () => {
             <p className="text-[15px] font-semibold">{t("updates.autoCheck")}</p>
             <p className="text-[13px] text-muted-foreground">{t("updates.autoCheckHint")}</p>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={settings.autoCheck}
+          <Switch
+            checked={settings.autoCheck}
             aria-label={t("updates.autoCheck")}
-            onClick={() => updateSettings({ autoCheck: !settings.autoCheck })}
-            className={cn(
-              "relative h-7 w-12 shrink-0 rounded-full transition-colors",
-              settings.autoCheck ? "bg-primary" : "bg-muted"
-            )}
-          >
-            <span
-              className={cn(
-                "absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-[left]",
-                settings.autoCheck ? "left-6" : "left-1"
-              )}
-              aria-hidden="true"
-            />
-          </button>
+            onCheckedChange={(autoCheck) => updateSettings({ autoCheck })}
+          />
         </div>
         {settings.autoCheck && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">

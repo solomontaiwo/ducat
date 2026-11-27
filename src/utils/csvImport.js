@@ -147,6 +147,10 @@ export const parseFlexibleAmount = (raw) => {
     text = text.slice(1, -1).trim();
   }
   text = text.replace(/[€$£\s]/g, "").replace(/EUR/gi, "");
+  if (text.endsWith("-") || text.endsWith("−")) {
+    negative = true;
+    text = text.slice(0, -1);
+  }
   if (text.startsWith("-") || text.startsWith("−")) {
     negative = true;
     text = text.slice(1);
@@ -158,12 +162,24 @@ export const parseFlexibleAmount = (raw) => {
   let numeric;
   const lastComma = text.lastIndexOf(",");
   const lastDot = text.lastIndexOf(".");
-  if (lastComma > lastDot) {
-    // Italian / European: 1.234,56
-    numeric = Number(text.replace(/\./g, "").replace(",", "."));
-  } else if (lastDot > lastComma) {
-    // US / ISO: 1,234.56
-    numeric = Number(text.replace(/,/g, ""));
+  if (lastComma >= 0 && lastDot >= 0) {
+    if (lastComma > lastDot) {
+      // Italian / European: 1.234,56
+      numeric = Number(text.replace(/\./g, "").replace(",", "."));
+    } else {
+      // US / ISO: 1,234.56
+      numeric = Number(text.replace(/,/g, ""));
+    }
+  } else if (lastComma >= 0) {
+    // Thousands-only US grouping ("1,200" or "1,234,567") vs European decimal ("12,50").
+    numeric = /^\d{1,3}(,\d{3})+$/.test(text)
+      ? Number(text.replace(/,/g, ""))
+      : Number(text.replace(",", "."));
+  } else if (lastDot >= 0) {
+    // Thousands-only European grouping ("1.200" or "1.234.567") vs decimal ("12.50").
+    numeric = /^\d{1,3}(\.\d{3})+$/.test(text)
+      ? Number(text.replace(/\./g, ""))
+      : Number(text);
   } else {
     numeric = Number(text);
   }
@@ -239,7 +255,7 @@ export const mapCsvRowsToTransactions = (
         const typeHint = mapping.type >= 0 ? normalizeTypeHint(row[mapping.type]) : null;
         if (typeHint) {
           resolvedType = typeHint;
-        } else if (String(row[mapping.amount]).trim().startsWith("-") || String(row[mapping.amount]).trim().startsWith("−") || String(row[mapping.amount]).trim().startsWith("(")) {
+        } else if (/^[-−(]/.test(String(row[mapping.amount]).trim()) || /[-−]$/.test(String(row[mapping.amount]).trim())) {
           resolvedType = "expense";
         } else if (String(row[mapping.amount]).trim().startsWith("+")) {
           resolvedType = "income";

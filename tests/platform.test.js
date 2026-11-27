@@ -8,6 +8,7 @@ import { buildFeedbackMailto } from "../src/utils/feedback.js";
 
 const shareMock = vi.fn(async () => ({}));
 const writeFileMock = vi.fn(async () => ({ uri: "file:///cache/report.pdf" }));
+const deleteFileMock = vi.fn(async () => undefined);
 const saveDialogMock = vi.fn(async () => "/tmp/report.pdf");
 const writeTauriFileMock = vi.fn(async () => undefined);
 const browserOpenMock = vi.fn(async () => undefined);
@@ -21,7 +22,7 @@ const preferencesMock = vi.hoisted(() => ({
 
 vi.mock("@capacitor/share", () => ({ Share: { share: shareMock } }));
 vi.mock("@capacitor/filesystem", () => ({
-  Filesystem: { writeFile: writeFileMock },
+  Filesystem: { writeFile: writeFileMock, deleteFile: deleteFileMock },
   Directory: { Cache: "CACHE" },
 }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: saveDialogMock }));
@@ -107,6 +108,14 @@ describe("saving files", () => {
       url: "file:///cache/report.pdf",
       dialogTitle: "Report",
     });
+    expect(deleteFileMock).toHaveBeenCalledWith({ path: "report.pdf", directory: "CACHE" });
+  });
+
+  it("returns false without throwing when the iOS share sheet is cancelled", async () => {
+    vi.stubEnv("MODE", "mobile");
+    shareMock.mockRejectedValueOnce(new Error("Share canceled"));
+    await expect(saveFile(pdf(), "report.pdf")).resolves.toBe(false);
+    expect(deleteFileMock).toHaveBeenCalledWith({ path: "report.pdf", directory: "CACHE" });
   });
 
   it("returns false when the desktop save dialog is dismissed", async () => {

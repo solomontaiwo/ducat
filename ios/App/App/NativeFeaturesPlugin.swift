@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import StoreKit
 import UIKit
 import UserNotifications
@@ -8,7 +9,10 @@ import Capacitor
 /// external dependencies:
 /// - `UNUserNotificationCenter` local reminders for upcoming recurring rules
 ///   (with foreground presentation and tap-to-route handling);
-/// - `SKStoreReviewController` in-app App Store review prompt.
+/// - `SKStoreReviewController` in-app App Store review prompt;
+/// - `UIWindow.overrideUserInterfaceStyle` sync so native bars, pickers and
+///   keyboards match the in-app Light / Dark theme;
+/// - Keychain storage (`SecItem*`) for Supabase auth sessions.
 @objc(NativeFeaturesPlugin)
 public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificationCenterDelegate {
     public let identifier = "NativeFeaturesPlugin"
@@ -20,9 +24,14 @@ public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificati
         CAPPluginMethod(name: "clearRecurringReminders", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "consumePendingRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestAppReview", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setAppearance", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getSecret", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setSecret", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "removeSecret", returnType: CAPPluginReturnPromise),
     ]
 
     private static let reminderPrefix = "ducat-rec-"
+    private static let keychainService = "com.ducatapp.ducat.auth"
     private static let maxReminders = 40
     private static weak var sharedInstance: NativeFeaturesPlugin?
     private static var queuedRoute: String?
@@ -189,5 +198,96 @@ public class NativeFeaturesPlugin: CAPPlugin, CAPBridgedPlugin, UNUserNotificati
             SKStoreReviewController.requestReview(in: scene)
             call.resolve(["requested": true])
         }
+    }
+
+    /// Keeps native UI (vertical tab bar, keyboard, share sheet, privacy blur)
+    /// aligned with the user's in-app Light / Dark / System preference.
+    @objc func setAppearance(_ call: CAPPluginCall) {
+        let theme = call.getString("theme") ?? "system"
+        let style: UIUserInterfaceStyle
+        switch theme {
+        case "dark":
+            style = .dark
+        case "light":
+            style = .light
+        default:
+            style = .unspecified
+        }
+        DispatchQueue.main.async {
+            for scene in UIApplication.shared.connectedScenes {
+                guard let windowScene = scene as? UIWindowScene else { continue }
+                for window in windowScene.windows {
+                    window.overrideUserInterfaceStyle = style
+                }
+            }
+            call.resolve()
+        }
+    }
+
+    @objc func getSecret(_ call: CAPPluginCall) {
+        guard let key = call.getString("key"), !key.isEmpty else {
+            call.resolve(["value": NSNull()])
+            return
+        }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.keychainService,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecSuccess, let data = result as? Data, let value = String(data: data, encoding: .utf8) {
+            call.resolve(["value": value])
+        } else {
+            call.resolve(["value": NSNull()])
+        }
+    }
+
+    @objc func setSecret(_ call: CAPPluginCall) {
+        guard let key = call.getString("key"), !key.isEmpty,
+              let value = call.getString("value"),
+              let data = value.data(using: .utf8) else {
+            call.reject("Invalid secret payload", "invalidArgument")
+            return
+        }
+        let baseQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.keychainService,
+            kSecAttrAccount as String: key,
+        ]
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        let updateStatus = SecItemUpdate(baseQuery as CFDictionary, attributes as CFDictionary)
+        if updateStatus == errSecItemNotFound {
+            var addQuery = baseQuery
+            addQuery.merge(attributes) { _, new in new }
+            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+            if addStatus != errSecSuccess {
+                call.reject("Keychain save failed (\(addStatus))", "keychainError")
+                return
+            }
+        } else if updateStatus != errSecSuccess {
+            call.reject("Keychain update failed (\(updateStatus))", "keychainError")
+            return
+        }
+        call.resolve()
+    }
+
+    @objc func removeSecret(_ call: CAPPluginCall) {
+        guard let key = call.getString("key"), !key.isEmpty else {
+            call.resolve()
+            return
+        }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.keychainService,
+            kSecAttrAccount as String: key,
+        ]
+        SecItemDelete(query as CFDictionary)
+        call.resolve()
     }
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import PropTypes from "prop-types";
 import { Link, useLocation, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
@@ -5,6 +6,7 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import { FiBarChart2, FiHome, FiList, FiLogOut, FiPlus, FiRefreshCw, FiRepeat, FiTarget } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { Button } from "../ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { cn } from "../../lib/utils.js";
 import { isDesktop, isStoreBuild } from "../../platform/index.js";
 
@@ -17,6 +19,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const [confirmExitDemo, setConfirmExitDemo] = useState(false);
 
   const items = [
     { label: t("navbar.dashboard"), path: "/dashboard", icon: FiHome },
@@ -34,7 +37,7 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
   };
 
   const handleExitDemo = async () => {
-    if (!window.confirm(t("navbar.demoExitConfirm"))) return;
+    setConfirmExitDemo(false);
     await clearTransactions?.();
     stopDemo?.();
     navigate("/");
@@ -121,9 +124,22 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
           {currentUser?.pending
             ? <Button className="w-full short:h-9" onClick={() => navigate("/verify-email")}>{t("demo.confirmEmail")}</Button>
             : <Button className="w-full short:h-9" onClick={() => navigate("/register")}>{t("navbar.register")}</Button>}
-          <Button variant="ghost" className="w-full short:h-9" onClick={handleExitDemo}>{t("navbar.backToHome")}</Button>
+          <Button variant="ghost" className="w-full short:h-9" onClick={() => setConfirmExitDemo(true)}>{t("navbar.backToHome")}</Button>
         </div>
       )}
+
+      <Dialog open={confirmExitDemo} onOpenChange={setConfirmExitDemo}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="pr-10">{t("navbar.backToHome")}</DialogTitle>
+            <DialogDescription>{t("navbar.demoExitConfirm")}</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-2 sm:justify-end">
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setConfirmExitDemo(false)}>{t("cancel")}</Button>
+            <Button variant="destructive" className="flex-1 sm:flex-none" onClick={handleExitDemo}>{t("navbar.backToHome")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {currentUser && !isDemo && (
         <div className="flex flex-col gap-2">

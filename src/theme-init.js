@@ -10,7 +10,6 @@
     const isDarkMode = savedTheme === "dark" || (savedTheme === "system" && systemPrefersDark);
     document.documentElement.classList.toggle("dark", isDarkMode);
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", isDarkMode ? "#0b0d13" : "#f5f6f8");
-    document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute("content", isDarkMode ? "black" : "default");
   };
 
   setThemeMeta();

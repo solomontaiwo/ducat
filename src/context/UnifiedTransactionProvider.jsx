@@ -18,7 +18,10 @@ import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/stor
 import { DEMO_FLAG_KEY } from "../utils/demoStorage.js";
 
 const OFFLINE_QUEUE_PREFIX = "ducat-offline-queue:";
-const hasStoredOfflineQueue = (userId) => Boolean(userId && readLocalValue(`${OFFLINE_QUEUE_PREFIX}${userId}`));
+const OFFLINE_MUTATIONS_PREFIX = "ducat-offline-mutations:";
+const hasStoredOfflineQueue = (userId) => Boolean(
+  userId && (readLocalValue(`${OFFLINE_QUEUE_PREFIX}${userId}`) || readLocalValue(`${OFFLINE_MUTATIONS_PREFIX}${userId}`))
+);
 const isDeviceOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
 const loadOfflineQueue = () => import("../utils/offlineQueue.js");
 
@@ -80,6 +83,7 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
   } = useTransactions();
   const [isProcessing, setIsProcessing] = useState(false);
   const [pendingTransactions, setPendingTransactions] = useState([]);
+  const [pendingMutations, setPendingMutations] = useState([]);
   const [syncingOfflineQueue, setSyncingOfflineQueue] = useState(false);
   const [queueRevision, setQueueRevision] = useState(0);
   // Several writes can overlap: only the last one finishing turns the flag off.
@@ -99,12 +103,14 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
   const refreshPending = useCallback(async (uid) => {
     if (!hasStoredOfflineQueue(uid)) {
       setPendingTransactions([]);
+      setPendingMutations([]);
       return [];
     }
-    const { readOfflineQueue, queuedItemToTransaction } = await loadOfflineQueue();
+    const { readOfflineQueue, readOfflineMutations, queuedItemToTransaction } = await loadOfflineQueue();
     const items = readOfflineQueue(uid);
     const mapped = items.map((item) => queuedItemToTransaction(uid, item));
     setPendingTransactions(mapped);
+    setPendingMutations(readOfflineMutations(uid));
     return items;
   }, []);
 
@@ -112,13 +118,31 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
     refreshPending(currentUser?.uid);
   }, [currentUser?.uid, refreshPending]);
 
+  // Apply queued offline updates/deletes to server rows before merging queued adds.
+  const effectiveServerTransactions = useMemo(() => {
+    if (!pendingMutations.length) return serverTransactions;
+    const deleted = new Set();
+    const updates = new Map();
+    for (const item of pendingMutations) {
+      if (item.op === "delete") deleted.add(item.id);
+      else if (item.op === "update") updates.set(item.id, item.patch);
+    }
+    return serverTransactions.flatMap((row) => {
+      if (deleted.has(row.id)) return [];
+      const patch = updates.get(row.id);
+      if (!patch) return [row];
+      const nextMinor = patch.amountMinor ?? row.amountMinor;
+      return [{ ...row, ...patch, amountMinor: nextMinor, amount: minorToMajor(nextMinor), pendingSync: true }];
+    });
+  }, [pendingMutations, serverTransactions]);
+
   // Merge optimistic pending offline items ahead of server rows, deduplicating by id.
   const transactions = useMemo(() => {
-    if (!pendingTransactions.length) return serverTransactions;
-    const seen = new Set(serverTransactions.map((item) => item.id));
+    if (!pendingTransactions.length) return effectiveServerTransactions;
+    const seen = new Set(effectiveServerTransactions.map((item) => item.id));
     const extras = pendingTransactions.filter((item) => !seen.has(item.id));
-    return extras.length ? [...extras, ...serverTransactions] : serverTransactions;
-  }, [pendingTransactions, serverTransactions]);
+    return extras.length ? [...extras, ...effectiveServerTransactions] : effectiveServerTransactions;
+  }, [pendingTransactions, effectiveServerTransactions]);
 
   const recentRevision = serverRevision + queueRevision;
 
@@ -133,52 +157,60 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
         throw error;
       }
     }
-    if (!pendingTransactions.length) return remote;
-    const { mergePendingTransactions } = await loadOfflineQueue();
-    return mergePendingTransactions(remote, pendingTransactions, options);
-  }, [fetchAllServer, pendingTransactions, serverTransactions]);
+    if (!pendingTransactions.length && !pendingMutations.length) return remote;
+    const { applyOfflineMutations, mergePendingTransactions } = await loadOfflineQueue();
+    const mutated = applyOfflineMutations(remote, pendingMutations);
+    return mergePendingTransactions(mutated, pendingTransactions, options);
+  }, [fetchAllServer, pendingTransactions, pendingMutations, serverTransactions]);
 
   const fetchTransactionPage = useCallback(async (options = {}) => {
     try {
       const page = await fetchPageServer(options);
-      if (options.cursor || !pendingTransactions.length) return page;
-      const { mergePendingTransactions } = await loadOfflineQueue();
+      if (!pendingTransactions.length && !pendingMutations.length) return page;
+      const { applyOfflineMutations, mergePendingTransactions } = await loadOfflineQueue();
+      const mutated = applyOfflineMutations(page.items, pendingMutations);
       return {
         ...page,
-        items: mergePendingTransactions(page.items, pendingTransactions, options),
+        items: options.cursor ? mutated : mergePendingTransactions(mutated, pendingTransactions, options),
       };
     } catch (error) {
       if (!isDeviceOffline()) throw error;
       const { buildOfflinePage } = await loadOfflineQueue();
-      return buildOfflinePage(serverTransactions, pendingTransactions, options);
+      return buildOfflinePage(effectiveServerTransactions, pendingTransactions, options);
     }
-  }, [fetchPageServer, pendingTransactions, serverTransactions]);
+  }, [fetchPageServer, pendingTransactions, pendingMutations, effectiveServerTransactions]);
 
   const getTotalTransactionCount = useCallback(async (options = {}) => {
     try {
       const count = await getTotalCountServer(options);
-      if (!pendingTransactions.length) return count;
+      if (!pendingTransactions.length && !pendingMutations.length) return count;
       const { mergePendingTotals } = await loadOfflineQueue();
-      return mergePendingTotals({ count, incomeMinor: 0, expenseMinor: 0 }, serverTransactions, pendingTransactions, options).count;
+      const deletedCount = pendingMutations.filter((item) => item.op === "delete").length;
+      const base = Math.max(0, count - deletedCount);
+      return mergePendingTotals({ count: base, incomeMinor: 0, expenseMinor: 0 }, effectiveServerTransactions, pendingTransactions, options).count;
     } catch (error) {
       if (!isDeviceOffline()) throw error;
       const { computeOfflineTotals } = await loadOfflineQueue();
-      return computeOfflineTotals(serverTransactions, pendingTransactions, options).count;
+      return computeOfflineTotals(effectiveServerTransactions, pendingTransactions, options).count;
     }
-  }, [getTotalCountServer, pendingTransactions, serverTransactions]);
+  }, [getTotalCountServer, pendingTransactions, pendingMutations, effectiveServerTransactions]);
 
   const getTransactionTotals = useCallback(async (options = {}) => {
     try {
       const totals = await getTotalsServer(options);
-      if (!pendingTransactions.length) return totals;
+      if (!pendingTransactions.length && !pendingMutations.length) return totals;
+      if (pendingMutations.length) {
+        const { computeOfflineTotals } = await loadOfflineQueue();
+        return computeOfflineTotals(effectiveServerTransactions, pendingTransactions, options);
+      }
       const { mergePendingTotals } = await loadOfflineQueue();
-      return mergePendingTotals(totals, serverTransactions, pendingTransactions, options);
+      return mergePendingTotals(totals, effectiveServerTransactions, pendingTransactions, options);
     } catch (error) {
       if (!isDeviceOffline()) throw error;
       const { computeOfflineTotals } = await loadOfflineQueue();
-      return computeOfflineTotals(serverTransactions, pendingTransactions, options);
+      return computeOfflineTotals(effectiveServerTransactions, pendingTransactions, options);
     }
-  }, [getTotalsServer, pendingTransactions, serverTransactions]);
+  }, [getTotalsServer, pendingTransactions, pendingMutations, effectiveServerTransactions]);
 
   const syncOfflineQueue = useCallback(async () => {
     if (!currentUser || syncingRef.current || (typeof navigator !== "undefined" && navigator.onLine === false)) {
@@ -186,16 +218,17 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
     }
     if (!hasStoredOfflineQueue(currentUser.uid)) {
       setPendingTransactions([]);
+      setPendingMutations([]);
       return { synced: 0, failed: 0 };
     }
     syncingRef.current = true;
     setSyncingOfflineQueue(true);
     try {
-      const [{ flushOfflineQueue }, { TransactionService }] = await Promise.all([
+      const [{ flushOfflineQueue, flushOfflineMutations }, { TransactionService }] = await Promise.all([
         loadOfflineQueue(),
         import("../services/transactionService.jsx"),
       ]);
-      const result = await flushOfflineQueue(
+      const addResult = await flushOfflineQueue(
         currentUser.uid,
         (entry) => TransactionService.add(currentUser.uid, entry.payload, { requestId: entry.clientRequestId }),
         (remaining) => {
@@ -203,8 +236,20 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
           setQueueRevision((value) => value + 1);
         }
       );
-      if (result.synced > 0) notification.success(t("offline.synced", { count: result.synced }));
-      return result;
+      const mutResult = await flushOfflineMutations(
+        currentUser.uid,
+        {
+          update: (id, patch) => TransactionService.update(id, patch),
+          remove: (id) => TransactionService.delete(id),
+        },
+        (remaining) => {
+          setPendingMutations(remaining);
+          setQueueRevision((value) => value + 1);
+        }
+      );
+      const totalSynced = addResult.synced + mutResult.synced;
+      if (totalSynced > 0) notification.success(t("offline.synced", { count: totalSynced }));
+      return { synced: totalSynced, failed: addResult.failed + mutResult.failed };
     } finally {
       syncingRef.current = false;
       setSyncingOfflineQueue(false);
@@ -275,8 +320,40 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
     }
   }, [currentUser, notification, t, beginProcessing, endProcessing]);
 
-  // Updates a transaction (edits local queue in-place if the row is still pendingSync)
-  const updateTransaction = useCallback(async (transactionId, updatedData) => {
+  // Bulk insert for CSV imports (single chunked upsert on Supabase).
+  const addTransactionsBatch = useCallback(async (items = [], { onProgress } = {}) => {
+    if (!currentUser || !items.length) return { imported: 0, failed: [] };
+    if (isDeviceOffline()) {
+      const failed = [];
+      let imported = 0;
+      for (const [index, item] of items.entries()) {
+        if (await addTransaction(item, { silent: true })) imported += 1;
+        else failed.push(item);
+        onProgress?.(Math.round(((index + 1) / items.length) * 100));
+      }
+      return { imported, failed };
+    }
+    beginProcessing();
+    try {
+      const { TransactionService } = await import("../services/transactionService.jsx");
+      if (typeof TransactionService.addBatch === "function") {
+        return await TransactionService.addBatch(currentUser.uid, items, { onProgress });
+      }
+      const failed = [];
+      let imported = 0;
+      for (const [index, item] of items.entries()) {
+        if (await addTransaction(item, { silent: true })) imported += 1;
+        else failed.push(item);
+        onProgress?.(Math.round(((index + 1) / items.length) * 100));
+      }
+      return { imported, failed };
+    } finally {
+      endProcessing();
+    }
+  }, [currentUser, addTransaction, beginProcessing, endProcessing]);
+
+  // Updates a transaction (edits local queue in-place if pendingSync, or queues an offline edit)
+  const updateTransaction = useCallback(async (transactionId, updatedData, { silent = false } = {}) => {
     if (!currentUser) return false;
 
     if (pendingTransactions.some((item) => item.id === transactionId)) {
@@ -284,16 +361,35 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
         const { updateOfflineTransaction } = await loadOfflineQueue();
         const result = updateOfflineTransaction(currentUser.uid, transactionId, updatedData);
         if (!result.ok) {
-          notification.error(t("notifications.updateError"));
+          if (!silent) notification.error(t("notifications.updateError"));
           return false;
         }
         setPendingTransactions(result.pending);
         setQueueRevision((value) => value + 1);
-        notification.success(t("notifications.updateSuccess"));
+        if (!silent) notification.success(t("notifications.updateSuccess"));
         return true;
       } catch (error) {
         console.error("Error updating offline transaction:", error);
-        notification.error(error.issues ? t("validation.invalidTransaction") : t("notifications.updateError"));
+        if (!silent) notification.error(error.issues ? t("validation.invalidTransaction") : t("notifications.updateError"));
+        return false;
+      }
+    }
+
+    if (isDeviceOffline()) {
+      try {
+        const { enqueueOfflineUpdate } = await loadOfflineQueue();
+        const result = enqueueOfflineUpdate(currentUser.uid, transactionId, updatedData);
+        if (!result.ok) {
+          if (!silent) notification.error(t(result.reason === "queue-full" ? "offline.queueFull" : "notifications.updateError"));
+          return false;
+        }
+        setPendingMutations(result.mutations);
+        setQueueRevision((value) => value + 1);
+        if (!silent) notification.info(t("offline.queuedSuccess"));
+        return true;
+      } catch (error) {
+        console.error("Error queuing offline update:", error);
+        if (!silent) notification.error(error.issues ? t("validation.invalidTransaction") : t("notifications.updateError"));
         return false;
       }
     }
@@ -302,11 +398,11 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
       await TransactionService.update(transactionId, updatedData);
-      notification.success(t('notifications.updateSuccess'));
+      if (!silent) notification.success(t('notifications.updateSuccess'));
       return true;
     } catch (error) {
       console.error("Error updating transaction:", error);
-      notification.error(t('notifications.updateError'));
+      if (!silent) notification.error(t('notifications.updateError'));
       return false;
     } finally {
       endProcessing();
@@ -328,6 +424,25 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
         return true;
       } catch (error) {
         console.error("Error deleting offline transaction:", error);
+        notification.error(t("notifications.deleteError"));
+        return false;
+      }
+    }
+
+    if (isDeviceOffline()) {
+      try {
+        const { enqueueOfflineDelete } = await loadOfflineQueue();
+        const result = enqueueOfflineDelete(currentUser.uid, transactionId);
+        if (!result.ok) {
+          if (!silent) notification.error(t(result.reason === "queue-full" ? "offline.queueFull" : "notifications.deleteError"));
+          return false;
+        }
+        setPendingMutations(result.mutations);
+        setQueueRevision((value) => value + 1);
+        if (!silent) notification.info(t("offline.queuedSuccess"));
+        return true;
+      } catch (error) {
+        console.error("Error queuing offline delete:", error);
         notification.error(t("notifications.deleteError"));
         return false;
       }
@@ -374,6 +489,7 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
     loading,
     isProcessing,
     addTransaction,
+    addTransactionsBatch,
     updateTransaction,
     deleteTransaction,
     fetchAllTransactions, // Expose specifically for analytics
@@ -388,13 +504,13 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
     isAuthenticated: true,
     // Lets the demo import end the local trial once its data reached the account.
     stopDemo,
-    pendingOfflineCount: pendingTransactions.length,
+    pendingOfflineCount: pendingTransactions.length + pendingMutations.length,
     syncingOfflineQueue,
     syncOfflineQueue,
   }), [
-    transactions, loading, isProcessing, addTransaction, updateTransaction, deleteTransaction,
+    transactions, loading, isProcessing, addTransaction, addTransactionsBatch, updateTransaction, deleteTransaction,
     fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals,
-    getFirstTransactionDate, recentRevision, getStats, stopDemo, pendingTransactions.length, syncingOfflineQueue, syncOfflineQueue,
+    getFirstTransactionDate, recentRevision, getStats, stopDemo, pendingTransactions.length, pendingMutations.length, syncingOfflineQueue, syncOfflineQueue,
   ]);
 
   return (

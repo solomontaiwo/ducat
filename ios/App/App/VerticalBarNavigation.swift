@@ -139,9 +139,15 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
     // MARK: - Tab selection
 
     func tabBarController(_ tabBarController: UITabBarController, shouldSelectTab tab: UITab) -> Bool {
-        guard tab.identifier == Self.addIdentifier else { return true }
-        NativeNavigationPlugin.emit("addRequested", [:])
-        return false
+        if tab.identifier == Self.addIdentifier {
+            NativeNavigationPlugin.emit("addRequested", [:])
+            return false
+        }
+        if tab.identifier == selectedTab?.identifier,
+           let destination = Self.destinations.first(where: { $0.identifier == tab.identifier }) {
+            NativeNavigationPlugin.emit("tabSelected", ["path": destination.path, "reselected": true])
+        }
+        return true
     }
 
     func tabBarController(_ tabBarController: UITabBarController, didSelectTab selectedTab: UITab, previousTab: UITab?) {

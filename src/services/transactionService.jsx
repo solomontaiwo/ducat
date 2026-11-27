@@ -333,6 +333,39 @@ export const TransactionService = {
     return { id };
   },
 
+  /** Bulk idempotent insert for CSV imports (chunks of 100 rows, one cache invalidation). */
+  addBatch: async (userId, items = [], { chunkSize = 100, onProgress } = {}) => {
+    if (!items.length) return { imported: 0, failed: [] };
+    const failed = [];
+    let imported = 0;
+    for (let offset = 0; offset < items.length; offset += chunkSize) {
+      const slice = items.slice(offset, offset + chunkSize);
+      const rows = [];
+      const validSlice = [];
+      for (const item of slice) {
+        try {
+          const input = toV2Input(item);
+          const id = `${safeId(userId)}_${safeId(item.clientRequestId || crypto.randomUUID())}`;
+          rows.push({ id, user_id: userId, ...toRow(input), schema_version: 2 });
+          validSlice.push(item);
+        } catch {
+          failed.push(item);
+        }
+      }
+      if (rows.length) {
+        const { error } = await supabase.from(TABLE).upsert(rows, { onConflict: "id", ignoreDuplicates: true });
+        if (error) {
+          failed.push(...validSlice);
+        } else {
+          imported += rows.length;
+        }
+      }
+      onProgress?.(Math.min(100, Math.round(((offset + slice.length) / items.length) * 100)));
+    }
+    if (imported > 0) afterWrite();
+    return { imported, failed };
+  },
+
   update: async (id, data) => {
     const rawPatch = {};
     if (data.amount !== undefined || data.amountMinor !== undefined) {

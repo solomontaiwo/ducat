@@ -55,6 +55,12 @@ const saveOnDesktop = async (blob, filename) => {
   return true;
 };
 
+const isShareCancelled = (error) => {
+  const code = String(error?.code || "").toLowerCase();
+  const message = String(error?.message || "").toLowerCase();
+  return code === "cancelled" || code === "canceled" || message.includes("cancel");
+};
+
 /**
  * Writes to the app cache and opens the iOS share sheet, so the user can send
  * the report to Files, Mail, Drive or any other app installed on the device.
@@ -71,8 +77,15 @@ const shareOnMobile = async (blob, filename, { title } = {}) => {
     directory: Directory.Cache,
     recursive: true,
   });
-  await Share.share({ title: title ?? name, url: uri, dialogTitle: title ?? name });
-  return true;
+  try {
+    await Share.share({ title: title ?? name, url: uri, dialogTitle: title ?? name });
+    return true;
+  } catch (error) {
+    if (isShareCancelled(error)) return false;
+    throw error;
+  } finally {
+    Filesystem.deleteFile?.({ path: name, directory: Directory.Cache }).catch(() => {});
+  }
 };
 
 /** Resolves to `false` only when the desktop user cancels the save dialog. */

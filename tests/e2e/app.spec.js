@@ -702,3 +702,48 @@ test("transaction modal opens centered on desktop and animates open and close", 
   expect(await closeAnimationPromise).toBe(isPhone ? "dialog-sheet-out" : "dialog-pop-out");
   await expect(dialog).toBeHidden();
 });
+
+test("advanced filters, future scheduled transactions and safe bulk delete with undo work", async ({ page }) => {
+  await page.goto(".");
+  await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
+  await expect(page).toHaveURL(/\/transactions$/);
+
+  // 1. Add a future/scheduled expense and verify its badge.
+  await page.getByRole("button", { name: ADD_BUTTON }).first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#transaction-amount").fill("89,00");
+  await dialog.locator("#transaction-description").fill("Bolletta futura");
+  await dialog.getByRole("radio", { name: /altra data|other date/i }).click();
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  await dialog.locator("#transaction-date").fill(iso(tomorrow));
+  await dialog.getByRole("button", { name: /89,00|89\.00/ }).click();
+  await expect(dialog).toBeHidden();
+
+  // Switch to all-time so tomorrow's movement is visible even on the last day of the month.
+  await page.getByRole("button", { name: /tutto lo storico|all time/i }).click();
+  const scheduledRow = page.getByRole("button", { name: /Bolletta futura/ });
+  await expect(scheduledRow).toBeVisible();
+  await expect(scheduledRow).toContainText(/programmato|scheduled/i);
+
+  // 2. Advanced filter by minimum amount narrows to the 89€ expense (plus 2500€ salary).
+  await page.getByTestId("toggle-advanced-filters").click();
+  const panel = page.getByTestId("advanced-filters-panel");
+  await expect(panel).toBeVisible();
+  await panel.getByLabel(/min €/i).fill("80");
+  await panel.getByLabel(/max €/i).fill("100");
+  await expect(page.getByRole("button", { name: /Bolletta futura/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Benzina|Fuel/ })).toHaveCount(0);
+  await page.getByRole("button", { name: /azzera filtri|clear filters/i }).click();
+
+  // 3. Bulk delete asks for confirmation and supports Undo.
+  await page.getByTestId("toggle-bulk-select").click();
+  await page.getByRole("button", { name: /Bolletta futura/ }).click();
+  await page.getByTestId("bulk-action-bar").getByRole("button", { name: /^(elimina|delete)$/i }).click();
+  const confirm = page.getByRole("dialog", { name: /eliminare 1|delete 1/i });
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole("button", { name: /elimina definitivamente|delete permanently/i }).click();
+  await expect(page.getByRole("button", { name: /Bolletta futura/ })).toHaveCount(0);
+  await page.getByRole("status").getByRole("button", { name: /^(annulla|undo)$/i }).click();
+  await expect(page.getByRole("button", { name: /Bolletta futura/ })).toHaveCount(1);
+});

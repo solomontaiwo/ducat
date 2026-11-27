@@ -72,6 +72,7 @@ describe("transaction dialogs", () => {
     const sheet = screen.getByRole("dialog", { name: "Lunch" });
     expect(sheet).toHaveClass("dialog-place-bottom", "sm:max-w-sm");
     expect(sheet).not.toHaveClass("sm:max-w-md");
+    expect(screen.getByRole("button", { name: "common.close" })).toHaveClass("dialog-close-safe");
     fireEvent.click(screen.getByRole("button", { name: "transactions.actions.edit" }));
     fireEvent.click(screen.getByRole("button", { name: "transactions.actions.delete" }));
     expect(handlers.onEdit).toHaveBeenCalledWith(transaction);

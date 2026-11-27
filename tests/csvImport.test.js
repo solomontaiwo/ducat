@@ -31,6 +31,10 @@ describe("csvImport", () => {
     expect(parseFlexibleAmount("-12,50 €")).toEqual({ sign: "expense", amountMinor: 1250 });
     expect(parseFlexibleAmount("+1.234,56")).toEqual({ sign: "income", amountMinor: 123456 });
     expect(parseFlexibleAmount("(30.00)")).toEqual({ sign: "expense", amountMinor: 3000 });
+    expect(parseFlexibleAmount("1.200")).toEqual({ sign: "income", amountMinor: 120000 });
+    expect(parseFlexibleAmount("1,200")).toEqual({ sign: "income", amountMinor: 120000 });
+    expect(parseFlexibleAmount("123.456")).toEqual({ sign: "income", amountMinor: 12345600 });
+    expect(parseFlexibleAmount("42,50-")).toEqual({ sign: "expense", amountMinor: 4250 });
     expect(parseFlexibleAmount("0")).toBeNull();
   });
 

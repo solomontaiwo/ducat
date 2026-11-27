@@ -13,10 +13,14 @@ import { minorToMajor, parseMoneyToMinor } from "../../utils/money.js";
 import { AVERAGE_MONTHS, averageByCategory, averageRange, suggestLimitMinor } from "../../utils/budgets.js";
 import BackButton from "./BackButton.jsx";
 
-const toInput = (minor) => (minor ? String(minorToMajor(minor)).replace(".", ",") : "");
+const toInput = (minor, language) => {
+  if (!minor) return "";
+  const raw = String(minorToMajor(minor));
+  return String(language || "").toLowerCase().startsWith("en") ? raw : raw.replace(".", ",");
+};
 
 const BudgetsPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { currentUser } = useAuth();
   const { isDemo, transactions, fetchAllTransactions } = useUnifiedTransactions();
   const { budgets, ready, saveBudgets, preferences } = usePlanning();
@@ -30,8 +34,8 @@ const BudgetsPage = () => {
   const [touched, setTouched] = useState(false);
 
   useEffect(() => {
-    if (ready && !touched) setValues(Object.fromEntries(Object.entries(budgets).map(([category, minor]) => [category, toInput(minor)])));
-  }, [budgets, touched, ready]);
+    if (ready && !touched) setValues(Object.fromEntries(Object.entries(budgets).map(([category, minor]) => [category, toInput(minor, i18n.language)])));
+  }, [budgets, touched, ready, i18n.language]);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +73,7 @@ const BudgetsPage = () => {
       const next = { ...current };
       categories.forEach(({ value }) => {
         const suggestion = suggestLimitMinor(averages[value]);
-        if (!next[value] && suggestion) next[value] = toInput(suggestion);
+        if (!next[value] && suggestion) next[value] = toInput(suggestion, i18n.language);
       });
       return next;
     });
@@ -138,7 +142,7 @@ const BudgetsPage = () => {
                   value={values[value] || ""}
                   disabled={!ready || saving}
                   onChange={(event) => setValue(value, event.target.value)}
-                  placeholder={suggestion ? toInput(suggestion) : "—"}
+                  placeholder={suggestion ? toInput(suggestion, i18n.language) : "—"}
                   aria-label={t("budgets.limitFor", { category: label })}
                   className="h-11 w-full rounded-xl border border-input bg-card pl-3 pr-8 text-right text-base font-semibold tabular-nums outline-none transition placeholder:font-normal placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
                 />

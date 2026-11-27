@@ -8,7 +8,7 @@ import { AddTransactionContext } from "../../context/AddTransactionContext.jsx";
 import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus.js";
 import { useAnyDialogOpen } from "../ui/dialogStack.js";
-import { isMobile as isMobileApp } from "../../platform/index.js";
+import { isDesktop as isDesktopApp, isMobile as isMobileApp } from "../../platform/index.js";
 import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
@@ -80,33 +80,62 @@ const AppLayout = ({ children }) => {
     return () => { cancelled = true; };
   }, [showNavigation, addDisabled, location.search, location.pathname, openAddTransaction]);
 
-  // Global desktop keyboard shortcuts (`N`, `/`, `P`, `1-4`, `?`).
+  // Global desktop keyboard shortcuts (`N`/`⌘N`, `/`/`⌘K`, `P`/`⌘⇧P`, `1-6`, `⌘,`, `?`).
   useEffect(() => {
     if (!showNavigation || locked) return undefined;
+    const focusSearch = () => {
+      if (location.pathname !== "/transactions") navigate("/transactions");
+      window.setTimeout(() => document.querySelector("input[type='search']")?.focus(), 60);
+    };
     const onKeyDown = (event) => {
       if (event.altKey || isEditableTarget(event.target) || document.querySelector("[role='dialog']")) return;
       const key = event.key.toLowerCase();
-      if ((event.metaKey || event.ctrlKey) && key === "k") {
-        event.preventDefault();
-        if (location.pathname !== "/transactions") navigate("/transactions");
-        window.setTimeout(() => document.querySelector("input[type='search']")?.focus(), 60);
-        return;
-      }
-      if (event.metaKey || event.ctrlKey) return;
+      const mod = event.metaKey || event.ctrlKey;
+      if (mod && key === "k") { event.preventDefault(); focusSearch(); return; }
+      if (mod && key === "n") { event.preventDefault(); openAddTransaction(); return; }
+      if (mod && event.shiftKey && key === "p") { event.preventDefault(); toggleHideAmounts(); return; }
+      if (mod && key === "," && hasAccount) { event.preventDefault(); navigate("/profile"); return; }
+      if (mod) return;
       if (key === "n") { event.preventDefault(); openAddTransaction(); }
-      else if (key === "/") {
-        event.preventDefault();
-        if (location.pathname !== "/transactions") navigate("/transactions");
-        window.setTimeout(() => document.querySelector("input[type='search']")?.focus(), 60);
-      } else if (key === "p") { event.preventDefault(); toggleHideAmounts(); }
+      else if (key === "/") { event.preventDefault(); focusSearch(); }
+      else if (key === "p") { event.preventDefault(); toggleHideAmounts(); }
       else if (key === "1") navigate("/dashboard");
       else if (key === "2") navigate("/transactions");
       else if (key === "3") navigate("/analytics");
       else if (key === "4" && hasAccount) navigate("/profile");
+      else if (key === "5") navigate("/recurring");
+      else if (key === "6") navigate("/budgets");
       else if (event.key === "?") { event.preventDefault(); setShowShortcuts(true); }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showNavigation, locked, location.pathname, navigate, openAddTransaction, toggleHideAmounts, hasAccount]);
+
+  // Native macOS/desktop menu actions emitted by Tauri.
+  useEffect(() => {
+    if (!isDesktopApp() || !showNavigation || locked) return undefined;
+    let cancelled = false;
+    let unlisten = null;
+    import("@tauri-apps/api/event").then(async ({ listen }) => {
+      if (cancelled) return;
+      unlisten = await listen("ducat:menu-action", ({ payload }) => {
+        if (payload === "new-transaction") openAddTransaction();
+        else if (payload === "focus-search") {
+          if (location.pathname !== "/transactions") navigate("/transactions");
+          window.setTimeout(() => document.querySelector("input[type='search']")?.focus(), 60);
+        } else if (payload === "toggle-privacy") toggleHideAmounts();
+        else if (payload === "open-profile" && hasAccount) navigate("/profile");
+        else if (payload === "nav-dashboard") navigate("/dashboard");
+        else if (payload === "nav-transactions") navigate("/transactions");
+        else if (payload === "nav-analytics") navigate("/analytics");
+        else if (payload === "nav-recurring") navigate("/recurring");
+        else if (payload === "nav-budgets") navigate("/budgets");
+      });
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, [showNavigation, locked, location.pathname, navigate, openAddTransaction, toggleHideAmounts, hasAccount]);
 
   const sendVerificationEmail = async () => {

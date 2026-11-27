@@ -172,7 +172,7 @@ const AppRouter = () => {
     const TabPage = pages[definition.page];
     const active = path === activeTab;
     return (
-      <div key={path} hidden={!active} data-tab-page={path} style={{ width: "100%", minHeight: active ? "100vh" : undefined }}>
+      <div key={path} hidden={!active} data-tab-page={path} className="w-full">
         <RouteLocationScope active={active}>
           <Suspense fallback={active ? <PageLoader /> : null}>
             <TabPage />
@@ -189,7 +189,7 @@ const AppRouter = () => {
       {tabPages}
       {!activeTab && (
         <Suspense fallback={<PageLoader />}>
-          <div style={{ width: "100%", minHeight: "100vh" }}>
+          <div className="w-full">
             <Page />
           </div>
         </Suspense>

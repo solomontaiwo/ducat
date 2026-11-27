@@ -18,6 +18,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import Sheet from "../ui/sheet";
+import Switch from "../ui/switch";
 import BackButton from "../Planning/BackButton.jsx";
 import { SettingsGroup, SettingsRow, InlineSegmented } from "./SettingsList.jsx";
 import { CategoriesSheet, EmailSheet, ExportSheet, InstallSheet, MonthStartSheet, NameSheet, PasswordSheet, QuickAddSheet } from "./ProfileSheets.jsx";
@@ -32,14 +33,13 @@ import { calculateStats } from "../../utils/statsUtils.jsx";
 import { budgetRows } from "../../utils/budgets.js";
 import { monthlyEquivalentMinor } from "../../utils/recurrence.js";
 import { cycleMonthFor, cycleRange } from "../../utils/monthCycle.js";
-import { formatCompactCurrency, formatSignedCompact } from "../../utils/formatCurrency.jsx";
+import formatCurrency, { formatCompactCurrency, formatSignedCompact, moneyLocale } from "../../utils/formatCurrency.jsx";
 import { minorToMajor } from "../../utils/money.js";
 import { cn } from "../../lib/utils.js";
 import { APP_VERSION } from "../../utils/appVersion";
 import { buildFeedbackMailto } from "../../utils/feedback.js";
 import { openExternal } from "../../utils/openExternal.js";
 import { hapticTap } from "../../platform/haptics.js";
-import { setBiometricLockEnabled } from "../../platform/biometricLock.js";
 import { isMobile } from "../../platform/index.js";
 import {
   clearRecurringReminders,
@@ -232,8 +232,6 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
-    setBiometricLockEnabled(false);
-    await clearRecurringReminders();
     await logout();
     navigate("/");
   };
@@ -260,7 +258,7 @@ const Profile = () => {
         formatTitle: (rule) => t("reminders.notifTitle", { description: rule.description }),
         formatBody: (_rule, amount, isDayBefore) => t(
           isDayBefore ? "reminders.notifBodyTomorrow" : "reminders.notifBodyToday",
-          { amount: `${amount.toFixed(2).replace(".", ",")} €` }
+          { amount: formatCurrency(amount, moneyLocale(i18n.language)) }
         ),
       });
       notification.success(t("reminders.enabled"));
@@ -363,16 +361,21 @@ const Profile = () => {
             <div className="profile-summary mt-4 w-full border-t border-border pt-4">
               <dl className="profile-summary-list" aria-label={t("profilePage.summary")}>
                 {[
-                  { label: t("profilePage.movements"), value: summary ? summary.count.toLocaleString(i18n.language) : "–" },
-                  { label: t("profilePage.months"), value: summary ? summary.months : "–" },
+                  { label: t("profilePage.movements"), value: summary ? summary.count.toLocaleString(i18n.language) : "–", mask: false },
+                  { label: t("profilePage.months"), value: summary ? summary.months : "–", mask: false },
                   {
                     label: t("profilePage.averageSaving"),
                     value: summary ? formatSignedCompact(Math.abs(summary.averageSaving), summary.averageSaving >= 0 ? "income" : "expense", i18n.language) : "–",
                     tone: summary && summary.averageSaving >= 0 ? "text-income" : "",
+                    mask: true,
                   },
                 ].map((item) => (
                   <div key={item.label} className="profile-summary-item">
-                    <dd className={cn("amount min-w-0 overflow-x-auto whitespace-nowrap text-xl", item.tone)}>{item.value}</dd>
+                    <dd className={cn(
+                      "min-w-0 overflow-x-auto whitespace-nowrap text-xl",
+                      item.mask ? "amount" : "font-display font-bold tabular-nums tracking-[-0.01em]",
+                      item.tone
+                    )}>{item.value}</dd>
                     <dt className="text-xs font-semibold text-muted-foreground">{item.label}</dt>
                   </div>
                 ))}
@@ -388,6 +391,7 @@ const Profile = () => {
               subtitle={activeRecurring.length
                 ? t("profilePage.recurringSummary", { count: activeRecurring.length, amount: formatCompactCurrency(fixedExpenses, i18n.language) })
                 : t("profilePage.recurringEmpty")}
+              subtitleMask={activeRecurring.length > 0}
               to="/recurring"
             />
             <SettingsRow
@@ -457,28 +461,14 @@ const Profile = () => {
               subtitle={t("privacy.modeSummary")}
               testId="row-privacy-mode"
               trailing={(
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={hideAmounts}
+                <Switch
+                  checked={hideAmounts}
                   aria-label={t("privacy.modeTitle")}
-                  onClick={() => {
+                  onCheckedChange={() => {
                     hapticTap();
                     toggleHideAmounts();
                   }}
-                  className={cn(
-                    "relative h-8 w-[52px] shrink-0 rounded-full transition-colors",
-                    hideAmounts ? "bg-primary" : "bg-input"
-                  )}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-[left]",
-                      hideAmounts ? "left-[24px]" : "left-1"
-                    )}
-                  />
-                </button>
+                />
               )}
             />
             {showRemindersToggle && (
@@ -489,26 +479,12 @@ const Profile = () => {
                 subtitle={t("reminders.summary")}
                 testId="row-recurring-reminders"
                 trailing={(
-                  <button
-                    type="button"
-                    role="switch"
+                  <Switch
+                    checked={remindersEnabled}
                     disabled={togglingReminders}
-                    aria-checked={remindersEnabled}
                     aria-label={t("reminders.title")}
-                    onClick={handleToggleReminders}
-                    className={cn(
-                      "relative h-8 w-[52px] shrink-0 rounded-full transition-colors disabled:opacity-50",
-                      remindersEnabled ? "bg-primary" : "bg-input"
-                    )}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-[left]",
-                        remindersEnabled ? "left-[24px]" : "left-1"
-                      )}
-                    />
-                  </button>
+                    onCheckedChange={handleToggleReminders}
+                  />
                 )}
               />
             )}
@@ -560,26 +536,12 @@ const Profile = () => {
                 subtitle={t("privacy.biometric.summary")}
                 testId="row-biometric-lock"
                 trailing={(
-                  <button
-                    type="button"
-                    role="switch"
+                  <Switch
+                    checked={biometricEnabled}
                     disabled={togglingBiometric}
-                    aria-checked={biometricEnabled}
                     aria-label={t("privacy.biometric.title", { method: biometricLabel })}
-                    onClick={handleToggleBiometric}
-                    className={cn(
-                      "relative h-8 w-[52px] shrink-0 rounded-full transition-colors disabled:opacity-50",
-                      biometricEnabled ? "bg-primary" : "bg-input"
-                    )}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-[left]",
-                        biometricEnabled ? "left-[24px]" : "left-1"
-                      )}
-                    />
-                  </button>
+                    onCheckedChange={handleToggleBiometric}
+                  />
                 )}
               />
             )}

@@ -22,7 +22,10 @@ import UpcomingList from "./UpcomingList.jsx";
 import BackButton from "./BackButton.jsx";
 import { shortDate } from "./planningFormat.js";
 
-const toAmountInput = (minor) => String(minorToMajor(minor)).replace(".", ",");
+const toAmountInput = (minor, language) => {
+  const raw = String(minorToMajor(minor));
+  return String(language || "").toLowerCase().startsWith("en") ? raw : raw.replace(".", ",");
+};
 
 const RecurringPage = () => {
   const { t, i18n } = useTranslation();
@@ -48,7 +51,7 @@ const RecurringPage = () => {
     setEditing(rule);
     setEditForm({
       description: rule.description,
-      amount: toAmountInput(rule.amountMinor),
+      amount: toAmountInput(rule.amountMinor, i18n.language),
       category: rule.category,
       frequency: rule.frequency,
       mode: rule.mode,
@@ -202,54 +205,56 @@ const RecurringPage = () => {
         </section>
       )}
 
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="pr-10">{selected?.description}</DialogTitle>
-            <DialogDescription>
-              {selected && (
-                <>
-                  <span data-amount="true">{formatCurrency(minorToMajor(selected.amountMinor))}</span>
-                  {` · ${t(`recurring.every.${selected.frequency}`)}`}
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          {selected && (
-            <div className="grid gap-2 pt-2">
-              <Button variant="outline" className="h-12 justify-start" disabled={!ready || busy} onClick={() => startEdit(selected)}>
-                <FiEdit2 aria-hidden="true" />
-                {t("recurring.edit")}
+      <Sheet
+        open={!!selected}
+        onOpenChange={(open) => !open && setSelected(null)}
+        title={selected?.description ?? ""}
+        description={selected ? `${formatCurrency(minorToMajor(selected.amountMinor))} · ${t(`recurring.every.${selected.frequency}`)}` : undefined}
+        className="sm:max-w-sm"
+      >
+        {selected && (
+          <div className="grid gap-2">
+            <Button variant="outline" className="h-12 justify-start" disabled={!ready || busy} onClick={() => startEdit(selected)}>
+              <FiEdit2 aria-hidden="true" />
+              {t("recurring.edit")}
+            </Button>
+            {!selected.paused && (
+              <Button variant="outline" className="h-12 justify-start" disabled={!ready || busy} onClick={() => run(() => skipOccurrence(selected))}>
+                <FiSkipForward aria-hidden="true" />
+                {t("recurring.skip")} ({shortDate(nextOccurrence(selected).dateKey, i18n.language)})
               </Button>
-              {!selected.paused && (
-                <Button variant="outline" className="h-12 justify-start" disabled={!ready || busy} onClick={() => run(() => skipOccurrence(selected))}>
-                  <FiSkipForward aria-hidden="true" />
-                  {t("recurring.skip")} ({shortDate(nextOccurrence(selected).dateKey, i18n.language)})
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                className="h-12 justify-start" disabled={!ready || busy}
-                onClick={() => run(() => updateRecurring(selected.id, { mode: selected.mode === "auto" ? "confirm" : "auto" }))}
-              >
-                <FiZap aria-hidden="true" />
-                {selected.mode === "auto" ? t("recurring.switchToConfirm") : t("recurring.switchToAuto")}
-              </Button>
-              <Button variant="outline" className="h-12 justify-start" disabled={!ready || busy} onClick={() => run(() => updateRecurring(selected.id, selected.paused
-                ? { paused: false, nextIndex: firstIndexFrom(selected, todayDateKey()) }
-                : { paused: true }))}>
-                {selected.paused ? <FiPlay aria-hidden="true" /> : <FiPause aria-hidden="true" />}
-                {selected.paused ? t("recurring.resume") : t("recurring.pause")}
-              </Button>
-              <Button variant="outline" className="h-12 justify-start text-destructive hover:text-destructive" disabled={!ready || busy} onClick={() => setConfirmDelete(selected)}>
-                <FiTrash2 aria-hidden="true" />
-                {t("recurring.delete")}
-              </Button>
-              <p className="px-1 text-xs text-muted-foreground">{t("recurring.deleteHint")}</p>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            )}
+            <Button
+              variant="outline"
+              className="h-12 justify-start" disabled={!ready || busy}
+              onClick={() => run(() => updateRecurring(selected.id, { mode: selected.mode === "auto" ? "confirm" : "auto" }))}
+            >
+              <FiZap aria-hidden="true" />
+              {selected.mode === "auto" ? t("recurring.switchToConfirm") : t("recurring.switchToAuto")}
+            </Button>
+            <Button variant="outline" className="h-12 justify-start" disabled={!ready || busy} onClick={() => run(() => updateRecurring(selected.id, selected.paused
+              ? { paused: false, nextIndex: firstIndexFrom(selected, todayDateKey()) }
+              : { paused: true }))}>
+              {selected.paused ? <FiPlay aria-hidden="true" /> : <FiPause aria-hidden="true" />}
+              {selected.paused ? t("recurring.resume") : t("recurring.pause")}
+            </Button>
+            <Button
+              variant="outline"
+              className="h-12 justify-start text-destructive hover:text-destructive"
+              disabled={!ready || busy}
+              onClick={() => {
+                const target = selected;
+                setSelected(null);
+                setConfirmDelete(target);
+              }}
+            >
+              <FiTrash2 aria-hidden="true" />
+              {t("recurring.delete")}
+            </Button>
+            <p className="px-1 text-xs text-muted-foreground">{t("recurring.deleteHint")}</p>
+          </div>
+        )}
+      </Sheet>
 
       <Sheet
         open={!!editing}
@@ -375,9 +380,9 @@ const RecurringPage = () => {
             <DialogTitle>{t("recurring.deleteConfirmTitle")}</DialogTitle>
             <DialogDescription>{t("recurring.deleteConfirmDescription")}</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => setConfirmDelete(null)} disabled={busy}>{t("cancel")}</Button>
-            <Button variant="destructive" onClick={confirmRuleDelete} disabled={busy}>{t("recurring.delete")}</Button>
+          <div className="flex gap-2 pt-2 sm:justify-end">
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setConfirmDelete(null)} disabled={busy}>{t("cancel")}</Button>
+            <Button variant="destructive" className="flex-1 sm:flex-none" onClick={confirmRuleDelete} disabled={busy}>{t("recurring.delete")}</Button>
           </div>
         </DialogContent>
       </Dialog>

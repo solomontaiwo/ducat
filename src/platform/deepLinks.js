@@ -56,6 +56,19 @@ export const toInAppPath = (value) => {
   return `${cleanPath}${parsed.search}${parsed.hash}`;
 };
 
+const needsFullReload = (target) => /(access_token|refresh_token|type=recovery|code=|error_description)/.test(target);
+
+const navigateInApp = (target) => {
+  if (needsFullReload(target)) {
+    window.location.assign(target);
+    return;
+  }
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (current === target) return;
+  window.history.pushState({}, "", target);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+};
+
 /** Listens for Universal Links. No-op outside the iOS shell. */
 export const installDeepLinkHandler = async () => {
   if (runtime() !== MOBILE) return () => {};
@@ -64,7 +77,7 @@ export const installDeepLinkHandler = async () => {
     const { App } = await import("@capacitor/app");
     const listener = await App.addListener("appUrlOpen", ({ url }) => {
       const target = toInAppPath(url);
-      if (target) window.location.assign(target);
+      if (target) navigateInApp(target);
     });
     return () => listener.remove();
   } catch {

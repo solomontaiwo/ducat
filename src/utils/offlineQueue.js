@@ -14,6 +14,7 @@ import { coerceDateKey, dateKeyToDate, isDateKey } from "./dateUtils.js";
 import { transactionComparator } from "./transactionOrder.js";
 
 const PREFIX = "ducat-offline-queue:";
+const MUTATIONS_PREFIX = "ducat-offline-mutations:";
 const VERSION = 1;
 const MAX_QUEUE_SIZE = 100;
 const VALID_FREQUENCIES = new Set(["weekly", "monthly", "yearly"]);
@@ -21,6 +22,7 @@ const VALID_MODES = new Set(["auto", "confirm"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const queueKey = (userId) => `${PREFIX}${userId}`;
+const mutationsKey = (userId) => `${MUTATIONS_PREFIX}${userId}`;
 const safeId = (value) => String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
 
 const validationError = (message) => Object.assign(new Error(message), { issues: [{ message }] });
@@ -176,12 +178,164 @@ export const clearAllOfflineQueues = () => {
     const keys = [];
     for (let index = 0; index < localStorage.length; index += 1) {
       const key = localStorage.key(index);
-      if (key?.startsWith(PREFIX)) keys.push(key);
+      if (key?.startsWith(PREFIX) || key?.startsWith(MUTATIONS_PREFIX)) keys.push(key);
     }
     for (const key of keys) localStorage.removeItem(key);
   } catch {
     // Ignore storage errors.
   }
+};
+
+const writeMutations = (userId, items) => {
+  try {
+    if (!items.length) localStorage.removeItem(mutationsKey(userId));
+    else localStorage.setItem(mutationsKey(userId), JSON.stringify({ v: VERSION, items }));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const validatePatch = (patch = {}) => {
+  const out = {};
+  if (patch.amountMinor !== undefined || patch.amount !== undefined) {
+    const amountMinor = Number.isSafeInteger(patch.amountMinor) ? patch.amountMinor : parseMoneyToMinor(patch.amount);
+    if (!Number.isInteger(amountMinor) || amountMinor <= 0 || amountMinor > MAX_AMOUNT_MINOR) throw validationError("Invalid amount");
+    out.amountMinor = amountMinor;
+  }
+  if (patch.currency !== undefined) {
+    if (patch.currency !== "EUR") throw validationError("Invalid currency");
+    out.currency = patch.currency;
+  }
+  if (patch.description !== undefined) {
+    const description = typeof patch.description === "string" ? patch.description.trim() : "";
+    if (!description || description.length > 200) throw validationError("Invalid description");
+    out.description = description;
+  }
+  if (patch.category !== undefined) {
+    const category = typeof patch.category === "string" ? patch.category.trim() : "";
+    if (!category || category.length > 60) throw validationError("Invalid category");
+    out.category = category;
+  }
+  if (patch.dateKey !== undefined || patch.date !== undefined) {
+    const dateKey = patch.dateKey || coerceDateKey(patch.date);
+    if (!isDateKey(dateKey)) throw validationError("Invalid date key");
+    out.dateKey = dateKey;
+  }
+  if (patch.type !== undefined) {
+    if (patch.type !== "income" && patch.type !== "expense") throw validationError("Invalid type");
+    out.type = patch.type;
+  }
+  if (!Object.keys(out).length) throw validationError("Empty patch");
+  return out;
+};
+
+/** Reads queued offline updates/deletes for already-synced server transactions. */
+export const readOfflineMutations = (userId) => {
+  if (!userId) return [];
+  try {
+    const raw = localStorage.getItem(mutationsKey(userId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.v !== VERSION || !Array.isArray(parsed.items)) return [];
+    return parsed.items.filter((item) => item && typeof item.id === "string" && (item.op === "update" || item.op === "delete"));
+  } catch {
+    return [];
+  }
+};
+
+/** Queues an offline edit for an existing server transaction, coalescing repeated edits. */
+export const enqueueOfflineUpdate = (userId, transactionId, patch) => {
+  if (!userId || !transactionId) return { ok: false, mutations: [] };
+  const validPatch = validatePatch(patch);
+  const current = readOfflineMutations(userId);
+  const existingIndex = current.findIndex((item) => item.id === transactionId);
+  let next;
+  if (existingIndex >= 0) {
+    if (current[existingIndex].op === "delete") return { ok: false, mutations: current };
+    next = current.map((item, idx) => (idx === existingIndex
+      ? { ...item, patch: { ...item.patch, ...validPatch }, queuedAt: Date.now() }
+      : item));
+  } else {
+    if (current.length >= MAX_QUEUE_SIZE) return { ok: false, reason: "queue-full", mutations: current };
+    next = [...current, { op: "update", id: transactionId, patch: validPatch, queuedAt: Date.now() }];
+  }
+  const saved = writeMutations(userId, next);
+  return { ok: saved, mutations: saved ? next : current };
+};
+
+/** Queues an offline deletion for an existing server transaction (supersedes queued edits). */
+export const enqueueOfflineDelete = (userId, transactionId) => {
+  if (!userId || !transactionId) return { ok: false, mutations: [] };
+  const current = readOfflineMutations(userId);
+  const withoutExisting = current.filter((item) => item.id !== transactionId);
+  if (withoutExisting.length >= MAX_QUEUE_SIZE && withoutExisting.length === current.length) {
+    return { ok: false, reason: "queue-full", mutations: current };
+  }
+  const next = [...withoutExisting, { op: "delete", id: transactionId, queuedAt: Date.now() }];
+  const saved = writeMutations(userId, next);
+  return { ok: saved, mutations: saved ? next : current };
+};
+
+/** Overlays queued offline updates and hides queued offline deletes on any transaction list. */
+export const applyOfflineMutations = (rows = [], mutations = []) => {
+  if (!mutations?.length || !rows?.length) return rows;
+  const deletedIds = new Set();
+  const updates = new Map();
+  for (const item of mutations) {
+    if (item.op === "delete") deletedIds.add(item.id);
+    else if (item.op === "update") updates.set(item.id, item.patch);
+  }
+  return rows.flatMap((row) => {
+    if (deletedIds.has(row.id)) return [];
+    const patch = updates.get(row.id);
+    if (!patch) return [row];
+    const nextMinor = patch.amountMinor ?? row.amountMinor;
+    const nextDateKey = patch.dateKey ?? row.dateKey;
+    return [{
+      ...row,
+      ...patch,
+      amountMinor: nextMinor,
+      amount: minorToMajor(nextMinor),
+      dateKey: nextDateKey,
+      date: nextDateKey ? dateKeyToDate(nextDateKey) : row.date,
+      pendingSync: true,
+    }];
+  });
+};
+
+/** Replays queued offline updates and deletes in FIFO order. */
+export const flushOfflineMutations = async (userId, { update, remove }, onRemaining) => {
+  const queued = readOfflineMutations(userId);
+  if (!queued.length) {
+    onRemaining?.([]);
+    return { synced: 0, failed: 0 };
+  }
+  let synced = 0;
+  let failed = 0;
+  for (const entry of queued) {
+    try {
+      if (entry.op === "update") {
+        await update(entry.id, entry.patch);
+      } else if (entry.op === "delete") {
+        try {
+          await remove(entry.id);
+        } catch (error) {
+          // Already deleted on another device: treat as idempotent success.
+          if (error?.code !== "permission-denied") throw error;
+        }
+      }
+      const remaining = readOfflineMutations(userId).filter((item) => item.id !== entry.id);
+      writeMutations(userId, remaining);
+      onRemaining?.(remaining);
+      synced += 1;
+    } catch (error) {
+      console.error("Failed to sync offline mutation:", error);
+      failed += 1;
+      break;
+    }
+  }
+  return { synced, failed };
 };
 
 /** Converts a queued entry into the transaction shape used by Dashboard and lists. */

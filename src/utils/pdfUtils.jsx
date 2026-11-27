@@ -36,6 +36,27 @@ const getPdfStrings = (lang = "it") => ({
 
 const categoryLabel = (category, lang) => i18n.t(`categories.${category}`, { lng: lang, defaultValue: category });
 
+/** Replaces glyphs that jsPDF's built-in Helvetica font cannot encode (e.g. emoji). */
+const pdfSafeText = (value) => String(value ?? "")
+  .replace(/[\u2013\u2014]/g, "-")
+  .replace(/\u2212/g, "-")
+  .replace(/[\u2018\u2019]/g, "'")
+  .replace(/[\u201C\u201D]/g, '"')
+  .replace(/[^\x20-\x7E\xA0-\xFF\u20AC]/g, "")
+  .replace(/\s+/g, " ")
+  .trim();
+
+/** Starts a fresh page when the remaining height cannot fit a section title and its first rows. */
+const nextSectionY = (doc, neededMm = 36) => {
+  const current = (doc.lastAutoTable?.finalY ?? 48) + 10;
+  const limit = doc.internal.pageSize.height - 18;
+  if (current + neededMm > limit) {
+    doc.addPage();
+    return 18;
+  }
+  return current;
+};
+
 const addFooter = (doc) => {
   const pages = doc.internal.getNumberOfPages();
   for (let page = 1; page <= pages; page += 1) {
@@ -55,32 +76,35 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
 
   doc.setFontSize(20);
   doc.setTextColor(51, 65, 85);
-  doc.text(strings.reportTitle, 20, 20);
+  doc.text(pdfSafeText(strings.reportTitle), 20, 20);
   doc.setFontSize(10);
   doc.setTextColor(100, 116, 139);
-  doc.text(`${strings.periodLabel}: ${periodLabel}`, 20, 29);
-  doc.text(`${format(model.startDate, "dd/MM/yyyy", { locale })} – ${format(model.endDate, "dd/MM/yyyy", { locale })}`, 20, 35);
-  doc.text(`${strings.generatedOn}: ${format(new Date(), "dd/MM/yyyy HH:mm", { locale })}`, 20, 41);
+  doc.text(`${pdfSafeText(strings.periodLabel)}: ${pdfSafeText(periodLabel)}`, 20, 29);
+  doc.text(`${format(model.startDate, "dd/MM/yyyy", { locale })} - ${format(model.endDate, "dd/MM/yyyy", { locale })}`, 20, 35);
+  doc.text(`${pdfSafeText(strings.generatedOn)}: ${format(new Date(), "dd/MM/yyyy HH:mm", { locale })}`, 20, 41);
 
   autoTable(doc, {
     startY: 48,
+    margin: { bottom: 18 },
     head: [[strings.totalIncome, strings.totalExpense, strings.balance, strings.avgDailyIncome, strings.avgDailyExpense]],
     body: [[model.totalIncome, model.totalExpense, model.balance, model.avgDailyIncome, model.avgDailyExpense].map((value) => formatCurrency(value, currencyLocale))],
     styles: { fontSize: 8 },
   });
 
   if (!model.transactions.length) {
-    doc.text(strings.noTransactions, 20, doc.lastAutoTable.finalY + 15);
+    doc.text(pdfSafeText(strings.noTransactions), 20, nextSectionY(doc, 16));
     addFooter(doc);
     return { doc, model };
   }
 
-  doc.text(strings.expenseDistribution, 14, doc.lastAutoTable.finalY + 10);
+  const distY = nextSectionY(doc, 40);
+  doc.text(pdfSafeText(strings.expenseDistribution), 14, distY);
   autoTable(doc, {
-    startY: doc.lastAutoTable.finalY + 14,
+    startY: distY + 4,
+    margin: { bottom: 18 },
     head: [[strings.category, "%", strings.amount, strings.average]],
     body: model.categoryBreakdown.map((entry) => [
-      categoryLabel(entry.category, lang),
+      pdfSafeText(categoryLabel(entry.category, lang)),
       `${entry.percentage.toFixed(2)}%`,
       formatCurrency(entry.amount, currencyLocale),
       formatCurrency(entry.average, currencyLocale),
@@ -89,35 +113,40 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
 
   const movementRows = (items) => items.map((transaction) => [
     format(transaction.date, "dd/MM/yyyy", { locale }),
-    transaction.description,
-    categoryLabel(transaction.category, lang),
+    pdfSafeText(transaction.description),
+    pdfSafeText(categoryLabel(transaction.category, lang)),
     formatCurrency(transaction.amount, currencyLocale),
   ]);
 
-  doc.text(strings.topExpenses, 14, doc.lastAutoTable.finalY + 10);
+  const topExpY = nextSectionY(doc, 38);
+  doc.text(pdfSafeText(strings.topExpenses), 14, topExpY);
   autoTable(doc, {
-    startY: doc.lastAutoTable.finalY + 14,
+    startY: topExpY + 4,
+    margin: { bottom: 18 },
     head: [[strings.date, strings.description, strings.category, strings.amount]],
     body: movementRows(model.topExpenses),
   });
 
-  doc.text(strings.topIncomes, 14, doc.lastAutoTable.finalY + 10);
+  const topIncY = nextSectionY(doc, 38);
+  doc.text(pdfSafeText(strings.topIncomes), 14, topIncY);
   autoTable(doc, {
-    startY: doc.lastAutoTable.finalY + 14,
+    startY: topIncY + 4,
+    margin: { bottom: 18 },
     head: [[strings.date, strings.description, strings.category, strings.amount]],
     body: movementRows(model.topIncomes),
   });
 
   doc.addPage();
-  doc.text(strings.fullList, 14, 18);
+  doc.text(pdfSafeText(strings.fullList), 14, 18);
   autoTable(doc, {
     startY: 23,
+    margin: { bottom: 18 },
     head: [[strings.date, strings.type, strings.description, strings.category, strings.amount]],
     body: model.transactions.map((transaction) => [
       format(transaction.date, "dd/MM/yyyy", { locale }),
       transaction.type === "income" ? strings.income : strings.expense,
-      transaction.description,
-      categoryLabel(transaction.category, lang),
+      pdfSafeText(transaction.description),
+      pdfSafeText(categoryLabel(transaction.category, lang)),
       formatCurrency(transaction.amount, currencyLocale),
     ]),
     showHead: "everyPage",

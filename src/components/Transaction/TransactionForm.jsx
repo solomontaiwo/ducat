@@ -19,6 +19,7 @@ import { enUS, it as itLocale } from "date-fns/locale";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
+import Switch from "../ui/switch";
 import { useMediaQuery } from "react-responsive";
 import { hapticSuccess } from "../../platform/haptics.js";
 
@@ -264,8 +265,15 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
       ? t("transactionModal.saveWithAmount", { type: typeLabel.toLowerCase(), amount: formatCurrency(parsedAmount) })
       : t("transactionModal.addButton", { type: typeLabel.toLowerCase() });
 
+  const handleKeyDown = (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !submitting && formData.amount && formData.category) {
+      event.preventDefault();
+      handleSubmit(event);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit} className={cn("flex min-h-0 flex-1 flex-col", className)} noValidate>
+    <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className={cn("flex min-h-0 flex-1 flex-col", className)} noValidate>
       {/* One column; two on wide but short screens, so nothing needs
           scrolling there: how much and when on the left (type, amount, date,
           repeat), what on the right (description, category). */}
@@ -456,7 +464,6 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
               id={`${idPrefix}-date`}
               type="date"
               value={formData.date}
-              max={today}
               onChange={(event) => event.target.value && setField("date", event.target.value)}
               required
               aria-label={t("transactionModal.date")}
@@ -472,26 +479,12 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
                 <p id={`${idPrefix}-repeat-label`} className="text-sm font-bold">{t("recurring.repeats")}</p>
                 <p className="text-[13px] text-muted-foreground">{t("recurring.repeatsHint")}</p>
               </div>
-              <button
-                type="button"
-                role="switch"
+              <Switch
+                checked={repeat.enabled}
                 disabled={!planningReady}
-                aria-checked={repeat.enabled}
                 aria-labelledby={`${idPrefix}-repeat-label`}
-                onClick={() => setRepeat((current) => ({ ...current, enabled: !current.enabled }))}
-                className={cn(
-                  "relative h-8 w-[52px] shrink-0 rounded-full transition-colors",
-                  repeat.enabled ? "bg-primary" : "bg-input"
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition-[left]",
-                    repeat.enabled ? "left-[24px]" : "left-1"
-                  )}
-                />
-              </button>
+                onCheckedChange={(enabled) => setRepeat((current) => ({ ...current, enabled }))}
+              />
             </div>
             {repeat.enabled && (
               <>

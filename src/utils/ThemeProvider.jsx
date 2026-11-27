@@ -18,6 +18,18 @@ const setCSSVariables = (isDark) => {
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", isDark ? "#0b0d13" : "#f5f6f8");
 };
 
+const syncNativeWindowTheme = (themeMode) => {
+  if (import.meta.env.MODE === "desktop") {
+    import("@tauri-apps/api/window")
+      .then(({ getCurrentWindow }) => getCurrentWindow().setTheme(themeMode === "system" ? null : themeMode))
+      .catch(() => {});
+  } else if (import.meta.env.MODE === "mobile") {
+    import("@capacitor/core")
+      .then(({ registerPlugin }) => registerPlugin("NativeFeatures").setAppearance({ theme: themeMode }))
+      .catch(() => {});
+  }
+};
+
 // Componente principale per il tema
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
@@ -42,6 +54,7 @@ export const ThemeProvider = ({ children }) => {
     }
 
     setCSSVariables(isDark);
+    syncNativeWindowTheme(themeMode);
     return isDark;
   }, [getSystemPreference]);
 

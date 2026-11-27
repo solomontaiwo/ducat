@@ -19,4 +19,22 @@ describe("createPDFReport", () => {
     expect(doc.internal.getNumberOfPages()).toBeGreaterThan(1);
     expect(doc.output("arraybuffer").byteLength).toBeGreaterThan(1000);
   });
+
+  it("sanitizes unsupported emoji glyphs and paginates safely with many categories", () => {
+    const categories = ["alimentazione", "supermercato", "trasporti", "casa", "intrattenimento", "abbonamenti", "salute", "viaggi", "shopping", "tasse", "altro"];
+    const many = categories.map((category, index) => ({
+      ...tx(`cat-${index}`, "expense", 100 + index * 10, (index % 28) + 1),
+      category,
+      description: `🍕 Spesa — ${category} “test”`,
+    }));
+    const { doc, model } = createPDFReport({
+      transactions: [tx("inc", "income", 3000, 1), ...many],
+      startDate: new Date(2026, 9, 1),
+      endDate: new Date(2026, 9, 31),
+      periodLabel: "Ottobre 2026",
+      lang: "it",
+    });
+    expect(model.transactions).toHaveLength(categories.length + 1);
+    expect(doc.internal.getNumberOfPages()).toBeGreaterThanOrEqual(2);
+  });
 });

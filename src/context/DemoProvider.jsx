@@ -144,11 +144,11 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
   }, [notification, t]);
 
   // Updates an existing demo transaction
-  const updateDemoTransaction = useCallback(async (transactionId, updatedData) => {
+  const updateDemoTransaction = useCallback(async (transactionId, updatedData, { silent = false } = {}) => {
     const current = latestRef.current;
     const existing = current.find(transaction => transaction.id === transactionId);
     if (!existing) {
-      notification.error(t('notifications.updateError'));
+      if (!silent) notification.error(t('notifications.updateError'));
       return false;
     }
     try {
@@ -161,11 +161,11 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
       latestRef.current = updatedTransactions;
       setDemoTransactions(updatedTransactions);
       setRevision((value) => value + 1);
-      notification.success(t('demo.transactionUpdated'));
+      if (!silent) notification.success(t('demo.transactionUpdated'));
       return true;
     } catch (error) {
       console.error("Unable to update demo transaction", error);
-      notification.error(t('notifications.updateError'));
+      if (!silent) notification.error(t('notifications.updateError'));
       return false;
     }
   }, [saveDemoTransactions, notification, t]);

@@ -6,6 +6,7 @@ import { useUnifiedTransactions } from "./UnifiedTransactionProvider.jsx";
 import { useNotification } from "../utils/notificationUtils.jsx";
 import { readLocalValue, writeLocalValue } from "../utils/storage.js";
 import { dateKeyToDate, todayDateKey } from "../utils/dateUtils.js";
+import formatCurrency, { moneyLocale } from "../utils/formatCurrency.jsx";
 import { minorToMajor } from "../utils/money.js";
 import { dueOccurrences, nextOccurrence, occurrenceRequestId } from "../utils/recurrence.js";
 import { DEFAULT_PREFERENCES, budgetLimitsSchema, normalizePreferences, preferencesSchema, recurringInputSchema } from "../schemas/planning.js";
@@ -58,7 +59,7 @@ export const PlanningProvider = ({ children }) => {
   const { currentUser } = useAuth();
   const { isDemo, addTransaction } = useUnifiedTransactions();
   const notification = useNotification();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const userId = !isDemo && currentUser?.emailVerified ? currentUser.uid : null;
 
   const [recurring, setRecurring] = useState([]);
@@ -353,11 +354,11 @@ export const PlanningProvider = ({ children }) => {
         formatTitle: (rule) => t("reminders.notifTitle", { description: rule.description }),
         formatBody: (_rule, amount, isDayBefore) => t(
           isDayBefore ? "reminders.notifBodyTomorrow" : "reminders.notifBodyToday",
-          { amount: `${amount.toFixed(2).replace(".", ",")} €` }
+          { amount: formatCurrency(amount, moneyLocale(i18n?.language)) }
         ),
       });
     }).catch(() => {});
-  }, [ready, isDemo, userId, recurring, t]);
+  }, [ready, isDemo, userId, recurring, t, i18n?.language]);
 
   const value = useMemo(() => ({
     recurring, budgets, preferences, ready, error, retry,

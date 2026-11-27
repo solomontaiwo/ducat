@@ -11,12 +11,19 @@ import { isTabPath } from "../../router/tabs.js";
 const NativeNavigationBridge = ({ onAvailabilityChange, visible, layout, path, badge, addEnabled, onNavigate, onAdd }) => {
   const { t } = useTranslation();
   // Listeners are registered once and read the latest callbacks through refs.
-  const callbacks = useRef({ onAvailabilityChange, onNavigate, onAdd });
-  callbacks.current = { onAvailabilityChange, onNavigate, onAdd };
+  const callbacks = useRef({ onAvailabilityChange, onNavigate, onAdd, path });
+  callbacks.current = { onAvailabilityChange, onNavigate, onAdd, path };
 
   useEffect(() => subscribeNativeNavigation({
     onAvailability: (value) => callbacks.current.onAvailabilityChange(value),
-    onSelect: (target) => { if (isTabPath(target)) callbacks.current.onNavigate(target); },
+    onSelect: (target) => {
+      if (!isTabPath(target)) return;
+      if (target === callbacks.current.path) {
+        window.scrollTo?.({ top: 0, behavior: "smooth" });
+      } else {
+        callbacks.current.onNavigate(target);
+      }
+    },
     onAdd: () => callbacks.current.onAdd(),
   }), []);
 

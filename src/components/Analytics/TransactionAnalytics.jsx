@@ -431,7 +431,7 @@ const TransactionAnalytics = () => {
           )}
         </section>
 
-        <section className="surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="category-title">
+        <section className="category-card surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="category-title">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="category-title" className="text-lg font-bold">{t("analytics.byCategory")}</h2>
             <div
@@ -466,8 +466,8 @@ const TransactionAnalytics = () => {
                       className="block w-full space-y-1.5 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/60"
                     >
                       <div className="flex items-baseline justify-between gap-3 text-sm">
-                        <span className="flex min-w-0 items-baseline gap-2">
-                          <span className="truncate font-semibold">{category.label}</span>
+                        <span className="category-heading flex min-w-0 items-baseline gap-2">
+                          <span className="max-w-full truncate font-semibold">{category.label}</span>
                           <CategoryDelta
                             value={deltasByCategory[category.category]}
                             higherIsBetter={categoryType === "income"}
@@ -533,6 +533,7 @@ const CategoryDelta = ({ value, higherIsBetter, label }) => {
   const amount = formatCompactCurrency(Math.abs(value), i18n.language);
   return (
     <span
+      data-amount="true"
       className={cn("shrink-0 text-xs font-bold tabular-nums", better ? "text-income" : "text-warning-strong")}
       title={label}
       data-testid="category-delta"

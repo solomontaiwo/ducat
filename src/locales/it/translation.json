@@ -283,8 +283,12 @@
       },
       "category": "Categoria",
       "allTime": "Tutto lo storico",
+      "advanced": "Filtri",
+      "minAmount": "Min €",
+      "maxAmount": "Max €",
       "reset": "Azzera filtri"
     },
+    "scheduledBadge": "Programmato",
     "empty": {
       "title": "Nessun movimento trovato",
       "tryFilters": "Prova a modificare i filtri di ricerca",
@@ -310,8 +314,12 @@
     },
     "bulk": {
       "select": "Seleziona",
+      "selectAll": "Tutti",
+      "clearAll": "Nessuno",
       "selected": "{{count}} selezionati",
       "recategorize": "Cambia categoria…",
+      "mixedTypes": "Solo stesso tipo",
+      "deleteTitle": "Eliminare {{count}} movimenti?",
       "updated": "Aggiornati {{count}} movimenti",
       "deleted": "Eliminati {{count}} movimenti"
     }
@@ -848,6 +856,7 @@
     "search": "Cerca movimenti",
     "privacy": "Mostra / nascondi importi",
     "navigate": "Cambia sezione",
+    "saveForm": "Salva nel form",
     "help": "Questa guida"
   },
   "csvImport": {
@@ -861,6 +870,10 @@
     "summary": "Da banca o foglio di calcolo",
     "description": "Scegli un CSV, verifica le colonne e importa senza duplicati.",
     "file": "File CSV",
+    "debit": "Uscite / Dare",
+    "credit": "Entrate / Avere",
+    "typeCol": "Tipo",
+    "defaultExpense": "Importi senza segno come uscite",
     "tooLarge": "Il file supera i 5 MB.",
     "empty": "Nessuna riga da importare.",
     "invalid": "Impossibile leggere il file CSV.",

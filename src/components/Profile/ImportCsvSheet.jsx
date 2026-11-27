@@ -16,10 +16,12 @@ const MAX_IMPORT_ROWS = 500;
 
 const ImportCsvSheet = ({ onClose }) => {
   const { t } = useTranslation();
-  const { addTransaction, fetchAllTransactions } = useUnifiedTransactions();
+  const { addTransaction, addTransactionsBatch, fetchAllTransactions } = useUnifiedTransactions();
   const { expenseCategories, incomeCategories } = useCategories();
   const [csv, setCsv] = useState(null);
   const [mapping, setMapping] = useState({ date: -1, description: -1, amount: -1, debit: -1, credit: -1, category: -1, type: -1 });
+  const [defaultNegative, setDefaultNegative] = useState(false);
+  const [categoryOverrides, setCategoryOverrides] = useState({});
   const [existing, setExisting] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,6 +37,7 @@ const ImportCsvSheet = ({ onClose }) => {
     setResult(null);
     setChecking(false);
     setCsv(null);
+    setCategoryOverrides({});
     setError("");
     if (!file) return;
     if (file.size > MAX_FILE_SIZE) { setError(t("csvImport.tooLarge")); return; }
@@ -68,12 +71,22 @@ const ImportCsvSheet = ({ onClose }) => {
 
   const preview = useMemo(() => {
     if (!csv) return null;
-    return mapCsvRowsToTransactions(csv.rows.slice(0, MAX_IMPORT_ROWS), mapping, {
+    const mapped = mapCsvRowsToTransactions(csv.rows.slice(0, MAX_IMPORT_ROWS), mapping, {
       existing,
       expenseCategories,
       incomeCategories,
+      defaultNegative,
     });
-  }, [csv, mapping, existing, expenseCategories, incomeCategories]);
+    if (!Object.keys(categoryOverrides).length) return mapped;
+    return {
+      ...mapped,
+      valid: mapped.valid.map((item) => (
+        categoryOverrides[item.clientRequestId]
+          ? { ...item, category: categoryOverrides[item.clientRequestId] }
+          : item
+      )),
+    };
+  }, [csv, mapping, existing, expenseCategories, incomeCategories, defaultNegative, categoryOverrides]);
 
   const setCol = (field, value) => setMapping((prev) => ({ ...prev, [field]: Number(value) }));
 
@@ -83,8 +96,13 @@ const ImportCsvSheet = ({ onClose }) => {
     saving.current = true;
     setBusy(true);
     setProgress(0);
-    const failed = [];
     try {
+      if (typeof addTransactionsBatch === "function") {
+        const outcome = await addTransactionsBatch(batch, { onProgress: setProgress });
+        setResult({ imported: (result?.imported ?? 0) + outcome.imported, failed: outcome.failed });
+        return;
+      }
+      const failed = [];
       for (const [index, item] of batch.entries()) {
         try {
           if (!await addTransaction(item, { silent: true })) failed.push(item);
@@ -134,11 +152,27 @@ const ImportCsvSheet = ({ onClose }) => {
 
         {checking && <p role="status">{t("csvImport.checking")}</p>}
         {csv && !result && (
-          <div className="grid grid-cols-2 gap-3">
-            {renderColumnPicker("date", t("transactionModal.date"))}
-            {renderColumnPicker("description", t("transactionModal.description"))}
-            {renderColumnPicker("amount", t("transactionModal.amount"))}
-            {renderColumnPicker("category", t("transactionModal.category"))}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              {renderColumnPicker("date", t("transactionModal.date"))}
+              {renderColumnPicker("description", t("transactionModal.description"))}
+              {renderColumnPicker("amount", t("transactionModal.amount"))}
+              {renderColumnPicker("category", t("transactionModal.category"))}
+              {renderColumnPicker("debit", t("csvImport.debit"))}
+              {renderColumnPicker("credit", t("csvImport.credit"))}
+              {renderColumnPicker("type", t("csvImport.typeCol"))}
+            </div>
+            {mapping.amount >= 0 && (
+              <label className="flex items-center gap-2.5 text-xs font-medium text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={defaultNegative}
+                  onChange={(event) => setDefaultNegative(event.target.checked)}
+                  disabled={busy}
+                />
+                <span>{t("csvImport.defaultExpense")}</span>
+              </label>
+            )}
           </div>
         )}
 
@@ -149,7 +183,8 @@ const ImportCsvSheet = ({ onClose }) => {
             {result.failed.length > 0 && <ul className="divide-y divide-border">
               {result.failed.map(item => (
                 <li key={item.clientRequestId} className="py-2">
-                  {t("csvImport.record", { number: preview.recordNumbers.get(item.clientRequestId) })} · {item.dateKey} · {item.description} · {formatSignedAmount(item.amount, item.type)}
+                  {t("csvImport.record", { number: preview.recordNumbers.get(item.clientRequestId) })} · {item.dateKey} · {item.description} ·{" "}
+                  <span data-amount="true">{formatSignedAmount(item.amount, item.type)}</span>
                 </li>
               ))}
             </ul>}
@@ -162,12 +197,26 @@ const ImportCsvSheet = ({ onClose }) => {
             </p>
             {preview.valid.length > 0 && (
               <ul className="divide-y divide-border pt-1 text-xs">
-                {preview.valid.slice(0, 4).map((item) => (
-                  <li key={item.clientRequestId} className="flex items-center justify-between gap-2 py-1.5">
-                    <span className="min-w-0 truncate font-medium">{item.dateKey} · {item.description}</span>
-                    <span className="shrink-0 font-bold tabular-nums">{formatSignedAmount(item.amount, item.type)}</span>
-                  </li>
-                ))}
+                {preview.valid.slice(0, 6).map((item) => {
+                  const list = item.type === "income" ? incomeCategories : expenseCategories;
+                  return (
+                    <li key={item.clientRequestId} className="flex items-center justify-between gap-2 py-1.5">
+                      <span className="min-w-0 flex-1 truncate font-medium">{item.dateKey} · {item.description}</span>
+                      <select
+                        aria-label={`${t("transactionModal.category")} ${item.description}`}
+                        value={item.category}
+                        disabled={busy}
+                        onChange={(event) => setCategoryOverrides((prev) => ({ ...prev, [item.clientRequestId]: event.target.value }))}
+                        className="max-w-[7.5rem] shrink-0 rounded-lg border border-input bg-card px-1.5 py-0.5 text-[11px] font-semibold text-foreground"
+                      >
+                        {list.map((cat) => (
+                          <option key={cat.value} value={cat.value}>{cat.label}</option>
+                        ))}
+                      </select>
+                      <span data-amount="true" className="shrink-0 font-bold tabular-nums">{formatSignedAmount(item.amount, item.type)}</span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

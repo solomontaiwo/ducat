@@ -235,6 +235,55 @@ describe("UnifiedTransactionProvider offline write queue", () => {
     expect(result.current.pendingOfflineCount).toBe(0);
     expect(readOfflineQueue("owner")).toHaveLength(0);
   });
+
+  it("queues offline updates and deletes for already-synced rows and replays them on reconnect", async () => {
+    mocks.serverRows = [
+      {
+        id: "srv-edit",
+        type: "expense",
+        amountMinor: 1500,
+        amount: 15,
+        description: "Pranzo",
+        category: "alimentazione",
+        dateKey: "2026-11-24",
+        date: new Date(2026, 10, 24),
+      },
+      {
+        id: "srv-del",
+        type: "expense",
+        amountMinor: 800,
+        amount: 8,
+        description: "Parcheggio",
+        category: "trasporti",
+        dateKey: "2026-11-24",
+        date: new Date(2026, 10, 24),
+      },
+    ];
+    mocks.update.mockResolvedValue(undefined);
+    mocks.remove.mockResolvedValue(undefined);
+    setNavigatorOnline(false);
+
+    const { result } = renderHook(() => useUnifiedTransactions(), { wrapper: UnifiedTransactionProvider });
+    await waitFor(() => expect(result.current.transactions).toHaveLength(2));
+
+    await act(async () => {
+      await result.current.updateTransaction("srv-edit", { description: "Pranzo lavoro", amountMinor: 1800 });
+      await result.current.deleteTransaction("srv-del");
+    });
+
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(result.current.pendingOfflineCount).toBe(2);
+    expect(result.current.transactions).toHaveLength(1);
+    expect(result.current.transactions[0]).toMatchObject({ id: "srv-edit", description: "Pranzo lavoro", amountMinor: 1800, pendingSync: true });
+
+    setNavigatorOnline(true);
+    act(() => { window.dispatchEvent(new Event("online")); });
+
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("srv-edit", expect.objectContaining({ description: "Pranzo lavoro", amountMinor: 1800 })));
+    await waitFor(() => expect(mocks.remove).toHaveBeenCalledWith("srv-del"));
+    await waitFor(() => expect(result.current.pendingOfflineCount).toBe(0));
+  });
 });
 
 describe("OfflineNotice", () => {

@@ -53,10 +53,10 @@ const Dashboard = () => {
   const { currentUser, profileName, profileNameLoading } = useAuth();
   const { transactions, isDemo, loading: transactionsLoading, fetchAllTransactions, syncOfflineQueue, deleteTransaction } = useUnifiedTransactions();
   const { openAddTransaction, canAdd } = useAddTransaction();
-  const { recurring, budgets } = usePlanning();
+  const { recurring, budgets, preferences } = usePlanning();
   const { hideAmounts, toggleHideAmounts } = usePrivacy();
   const { t, i18n } = useTranslation();
-  const { month, startDate, endDate, startDay, isCurrentMonth, goToPrevious, goToNext } = useMonthRange();
+  const { month, startDate, endDate, startDay, isCurrentMonth, canGoNext, goToPrevious, goToNext } = useMonthRange();
   const [monthResult, setMonthResult] = useState({ key: null, data: EMPTY_TRANSACTIONS });
   const [loadError, setLoadError] = useState("");
   const [editing, setEditing] = useState(null);
@@ -208,7 +208,7 @@ const Dashboard = () => {
             month={month}
             onPrevious={goToPrevious}
             onNext={goToNext}
-            canGoNext={!isCurrentMonth}
+            canGoNext={canGoNext}
             className="-ml-3 md:-ml-3"
           />
           {startDay > 1 && (
@@ -376,7 +376,7 @@ const Dashboard = () => {
           <h2 id="recent-transactions" className="text-lg font-bold short:text-base">{t("recentTransactions.title")}</h2>
           <Link to="/transactions" className="text-sm font-semibold text-primary hover:underline">{t("recentTransactions.viewAll")}</Link>
         </div>
-        <QuickAddForm />
+        <QuickAddForm preferences={preferences} />
         <RecentTransactions
           transactions={monthTransactions}
           loading={isLoading}

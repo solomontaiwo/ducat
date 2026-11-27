@@ -5,6 +5,7 @@ import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/stor
 import { AUTH_STORAGE_KEY } from "../utils/authStorageKey.js";
 import i18n from "../utils/i18n.jsx";
 import { toEmailLanguage } from "../utils/emailLanguage.js";
+import { setBiometricLockEnabled } from "../platform/biometricLock.js";
 
 const AuthContext = createContext();
 const PENDING_KEY = "ducat-pending-verification";
@@ -84,6 +85,15 @@ export const AuthProvider = ({ children }) => {
     const uid = sessionUserRef.current?.uid;
     removeLocalValue(PENDING_KEY);
     setPendingEmail(null);
+    setBiometricLockEnabled(false);
+    if (import.meta.env.MODE === "mobile") {
+      try {
+        const { clearRecurringReminders } = await import("../platform/reminders.js");
+        await clearRecurringReminders();
+      } catch {
+        // Ignore native reminder cleanup errors on sign-out.
+      }
+    }
     if (uid) {
       import("../utils/offlineCache.js")
         .then(({ clearOfflineForUser }) => clearOfflineForUser(uid))

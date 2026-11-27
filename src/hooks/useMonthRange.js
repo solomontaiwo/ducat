@@ -6,26 +6,34 @@ import { cycleMonthFor, cycleRange } from "../utils/monthCycle.js";
 /**
  * Keeps the selected "month" and exposes its boundaries. A month follows the
  * user's chosen start day (payday), so October may run 27 Sep – 26 Oct.
- * Navigation stops at the current month: there is nothing to show ahead.
+ * Allows stepping up to 12 months ahead to inspect planned/future movements.
  */
+const MAX_FUTURE_MONTHS = 12;
+
 export const useMonthRange = (initialMonth = null) => {
   const { preferences } = usePlanning();
   const startDay = preferences?.monthStartDay || 1;
   const currentMonth = cycleMonthFor(new Date(), startDay);
+  const maxMonth = addMonths(currentMonth, MAX_FUTURE_MONTHS);
   // null = follow the current cycle, so changing the start day moves with it.
   const [selected, setSelected] = useState(() => (
-    initialMonth && !isSameMonth(initialMonth, currentMonth) && initialMonth < currentMonth
+    initialMonth && !isSameMonth(initialMonth, currentMonth) && initialMonth <= maxMonth
       ? initialMonth
       : null
   ));
   const month = selected || currentMonth;
 
-  const goToPrevious = useCallback(() => setSelected((value) => addMonths(value || cycleMonthFor(new Date(), startDay), -1)), [startDay]);
+  const goToPrevious = useCallback(() => setSelected((value) => {
+    const current = cycleMonthFor(new Date(), startDay);
+    const prev = addMonths(value || current, -1);
+    return isSameMonth(prev, current) ? null : prev;
+  }), [startDay]);
   const goToNext = useCallback(() => setSelected((value) => {
     const current = cycleMonthFor(new Date(), startDay);
-    if (!value) return null;
-    const next = addMonths(value, 1);
-    return isSameMonth(next, current) || next > current ? null : next;
+    const limit = addMonths(current, MAX_FUTURE_MONTHS);
+    const next = addMonths(value || current, 1);
+    if (next > limit) return value;
+    return isSameMonth(next, current) ? null : next;
   }), [startDay]);
 
   const monthKey = month.getTime();
@@ -38,6 +46,7 @@ export const useMonthRange = (initialMonth = null) => {
       endDate,
       startDay,
       isCurrentMonth: isSameMonth(month, currentMonth),
+      canGoNext: month < maxMonth,
       goToPrevious,
       goToNext,
     };

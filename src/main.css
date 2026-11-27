@@ -281,8 +281,16 @@
    * iPad in portrait): in a narrow card the amount and the share stack on the
    * right, so the category name keeps room. Phones stay above the threshold.
    */
-  .spending-card {
+  .spending-card,
+  .category-card {
     container-type: inline-size;
+  }
+  @container (max-width: 24rem) {
+    .category-card .category-heading {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.125rem;
+    }
   }
   /* Scoped to the card so these win over the rows' utility classes. */
   @container (max-width: 17.5rem) {
@@ -419,7 +427,8 @@
   }
   /* Privacy mode: softly masks balances and amounts when viewed in public. */
   .privacy-masked .amount,
-  .privacy-masked [data-amount="true"] {
+  .privacy-masked [data-amount="true"],
+  .privacy-masked .recharts-yAxis {
     filter: blur(8px);
     user-select: none;
     transition: filter 150ms ease;
