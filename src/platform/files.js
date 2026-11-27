@@ -59,7 +59,7 @@ const saveOnDesktop = async (blob, filename) => {
  * Writes to the app cache and opens the iOS share sheet, so the user can send
  * the report to Files, Mail, Drive or any other app installed on the device.
  */
-export const shareOnMobile = async (blob, filename, { title } = {}) => {
+const shareOnMobile = async (blob, filename, { title } = {}) => {
   const [{ Filesystem, Directory }, { Share }] = await Promise.all([
     import("@capacitor/filesystem"),
     import("@capacitor/share"),

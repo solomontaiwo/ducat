@@ -15,9 +15,12 @@ export const isDesktopRuntime = () => isDesktop();
  * Self-updates are never offered in a Mac App Store build: the store owns
  * updates (guideline 2.4.5) and the sandbox forbids replacing the bundle.
  */
-export const canCheckForUpdates = () => isDesktop() && !isStoreBuild();
+const canCheckForUpdates = () => isDesktop() && !isStoreBuild();
 
-/** Remove the generated installer instructions from the in-app release history. */
+/**
+ * Remove the generated installer instructions from the in-app release history.
+ * Older releases also carried a Linux line, matched so their notes stay clean.
+ */
 export const formatReleaseHistoryNotes = (body) => {
   if (typeof body !== "string") return "";
   return body.replace(/\r\n/g, "\n").replace(
@@ -26,12 +29,8 @@ export const formatReleaseHistoryNotes = (body) => {
   ).trim();
 };
 
-/**
- * Bundle types whose runtime can install an update itself. On Linux this is
- * AppImage only: deb, rpm and pacman packages are owned by the system package
- * manager, so the updater must not try to replace their binaries.
- */
-const SELF_UPDATE_BUNDLES = new Set(["appimage", "app", "nsis"]);
+/** Bundle types whose runtime can install an update itself: macOS `.app` and Windows NSIS. */
+const SELF_UPDATE_BUNDLES = new Set(["app", "nsis"]);
 
 /** The bundle type reported by the running desktop app (null in the web app). */
 export const readBundleType = async () => {
@@ -45,43 +44,15 @@ export const readBundleType = async () => {
   }
 };
 
-/**
- * Everything needed to decide whether this installation can update itself:
- * bundle type, whether it was launched from an AppImage, and whether the
- * directory holding it is writable (the Linux updater renames the new file
- * into place, so the temp file must live on the same writable mount).
- */
+/** What decides whether this installation can update itself: its bundle type. */
 export const readUpdateRuntime = async () => {
   if (!canCheckForUpdates()) return null;
-  try {
-    const [{ invoke }, bundleType] = await Promise.all([
-      import("@tauri-apps/api/core"),
-      readBundleType(),
-    ]);
-    const info = await invoke("updater_runtime_info");
-    return {
-      bundleType,
-      appImage: Boolean(info.appImage),
-      installPath: info.installPath ?? null,
-      installDirWritable: Boolean(info.installDirWritable),
-    };
-  } catch {
-    return null;
-  }
+  return { bundleType: await readBundleType() };
 };
 
 export const canSelfUpdateBundle = (bundleType) => SELF_UPDATE_BUNDLES.has(bundleType);
 
-/**
- * Self-updates are enabled for macOS `.app`, Windows NSIS and Linux AppImage.
- * The AppImage must have been started as such (APPIMAGE set) and live in a
- * writable directory, otherwise the updater cannot replace it.
- */
-export const canSelfUpdate = (runtime) => {
-  if (!runtime || !canSelfUpdateBundle(runtime.bundleType)) return false;
-  if (runtime.bundleType !== "appimage") return true;
-  return Boolean(runtime.appImage && runtime.installDirWritable);
-};
+export const canSelfUpdate = (runtime) => Boolean(runtime && canSelfUpdateBundle(runtime.bundleType));
 
 /**
  * Checks the configured `plugins.updater.endpoints` for a newer version.

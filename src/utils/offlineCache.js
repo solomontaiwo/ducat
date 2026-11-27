@@ -45,26 +45,6 @@ export const readOffline = (key, { maxAgeMs = DEFAULT_MAX_AGE_MS, now = Date.now
   }
 };
 
-/** When the cached copy was written, or null when there is none. */
-export const readOfflineAge = (key) => {
-  try {
-    const raw = localStorage.getItem(cacheKey(key));
-    if (!raw) return null;
-    const entry = JSON.parse(raw);
-    return typeof entry?.at === "number" ? entry.at : null;
-  } catch {
-    return null;
-  }
-};
-
-export const removeOffline = (key) => {
-  try {
-    localStorage.removeItem(cacheKey(key));
-  } catch {
-    // Ignore: nothing to clean up if storage is unavailable.
-  }
-};
-
 /** Removes every cached entry of one user (account deletion). */
 export const clearOfflineForUser = (userId) => {
   if (!userId) return;

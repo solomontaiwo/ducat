@@ -10,7 +10,6 @@ import { TransactionService as service } from "../src/services/transactionServic
 import {
   clearOffline,
   readOffline,
-  readOfflineAge,
   writeOffline,
 } from "../src/utils/offlineCache.js";
 import { transactionRow } from "./helpers/fakeSupabase.js";
@@ -33,8 +32,6 @@ describe("offline cache", () => {
     const now = 1_700_000_000_000;
     expect(writeOffline("budgets:u1", { food: 300 }, now)).toBe(true);
     expect(readOffline("budgets:u1", { now })).toEqual({ food: 300 });
-    expect(readOfflineAge("budgets:u1")).toBe(now);
-    expect(readOfflineAge("missing")).toBeNull();
   });
 
   it("expires old entries and rejects a different version", () => {

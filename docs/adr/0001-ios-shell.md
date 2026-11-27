@@ -47,10 +47,10 @@ The "single codebase" requirement is met at the level that matters: one
 
 - Two native projects to keep building: `src-tauri/` (desktop) and `ios/`
   (mobile). Both read the same version and the same bundle id.
-- The bundle id is duplicated in three places
-  (`src-tauri/tauri.conf.json`, `capacitor.config.json`,
-  `ios/App/App.xcodeproj`). `scripts/rename-app.mjs` updates all of them at
-  once; the id is permanent after the first upload.
+- The iOS bundle id is duplicated in two places (`capacitor.config.json` and
+  `ios/App/App.xcodeproj`), kept aligned by `tests/appStoreConfig.test.js`;
+  the desktop keeps its own identifier (`app.ducat` in
+  `src-tauri/tauri.conf.json`). The id is permanent after the first upload.
 - Anything that must exist natively (widget, App Intents, push) will be Swift
   in `ios/`. That is the same work Tauri would require.
 - The desktop keeps the self-updater; iOS updates go through the App Store by

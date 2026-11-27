@@ -28,10 +28,6 @@ test-results
 playwright-report
 coverage
 
-# Firebase to Supabase migration inputs (credentials and exports)
-scripts/firebase-to-supabase/*.json
-!scripts/firebase-to-supabase/package.json
-
 # Desktop build output
 src-tauri/target/
 src-tauri/gen/

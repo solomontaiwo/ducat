@@ -39,7 +39,7 @@ import { APP_VERSION } from "../../utils/appVersion";
 import { buildFeedbackMailto } from "../../utils/feedback.js";
 import { openExternal } from "../../utils/openExternal.js";
 import { hapticTap } from "../../platform/haptics.js";
-import { setBiometricLockEnabled } from "../../platform/biometrics.js";
+import { setBiometricLockEnabled } from "../../platform/biometricLock.js";
 import { isMobile } from "../../platform/index.js";
 import {
   clearRecurringReminders,

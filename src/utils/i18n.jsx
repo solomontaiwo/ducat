@@ -43,13 +43,6 @@ export const ensureLanguage = async () => {
   return i18n;
 };
 
-/** Switches language from the UI, loading English on demand. */
-export const changeAppLanguage = async (language) => {
-  const next = String(language).toLowerCase().startsWith('en') ? 'en' : 'it';
-  if (next === 'en') await loadEnglish(i18n);
-  await i18n.changeLanguage(next);
-};
-
 i18n.on('languageChanged', (language) => {
   syncLanguage(language);
   persistLanguage(language);

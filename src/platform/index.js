@@ -26,9 +26,6 @@ export const isWeb = () => runtime() === WEB;
 export const isDesktop = () => runtime() === DESKTOP;
 export const isMobile = () => runtime() === MOBILE;
 
-/** True in the packaged shells, where native plugins are available. */
-export const isNativeShell = () => !isWeb();
-
 /**
  * Mac App Store builds (`VITE_APP_STORE=1`). They must not self-update:
  * guideline 2.4.5 requires updates to go through the App Store, and the

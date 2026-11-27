@@ -143,7 +143,7 @@ export const updateLanguage = async (language) => {
 };
 
 /** Signed-in user from the stored session (no network). */
-export const getSessionUser = async () => {
+const getSessionUser = async () => {
   const { data } = await supabase.auth.getSession();
   return toAppUser(data.session?.user);
 };

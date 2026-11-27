@@ -54,13 +54,6 @@ const PLATFORMS = [
     assetName: (v) => `Ducat-${v}-darwin-aarch64.app.tar.gz`,
   },
   {
-    key: "darwin-x86_64",
-    artifact: "macos-x64",
-    bundleGlob: "**/*.app.tar.gz",
-    sigGlob: "**/*.app.tar.gz.sig",
-    assetName: (v) => `Ducat-${v}-darwin-x86_64.app.tar.gz`,
-  },
-  {
     key: "windows-x86_64",
     artifact: "windows-x64",
     bundleGlob: "**/*-setup.exe",
@@ -73,15 +66,6 @@ const PLATFORMS = [
     bundleGlob: "**/*-setup.exe",
     sigGlob: "**/*-setup.exe.sig",
     assetName: (v) => `Ducat-${v}-windows-aarch64-setup.exe`,
-  },
-  {
-    key: "linux-x86_64",
-    // The Linux updater only supports AppImage. deb/rpm/pacman packages are
-    // managed by the system package manager and must never appear here.
-    artifact: "linux-appimage",
-    bundleGlob: "**/*.AppImage",
-    sigGlob: "**/*.AppImage.sig",
-    assetName: (v) => `Ducat-${v}-linux-x86_64.AppImage`,
   },
 ];
 

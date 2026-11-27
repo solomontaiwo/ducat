@@ -170,15 +170,6 @@ export const updateOfflineTransaction = (userId, transactionId, patch = {}) => {
   };
 };
 
-export const clearOfflineQueue = (userId) => {
-  if (!userId) return;
-  try {
-    localStorage.removeItem(queueKey(userId));
-  } catch {
-    // Ignore storage errors.
-  }
-};
-
 /** Wipes every offline write queue on the device (account deletion). */
 export const clearAllOfflineQueues = () => {
   try {

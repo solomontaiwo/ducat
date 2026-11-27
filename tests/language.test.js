@@ -32,11 +32,13 @@ describe("language detection", () => {
 
 describe("i18n resources", () => {
   it("loads English on demand and switches back to Italian", async () => {
-    const { changeAppLanguage, default: i18n } = await import("../src/utils/i18n.jsx");
-    await changeAppLanguage("en");
+    const { default: i18n } = await import("../src/utils/i18n.jsx");
+    const { loadEnglish } = await import("../src/utils/loadEnglish.js");
+    await loadEnglish(i18n);
+    await i18n.changeLanguage("en");
     expect(i18n.resolvedLanguage).toBe("en");
     expect(i18n.t("dashboard.income")).toBe("Income");
-    await changeAppLanguage("it");
+    await i18n.changeLanguage("it");
     expect(i18n.t("dashboard.income")).toBe("Entrate");
   });
 });

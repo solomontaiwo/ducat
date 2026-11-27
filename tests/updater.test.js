@@ -53,12 +53,7 @@ describe("desktop release manifest", () => {
   });
 });
 
-const runtime = (bundleType, extra = {}) => ({
-  bundleType,
-  appImage: false,
-  installDirWritable: true,
-  ...extra,
-});
+const runtime = (bundleType) => ({ bundleType });
 
 describe("release history notes", () => {
   const footer = [
@@ -93,7 +88,7 @@ describe("release history notes", () => {
 
 describe("updater bundle support", () => {
   it.each([
-    ["appimage", true],
+    ["appimage", false],
     ["app", true],
     ["nsis", true],
     ["deb", false],
@@ -103,12 +98,6 @@ describe("updater bundle support", () => {
     [null, false],
   ])("canSelfUpdateBundle(%s) = %s", (bundleType, expected) => {
     expect(canSelfUpdateBundle(bundleType)).toBe(expected);
-  });
-
-  it("allows an AppImage only when it was started as one and is writable", () => {
-    expect(canSelfUpdate(runtime("appimage", { appImage: true, installDirWritable: true }))).toBe(true);
-    expect(canSelfUpdate(runtime("appimage", { appImage: false, installDirWritable: true }))).toBe(false);
-    expect(canSelfUpdate(runtime("appimage", { appImage: true, installDirWritable: false }))).toBe(false);
   });
 
   it("keeps macOS and Windows self-updates enabled", () => {

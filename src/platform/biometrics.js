@@ -8,9 +8,8 @@
 
 import { registerPlugin } from "@capacitor/core";
 import { MOBILE, runtime } from "./index.js";
-import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/storage.js";
 
-export const BIOMETRIC_ENABLED_KEY = "ducat-biometric-lock";
+export { isBiometricLockEnabled, setBiometricLockEnabled } from "./biometricLock.js";
 
 let cachedPlugin = null;
 
@@ -53,19 +52,6 @@ export const authenticateBiometric = async (reason) => {
     return { authenticated: Boolean(result?.authenticated) };
   } catch (error) {
     return { authenticated: false, errorCode: error?.code || "failed" };
-  }
-};
-
-export const isBiometricLockEnabled = () => {
-  if (runtime() !== MOBILE) return false;
-  return readLocalValue(BIOMETRIC_ENABLED_KEY) === "true";
-};
-
-export const setBiometricLockEnabled = (enabled) => {
-  if (enabled) {
-    writeLocalValue(BIOMETRIC_ENABLED_KEY, "true");
-  } else {
-    removeLocalValue(BIOMETRIC_ENABLED_KEY);
   }
 };
 

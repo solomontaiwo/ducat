@@ -2,7 +2,7 @@ import { supabase, unwrap } from "../utils/supabaseClient.js";
 import { sendPasswordReset, signIn, toAuthError, updateEmail } from "./authService.js";
 import { clearOffline } from "../utils/offlineCache.js";
 import { clearAllOfflineQueues } from "../utils/offlineQueue.js";
-import { setBiometricLockEnabled } from "../platform/biometrics.js";
+import { setBiometricLockEnabled } from "../platform/biometricLock.js";
 import { clearRecurringReminders } from "../platform/reminders.js";
 import { resetReviewState } from "../platform/appReview.js";
 

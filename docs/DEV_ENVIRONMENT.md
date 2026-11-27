@@ -19,7 +19,7 @@ Il branch `dev` pubblica su `https://dev.ducatapp.com/` con GitHub Actions dopo 
    Le migrazioni in `supabase/migrations/` configurano schema, regole di accesso e pubblicazione Realtime. Ripeti il controllo e l'applicazione delle migrazioni su `dev` quando cambia lo schema, prima del push che pubblica il frontend. Il workflow web non applica migrazioni. Il collegamento CLI resta locale: controlla sempre il progetto di destinazione prima di altri comandi sul database. [Guida alle migrazioni per ambiente](https://supabase.com/docs/guides/deployment/managing-environments)
 
 3. Nel progetto **ducat-dev**, apri **Authentication → URL Configuration**. Imposta **Site URL** a `https://dev.ducatapp.com/` e aggiungi `https://dev.ducatapp.com/**` in **Redirect URLs**. Aggiungi `http://localhost:5173/**` solo se vuoi usare lo stesso backend anche da Vite in locale. [Configurazione dei redirect](https://supabase.com/docs/guides/auth/redirect-urls)
-4. In **Authentication**, abilita il provider Email, la conferma dell'indirizzo e il cambio email sicuro. Per provare le email usa un indirizzo ammesso dal servizio incluso oppure configura un SMTP di test in **Authentication → Emails → SMTP Settings**. Il servizio incluso limita destinatari e invii. Puoi copiare i tre template da `supabase/templates/`, come descritto nella [guida Supabase del progetto](../SUPABASE.md). [SMTP di Supabase](https://supabase.com/docs/guides/auth/auth-smtp)
+4. In **Authentication**, abilita il provider Email, la conferma dell'indirizzo e il cambio email sicuro. Per provare le email usa un indirizzo ammesso dal servizio incluso oppure configura un SMTP di test in **Authentication → Emails → SMTP Settings**. Il servizio incluso limita destinatari e invii. Puoi copiare i tre template da `supabase/templates/`, come descritto nella [guida Supabase del progetto](SUPABASE.md). [SMTP di Supabase](https://supabase.com/docs/guides/auth/auth-smtp)
 5. Copia il **Project URL** (`https://<REF_DEV>.supabase.co`) e la **Publishable key** (`sb_publishable_…`) del nuovo progetto dai dettagli di connessione o da **Settings → API Keys**. Il frontend usa solo queste due impostazioni pubbliche.
 
 ## 2. Cloudflare
@@ -40,16 +40,7 @@ Il branch `dev` pubblica su `https://dev.ducatapp.com/` con GitHub Actions dopo 
    | `DEV_CLOUDFLARE_ACCOUNT_ID` | Variable | Account ID Cloudflare |
    | `DEV_CLOUDFLARE_API_TOKEN` | Secret | API token Cloudflare |
 
-3. Pubblica su `dev` il commit che contiene il workflow aggiornato. Se le modifiche sono ancora solo locali sul branch `dev`, puoi pubblicarle così dopo aver verificato il diff:
-
-   ```bash
-   git status --short --branch
-   git add .github/workflows/deploy.yml .github/workflows/desktop.yml README.md docs/DEV_ENVIRONMENT.md src/App.jsx wrangler.dev.jsonc
-   git commit -m "feat(ci): deploy dev web environment"
-   git push origin dev
-   ```
-
-   Il primo push avvia **Quality and deploy**. Per riprovare dopo una modifica alle impostazioni, apri **Actions → Quality and deploy → Run workflow** e seleziona `dev`.
+3. Ogni push su `dev` avvia **Quality and deploy**. Per riprovare dopo una modifica alle impostazioni, apri **Actions → Quality and deploy → Run workflow** e seleziona `dev`.
 4. Dopo il primo deploy, in Cloudflare apri **Workers & Pages → ducat-dev → Settings → Domains & Routes → Add → Custom Domain**. Inserisci `dev.ducatapp.com` e attendi DNS e certificato. Le URL `workers.dev` e le preview del Worker sono disabilitate dalla configurazione del progetto. [Domini personalizzati Cloudflare](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)
 
 ## 4. Verifica e flusso di lavoro

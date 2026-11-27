@@ -10,7 +10,7 @@
     "build": "vite build",
     "analyze": "ANALYZE=true vite build",
     "check:bundle": "node scripts/check-bundle.mjs",
-    "postbuild": "cp dist/index.html dist/404.html && node scripts/generate-aasa.mjs",
+    "postbuild": "node scripts/generate-aasa.mjs",
     "lint": "eslint .",
     "test": "vitest run --config vitest.config.js",
     "test:watch": "vitest --config vitest.config.js",
@@ -25,7 +25,6 @@
     "ios:sync": "npm run mobile:build && cap sync ios && node scripts/sync-ios-version.mjs",
     "ios:open": "cap open ios",
     "mas:build": "node scripts/build-macos-appstore.mjs",
-    "app:rename": "node scripts/rename-app.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

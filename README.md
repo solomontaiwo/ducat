@@ -1,9 +1,8 @@
 # Ducat
 
-Ducat is a personal finance app for the **web, desktop** (macOS, Windows, Linux) **and iPhone/iPad**. It is built with React and Vite, packaged with Tauri 2 on the desktop and Capacitor on iOS, and uses Supabase (PostgreSQL, Auth and Realtime) as the backend.
+Ducat is a personal finance app for the **web, desktop** (macOS, Windows) **and iPhone/iPad**. It is built with React and Vite, packaged with Tauri 2 on the desktop and Capacitor on iOS, and uses Supabase (PostgreSQL, Auth and Realtime) as the backend.
 
 **Web app:** [ducatapp.com](https://ducatapp.com), served by Cloudflare Workers (static assets).
-The GitHub Pages build at `solomontaiwo.github.io/ducat/` is a mirror.
 **Source:** [solomontaiwo/ducat](https://github.com/solomontaiwo/ducat).
 
 ### The name
@@ -23,7 +22,9 @@ was the currency of Mediterranean trade. The name comes from Latin *ducatus*,
 - **Cross-platform** — web, macOS Apple Silicon, Windows x64 and ARM64, and iPhone/iPad.
 - **Themes and languages** — light/dark/system theme and Italian/English.
 - **iPhone app** — the same React app packaged with Capacitor, with share-sheet
-  exports, native haptics and the session kept in native preferences.
+  exports, native haptics, native pull to refresh, Home Screen quick actions
+  and the session kept in native preferences. On the iPhone Duo outer screen
+  the tab bar moves into the system vertical bar.
 
 ## Technologies
 
@@ -34,7 +35,7 @@ was the currency of Mediterranean trade. The name comes from Latin *ducatus*,
 
 ## Getting started (web)
 
-Requirements: Node.js 24 and a Supabase project (see [SUPABASE.md](SUPABASE.md) for the full setup).
+Requirements: Node.js 24 and a Supabase project (see [docs/SUPABASE.md](docs/SUPABASE.md) for the full setup).
 
 ```bash
 git clone https://github.com/solomontaiwo/ducat.git
@@ -59,7 +60,7 @@ Download the installer for your platform from the [latest release](https://githu
 | macOS Apple Silicon | `.dmg` |
 | Windows x64 / ARM64 | `-setup.exe` |
 
-New releases no longer include macOS Intel or Linux installers; older packages remain available in their original releases and will not receive automatic updates from new releases.
+Releases no longer include macOS Intel or Linux installers; older packages remain available in their original releases and do not receive updates. How updates work is described in [docs/UPDATER.md](docs/UPDATER.md).
 
 The desktop app checks for updates on launch and from the update icon in the sidebar; it shows the changelog and installs updates only after they are verified with the signing key. The macOS and Windows installers are **not signed or notarized**, so macOS Gatekeeper or Windows SmartScreen may warn or block the first launch. On macOS the bundle is signed ad-hoc, so the first open needs **right-click → Open** (or System Settings → Privacy & Security → Open Anyway); releases up to 4.0.27 were published without that signature and macOS reports them as *damaged*, which is fixed by running `xattr -dr com.apple.quarantine /Applications/Ducat.app` and `codesign --force --deep --sign - /Applications/Ducat.app`.
 
@@ -84,8 +85,9 @@ npm run ios:sync     # build the web bundle, copy it into the Xcode project, ali
 npm run ios:open     # open ios/App/App.xcodeproj in Xcode
 ```
 
-Xcode 15+ and an Apple Developer team are required to run it on a device or
-archive it for TestFlight. The simulator build needs no signing:
+Xcode 27 (the iOS 27 SDK, needed for the iPhone Duo screens) and an Apple
+Developer team are required to run it on a device. TestFlight builds are made
+by CI (see below). The simulator build needs no signing:
 
 ```bash
 xcodebuild -project ios/App/App.xcodeproj -scheme App \
@@ -106,9 +108,9 @@ Differences from the desktop build, all inside `src/platform/`:
 
 Offline: the last read of transactions, budgets, recurring rules and
 preferences is cached on the device (`src/utils/offlineCache.js`). Without a
-connection the app shows that copy and a banner explains that changes need the
-network. Writes are never queued, so the cache can only contain data the
-server accepted.
+connection the app shows that copy with an offline banner. New transactions are
+queued on the device (`src/utils/offlineQueue.js`) and sent once the connection
+is back; each carries a request id, so a replay never creates duplicates.
 
 Universal Links: the app declares `applinks:<domain>` in
 `ios/App/App/App.entitlements`, and `scripts/generate-aasa.mjs` writes
@@ -120,8 +122,10 @@ Universal Links: the app declares `applinks:<domain>` in
 Two separate workflows, both started manually from the Actions tab:
 
 - **iOS build** (`.github/workflows/ios.yml`) — builds for the simulator on
-  every run; archives, exports and uploads to TestFlight when `upload` is
-  enabled and the signing secrets are configured.
+  every run; when `upload` is enabled it archives with the App Store
+  distribution certificate and profile from the secrets, exports and uploads
+  to TestFlight. Upload TestFlight builds only from CI on `main`: a local
+  archive would embed the local `.env.mobile.local` settings.
 - **Mac App Store** (`.github/workflows/macos-appstore.yml`) — builds the
   universal sandboxed app, signs it with the Mac App Store entitlements and
   produces the `.pkg` for App Store Connect.
@@ -137,27 +141,24 @@ Every push to `main` bumps the patch version and runs `.github/workflows/desktop
 
 Each Windows job verifies the executable architecture and installs the package before uploading it. Signing and macOS notarization require separately configured certificates and credentials. The app still needs Internet access for Supabase account data and synchronization.
 
-## Deployment on GitHub Pages
+## Web deployment
 
-Every push to `main` builds and publishes the web app through `.github/workflows/deploy.yml`. Add these repository secrets under **Settings → Secrets and variables → Actions**:
+The web app at `ducatapp.com` is built and deployed by Cloudflare Workers
+(static assets, `wrangler.jsonc`) from `main`; the build variables live in the
+Cloudflare dashboard (see [docs/APP_STORE_RELEASE.md](docs/APP_STORE_RELEASE.md) §8).
+The `dev` branch is published to `dev.ducatapp.com` by
+`.github/workflows/deploy.yml` after the quality checks (see
+[docs/DEV_ENVIRONMENT.md](docs/DEV_ENVIRONMENT.md)).
+
+The iOS and desktop builds read the Supabase settings from these repository
+secrets under **Settings → Secrets and variables → Actions**:
 
 | Secret | Value |
 |---|---|
 | `VITE_SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API Keys → publishable key |
 
-Optional repository variable: `VITE_ENABLE_ACCOUNT_DELETION=false` hides account deletion in the profile. It is shown by default, because the App Store requires in-app deletion for any app that lets people create an account.
-
-**Custom domain.** The app is served from `ducatapp.com` by Cloudflare Workers
-with static assets (`wrangler.jsonc`), which builds this repository on every
-push (see [docs/APP_STORE_RELEASE.md](docs/APP_STORE_RELEASE.md) §8). The GitHub
-Pages deployment stays as a mirror and does not claim the domain.
-
-If you ever want GitHub Pages to serve the domain instead, set the repository
-variable `SITE_DOMAIN`: the deploy writes `CNAME`, builds with
-`VITE_BASE_PATH=/` and GitHub redirects `github.io/<repository>/` to it. Without
-`SITE_DOMAIN` the base path follows the repository name (`/ducat/`), so renaming
-the repository never breaks the deployment.
+Optional variable: `VITE_ENABLE_ACCOUNT_DELETION=false` hides account deletion in the profile. It is shown by default, because the App Store requires in-app deletion for any app that lets people create an account.
 
 `VITE_RELEASES_REPO` (default `solomontaiwo/ducat`) points the Updates page at
 the GitHub repository that publishes the desktop releases.

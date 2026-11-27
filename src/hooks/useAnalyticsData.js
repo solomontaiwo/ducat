@@ -12,9 +12,6 @@ const remember = (key, data) => {
   if (rangeCache.size > RANGE_CACHE_LIMIT) rangeCache.delete(rangeCache.keys().next().value);
 };
 
-/** Forgets every cached range (tests, sign-out). */
-export const clearAnalyticsCache = () => rangeCache.clear();
-
 /**
  * Loads the transactions the analytics view needs (one bounded range, never the
  * full history) and ignores answers that arrive after a newer request.

@@ -24,18 +24,6 @@ export const dateKeyToDate = (dateKey) => {
   return parsed;
 };
 
-export const dateKeyToUtcDate = (dateKey) => {
-  if (!isDateKey(dateKey)) throw new Error("Data giorno non valida");
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const result = new Date(Date.UTC(year, month - 1, day));
-  if (
-    result.getUTCFullYear() !== year ||
-    result.getUTCMonth() !== month - 1 ||
-    result.getUTCDate() !== day
-  ) throw new Error("Data giorno non valida");
-  return result;
-};
-
 export const dateToDateKey = (input) => {
   const date = input?.toDate?.() || (input instanceof Date ? input : new Date(input));
   if (Number.isNaN(date.getTime())) throw new Error("Data non valida");

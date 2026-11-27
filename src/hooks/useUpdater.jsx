@@ -13,9 +13,8 @@ import {
  *
  * status: idle | checking | available | downloading | downloaded | up-to-date | error
  *
- * `supported` is true only when the running bundle can replace itself (AppImage
- * on Linux, .app on macOS, NSIS on Windows). deb/rpm/pacman installs are owned
- * by the system package manager and must not call the updater.
+ * `supported` is true only when the running bundle can replace itself (.app on
+ * macOS, NSIS on Windows); any other install is updated by hand.
  */
 export function useUpdater() {
   const desktop = isDesktopRuntime();
@@ -108,14 +107,8 @@ export function useUpdater() {
     setError(null);
   }, []);
 
-  // Why self-updates are unavailable, so the page can explain it precisely.
-  const blockReason = !desktop || supported
-    ? null
-    : !runtime
-      ? "unsupported"
-      : runtime.bundleType === "appimage"
-        ? (runtime.appImage ? "read-only" : "not-appimage")
-        : "system-package";
+  // Why self-updates are unavailable, so the page can explain it.
+  const blockReason = !desktop || supported ? null : "unsupported";
 
   return {
     desktop,

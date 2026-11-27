@@ -1,5 +1,5 @@
 import { differenceInCalendarDays, endOfDay, startOfDay } from "date-fns";
-import { coerceDateKey, dateKeyToDate, todayDateKey } from "./dateUtils.js";
+import { coerceDateKey, todayDateKey } from "./dateUtils.js";
 import { getTransactionAmountMinor, minorToMajor } from "./money.js";
 import { nextOccurrence, occurrenceDateKey } from "./recurrence.js";
 
@@ -127,6 +127,3 @@ export const projectBudgetRow = (row, { startDate, endDate, today = new Date() }
     daysUntilOver,
   };
 };
-
-/** Helper exposed for tests to check upcoming date keys cleanly. */
-export const parseDateKeySafe = (dateKey) => dateKeyToDate(dateKey);

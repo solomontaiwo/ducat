@@ -8,17 +8,15 @@ fare richiede credenziali Apple e Xcode su una macchina tua o sul runner CI.
 | Cosa | Perché |
 |---|---|
 | Apple Developer Program (99 €/anno) | firma, TestFlight, App Store |
-| Xcode 15+ installato | `xcodebuild`, archivio, TestFlight |
+| Xcode 27 (SDK iOS 27) | schermi di iPhone Duo; la CI usa il runner `xcode-27` |
 | Licenza Xcode accettata | `sudo xcodebuild -license accept` (una volta sola) |
-| Dominio **ducat.app** (o altro) | Universal Links, privacy/supporto, email |
+| Dominio **ducatapp.com** | Universal Links, privacy/supporto, email |
 | Hosting con header personalizzati | la AASA deve rispondere `application/json` |
 | Testi privacy e termini | già in `src/content/legal.js`, da rileggere |
 
 Il nome è **Ducat**. Il bundle id iOS è **`com.ducatapp.ducat`**, registrato
-su Apple Developer; la versione desktop Tauri mantiene **`app.ducat`**. I due
-identificativi sono distinti: `scripts/rename-app.mjs --id` cambia entrambi e
-non va usato per modificare soltanto iOS. Il bundle id di una scheda App Store
-non si può cambiare dopo il primo upload.
+su Apple Developer; la versione desktop Tauri mantiene **`app.ducat`**. Il
+bundle id di una scheda App Store non si può cambiare dopo il primo upload.
 
 ## 2. Build locale iOS
 
@@ -34,22 +32,17 @@ npm run ios:open        # apre il progetto in Xcode
 
 In Xcode: seleziona il team, poi Run su un simulatore iPhone o iPad.
 
-Per TestFlight da riga di comando, con la firma configurata:
+Le build per TestFlight si fanno dalla CI: **Actions → iOS build → Run
+workflow** su `main`, con `upload` attivo. Il workflow costruisce l'app web in
+modalità produzione, firma l'archivio con il certificato Apple Distribution e
+il profilo App Store dei segreti (`scripts/ios-release-signing.mjs` passa la
+configurazione Release a firma manuale solo in CI) e lo carica su App Store
+Connect; il numero di build è il numero dell'esecuzione. Non caricare archivi
+fatti in locale: userebbero le impostazioni di `.env.mobile.local` (backend di
+sviluppo e badge DEV).
 
-```bash
-IOS_BUILD_NUMBER=42 npm run ios:sync
-xcodebuild -project ios/App/App.xcodeproj -scheme App \
-  -configuration Release -destination 'generic/platform=iOS' \
-  -archivePath build/App.xcarchive archive
-xcodebuild -exportArchive -archivePath build/App.xcarchive \
-  -exportOptionsPlist ios/ExportOptions.plist -exportPath build/export
-xcrun altool --upload-app --type ios --file build/export/*.ipa \
-  --apiKey "$APPLE_API_KEY_ID" --apiIssuer "$APPLE_API_ISSUER_ID"
-```
-
-Il workflow `.github/workflows/ios.yml` fa la stessa cosa. Lancia sempre la
-build per il simulatore (senza firma) a ogni modifica: è quella che verifica
-che il progetto compili.
+Lancia sempre la build per il simulatore (senza firma) a ogni modifica: è
+quella che verifica che il progetto compili.
 
 ## 3. Build locale Mac App Store
 
@@ -88,7 +81,7 @@ Settings → Secrets and variables → Actions:
 | `APPLE_INSTALLER_CERTIFICATE_PASSWORD` | password del `.p12` |
 | `APPLE_SIGNING_IDENTITY` | `Apple Distribution: … (TEAMID)` |
 | `APPLE_INSTALLER_IDENTITY` | `3rd Party Mac Developer Installer: … (TEAMID)` |
-| `APPLE_PROVISIONING_PROFILE` | profilo iOS in base64 |
+| `APPLE_PROVISIONING_PROFILE` | profilo **App Store** iOS in base64, creato per il certificato di `APPLE_CERTIFICATE_P12` |
 | `APPLE_MAS_PROVISIONING_PROFILE` | profilo Mac App Store in base64 |
 | `APPLE_TEAM_ID` | Team ID |
 | `APPLE_API_KEY_ID`, `APPLE_API_ISSUER_ID`, `APPLE_API_KEY_P8` | chiave App Store Connect |
@@ -162,14 +155,14 @@ Non coperte:
 Il dominio è **`ducatapp.com`**, registrato su Cloudflare Registrar: i
 nameserver sono già quelli Cloudflare, non serve cambiare nulla dal registrar.
 
-| Serve per | GitHub Pages (`*.github.io`) | `ducatapp.com` (Cloudflare Pages) |
-|---|---|---|
-| Universal Links (AASA) | `.well-known` servito come `application/octet-stream`: Apple vuole `application/json` | `public/_headers` imposta l'header |
-| Rotte profonde (`/privacy`, `/reset-password`) | 404 con fallback `404.html` | `public/_redirects` risponde 200 |
-| URL in App Store Connect | repo personale | dominio del prodotto |
-| Email di conferma e reset | dominio Supabase | `support@ducatapp.com` (Email Routing) |
+| Serve per | Come |
+|---|---|
+| Universal Links (AASA) | `public/_headers` serve `.well-known` come `application/json` |
+| Rotte profonde (`/privacy`, `/reset-password`) | `not_found_handling = single-page-application` in `wrangler.jsonc` |
+| URL in App Store Connect | dominio del prodotto |
+| Email | `support@ducatapp.com` (Email Routing), invio con Resend sul dominio |
 
-### Cloudflare Workers con static assets (percorso consigliato)
+### Cloudflare Workers con static assets
 
 Il progetto si crea da **Workers & Pages → Create → Workers → Connect to Git**:
 è il flusso che Cloudflare propone oggi al posto di Pages, e serve gli asset
@@ -189,7 +182,7 @@ statici con le stesse regole (`_headers`, dominio custom, TLS).
 4. Variabili di build (Settings → Build → Variables and secrets), per
    Production e Preview:
    `NODE_VERSION=24`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`,
-   `VITE_BASE_PATH=/`, `VITE_DESKTOP_WEB_URL=https://ducatapp.com/`,
+   `VITE_DESKTOP_WEB_URL=https://ducatapp.com/`,
    `VITE_ENABLE_ACCOUNT_DELETION=true`, `APPLE_TEAM_ID=<Team ID>`,
    `AASA_REQUIRE_TEAM_ID=1` (o `0` finché non hai il Team ID).
    Senza le due `VITE_SUPABASE_*` il build passa ma l'app mostra un errore.
@@ -201,18 +194,13 @@ statici con le stesse regole (`_headers`, dominio custom, TLS).
    `curl -I https://ducatapp.com/privacy` → `200`.
 7. Supabase → Authentication → URL Configuration: Site URL
    `https://ducatapp.com/`; Redirect URLs `https://ducatapp.com/**`,
-   `https://solomontaiwo.github.io/ducat/**`, `http://localhost:5173/**`.
+   `http://localhost:5173/**`.
 
 I redirect di www si gestiscono con una Redirect Rule della zona, non nel repo:
 `www.ducatapp.com` → `https://ducatapp.com` 301, con eccezione per
 `/.well-known/*` così la AASA resta raggiungibile anche su www.
 
-Il deploy GitHub Pages resta come specchio su `/ducat/` e non rivendica il
-dominio: non impostare `SITE_DOMAIN`.
-
-### Alternativa: GitHub Pages sul dominio
-
-Se in futuro vuoi servire il dominio da GitHub Pages, imposta la variabile di
-repository `SITE_DOMAIN=ducatapp.com`: il deploy scrive `CNAME`, costruisce con
-base `/` e GitHub reindirizza `github.io/ducat/` al dominio. In quel caso il
-progetto Cloudflare Pages va rimosso per evitare due host sullo stesso dominio.
+Il branch `dev` non passa da questa integrazione: lo pubblica GitHub Actions
+sul Worker `ducat-dev` (vedi [DEV_ENVIRONMENT.md](DEV_ENVIRONMENT.md)). In
+**Settings → Build** del Worker `ducat` conviene disattivare le build dei branch
+non di produzione.

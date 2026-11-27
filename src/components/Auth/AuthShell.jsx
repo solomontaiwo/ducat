@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import { motion } from "framer-motion";
 import { FiArrowLeft } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "../../router/RouterProvider";
@@ -11,11 +10,7 @@ const AuthShell = ({ title, subtitle, error, children, footer, backLabel }) => {
   const navigate = useNavigate();
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+2.5rem)] pt-[calc(env(safe-area-inset-top)+2.5rem)]">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="surface w-full max-w-md rounded-3xl p-6 sm:p-8"
-      >
+      <div className="auth-card-in surface w-full max-w-md rounded-3xl p-6 sm:p-8">
         <Button
           variant="ghost"
           size="sm"
@@ -43,7 +38,7 @@ const AuthShell = ({ title, subtitle, error, children, footer, backLabel }) => {
         {children}
 
         {footer && <div className="mt-4 text-center text-sm text-muted-foreground">{footer}</div>}
-      </motion.div>
+      </div>
     </div>
   );
 };

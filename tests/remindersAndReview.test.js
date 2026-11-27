@@ -21,7 +21,6 @@ vi.mock("@capacitor/core", () => ({
 import {
   buildReminderSchedule,
   clearRecurringReminders,
-  getReminderPermission,
   installReminderTapHandler,
   isRecurringRemindersEnabled,
   requestReminderPermission,
@@ -91,13 +90,11 @@ describe("recurring reminders", () => {
   it("syncs and clears reminders through NativeFeatures on mobile and no-ops on web", async () => {
     vi.stubEnv("MODE", "production");
     expect(await requestReminderPermission()).toBe(false);
-    expect(await getReminderPermission()).toBe("denied");
     expect(await syncRecurringReminders([])).toBe(0);
     expect(nativeMock.syncRecurringReminders).not.toHaveBeenCalled();
 
     vi.stubEnv("MODE", "mobile");
     expect(await requestReminderPermission()).toBe(true);
-    expect(await getReminderPermission()).toBe("granted");
 
     setRecurringRemindersEnabled(true);
     expect(isRecurringRemindersEnabled()).toBe(true);

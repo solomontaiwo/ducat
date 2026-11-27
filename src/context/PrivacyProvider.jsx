@@ -1,13 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { readLocalValue, removeLocalValue, writeLocalValue } from "../utils/storage.js";
+import { isBiometricLockEnabled } from "../platform/biometricLock.js";
 
 const HIDE_AMOUNTS_KEY = "ducat-hide-amounts";
-const BIOMETRIC_ENABLED_KEY = "ducat-biometric-lock";
 /** Grace period before re-locking after leaving the foreground (e.g. share sheet). */
 export const LOCK_GRACE_MS = 5_000;
 
-const readBiometricFlag = () => import.meta.env.MODE === "mobile" && readLocalValue(BIOMETRIC_ENABLED_KEY) === "true";
 const loadBiometrics = () => (import.meta.env.MODE === "mobile" ? import("../platform/biometrics.js") : Promise.resolve(null));
 
 const DEFAULT_PRIVACY = Object.freeze({
@@ -33,9 +32,9 @@ export const PrivacyProvider = ({ children }) => {
   const [hideAmounts, setHideAmountsState] = useState(() => readLocalValue(HIDE_AMOUNTS_KEY) === "true");
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState("none");
-  const [biometricEnabled, setBiometricEnabled] = useState(readBiometricFlag);
+  const [biometricEnabled, setBiometricEnabled] = useState(isBiometricLockEnabled);
   const [systemAppLock, setSystemAppLock] = useState(false);
-  const [locked, setLocked] = useState(readBiometricFlag);
+  const [locked, setLocked] = useState(isBiometricLockEnabled);
   const [unlocking, setUnlocking] = useState(false);
   const backgroundAtRef = useRef(null);
   const unlockingRef = useRef(false);

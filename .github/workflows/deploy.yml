@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.ref }}
+  group: deploy-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -85,7 +85,6 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.DEV_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.DEV_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_BASE_PATH: /
           VITE_DESKTOP_WEB_URL: https://dev.ducatapp.com/
           VITE_APP_ENV: dev
         run: |
@@ -107,80 +106,3 @@ jobs:
           : "${CLOUDFLARE_ACCOUNT_ID:?Set DEV_CLOUDFLARE_ACCOUNT_ID in the dev environment}"
           : "${CLOUDFLARE_API_TOKEN:?Set DEV_CLOUDFLARE_API_TOKEN in the dev environment}"
           npm exec -- wrangler deploy --config wrangler.dev.jsonc
-
-  deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [quality]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Setup Pages
-        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-
-      - name: Resolve the public URL
-        env:
-          SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
-        run: |
-          set -euo pipefail
-          repo_path="${GITHUB_REPOSITORY#*/}"
-          if [ -n "${SITE_DOMAIN:-}" ]; then
-            base="/"
-            site="https://${SITE_DOMAIN}/"
-          else
-            base="/${repo_path}/"
-            site="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_path}/"
-          fi
-          {
-            echo "VITE_BASE_PATH=${base}"
-            echo "VITE_DESKTOP_WEB_URL=${site}"
-          } >> "$GITHUB_ENV"
-          echo "Public URL: ${site}"
-
-      - name: Build production artifact
-        run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_ENABLE_ACCOUNT_DELETION: ${{ vars.VITE_ENABLE_ACCOUNT_DELETION || 'true' }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          AASA_REQUIRE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' && '1' || '0' }}
-
-      - name: Add the custom domain
-        if: ${{ vars.SITE_DOMAIN != '' }}
-        env:
-          SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
-        run: |
-          set -euo pipefail
-          echo "$SITE_DOMAIN" > dist/CNAME
-          cat dist/CNAME
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: ./dist
-
-      # Allow time for the uploaded artifact to become visible to deploy-pages.
-      - name: Wait for artifact availability
-        run: sleep 10
-
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

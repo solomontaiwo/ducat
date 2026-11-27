@@ -68,17 +68,6 @@ export const buildReminderSchedule = (recurring = [], { formatTitle, formatBody,
   ));
 };
 
-export const getReminderPermission = async () => {
-  const plugin = getPlugin();
-  if (!plugin) return "denied";
-  try {
-    const result = await plugin.getNotificationPermission();
-    return result?.status || "prompt";
-  } catch {
-    return "denied";
-  }
-};
-
 export const requestReminderPermission = async () => {
   const plugin = getPlugin();
   if (!plugin) return false;
