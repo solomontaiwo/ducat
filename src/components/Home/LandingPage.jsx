@@ -95,8 +95,6 @@ const LandingPage = () => {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-clip text-foreground">
-      <div className="ambient-backdrop" aria-hidden="true" />
-
       <header className="glass sticky top-[calc(env(safe-area-inset-top)+0.625rem)] z-30 mx-2.5 mt-[calc(env(safe-area-inset-top)+0.625rem)] flex items-center gap-6 rounded-full py-2 pl-4 pr-2 sm:mx-auto sm:w-[min(70rem,calc(100%-2.5rem))]">
         <span className="flex flex-1 items-center gap-2.5">
           <img src={logo} alt="" width="30" height="30" className="h-[30px] w-[30px] rounded-[10px]" />

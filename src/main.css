@@ -50,8 +50,6 @@
   --glass-highlight: 255 255 255 / 0.9;
   --glass-shadow: 0 10px 30px rgb(20 25 36 / 0.12);
   --glass-active: 255 255 255 / 0.8;
-  --ambient-1: 221 83% 53% / 0.22;
-  --ambient-2: 262 83% 58% / 0.12;
 }
 
 .dark {
@@ -93,8 +91,6 @@
   --glass-highlight: 255 255 255 / 0.16;
   --glass-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
   --glass-active: 255 255 255 / 0.1;
-  --ambient-1: 217 91% 60% / 0.2;
-  --ambient-2: 262 83% 65% / 0.12;
 }
 
 @layer base {
@@ -226,16 +222,6 @@
       backdrop-filter: none;
     }
     .glass-tint { background: hsl(var(--primary)); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  }
-  /* Two soft colour fields behind the app, so the glass has something to refract. */
-  .ambient-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      radial-gradient(60vmax 60vmax at -10% -15%, hsl(var(--ambient-1)), transparent 60%),
-      radial-gradient(50vmax 50vmax at 115% 45%, hsl(var(--ambient-2)), transparent 60%);
   }
   .workspace-width {
     @apply mx-auto w-full;

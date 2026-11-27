@@ -52,8 +52,6 @@ const MobileWelcome = () => {
 
   return (
     <div className="relative flex min-h-[100dvh] flex-col justify-between overflow-x-clip px-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-[calc(env(safe-area-inset-top)+1.5rem)] text-foreground">
-      <div className="ambient-backdrop" aria-hidden="true" />
-
       <header className="flex items-center justify-center gap-2.5">
         <img src={logo} alt="" width="36" height="36" className="h-9 w-9 rounded-[11px] shadow-sm" />
         <span className="font-display text-2xl font-extrabold tracking-tight">{t("appName")}</span>
