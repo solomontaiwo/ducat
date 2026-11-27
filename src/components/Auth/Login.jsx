@@ -90,7 +90,7 @@ const Login = () => {
               placeholder={t("login.usernameOrEmailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="border-0 shadow-none focus-visible:ring-0"
+              bare
               autoComplete="email"
             />
           </div>

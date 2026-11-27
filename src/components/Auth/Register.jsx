@@ -104,7 +104,7 @@ const Register = () => {
               placeholder="solomon"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="border-0 shadow-none focus-visible:ring-0"
+              bare
               autoComplete="username"
               minLength={3}
               maxLength={50}
@@ -123,7 +123,7 @@ const Register = () => {
               placeholder="you@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="border-0 shadow-none focus-visible:ring-0"
+              bare
               autoComplete="email"
               required
             />
