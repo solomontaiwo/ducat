@@ -138,7 +138,7 @@ const RecurringPage = () => {
   return (
     <div className="page-shell">
       <header className="mobile-glass-header flex items-center gap-2">
-        <BackButton />
+        <div className="md:hidden"><BackButton /></div>
         <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("recurring.title")}</h1>
       </header>
 
