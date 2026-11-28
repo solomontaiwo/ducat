@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
-import { decryptVaultPairing } from "../../utils/vaultCrypto.js";
-import { cancelVaultPairing, formatPairingCode, normalizePairingCode, readVaultPairing, requestVaultPairing } from "../../services/vaultPairingService.js";
+import "../../utils/pairingTranslations.js";
+import { decryptVaultPairing, vaultPairingConfirmation } from "../../utils/vaultCrypto.js";
+import { cancelVaultPairing, formatPairingCode, normalizePairingCode, readVaultPairing, requestVaultPairing, watchVaultPairings } from "../../services/vaultPairingService.js";
 import { Button } from "../ui/button.jsx";
 import { Input } from "../ui/input.jsx";
 import { Label } from "../ui/label.jsx";
 import Sheet from "../ui/sheet.jsx";
 
 export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(["translation", "pairing"]);
   const [request, setRequest] = useState(null);
+  const [comparison, setComparison] = useState(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -24,6 +26,7 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
     let pending;
     setRequest(null);
     setError(null);
+    setComparison(null);
     setCode("");
     requestVaultPairing(uid).then((value) => {
       pending = value;
@@ -37,10 +40,40 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
     };
   }, [uid, generation]);
 
-  const confirm = async (event) => {
-    event.preventDefault();
+  useEffect(() => {
+    if (!request) return undefined;
+    let active = true;
+    let loading = false;
+    const refresh = async () => {
+      if (loading || processing.current || document.visibilityState === "hidden") return;
+      loading = true;
+      try {
+        const response = await readVaultPairing(uid, request.id);
+        if (!active) return;
+        if (!response || response.rejected_at) {
+          setComparison(null);
+          setError(response?.rejected_at ? "rejected" : "expired");
+        } else if (response.ciphertext) {
+          const value = await vaultPairingConfirmation(uid, request, response.sender_public);
+          if (active) setComparison(value);
+        }
+      } catch {
+        // A failed refresh can recover on the next event or manual confirmation.
+      } finally {
+        loading = false;
+      }
+    };
+    const stop = watchVaultPairings(uid, refresh);
+    const timer = setInterval(refresh, 5000);
+    return () => {
+      active = false;
+      stop();
+      clearInterval(timer);
+    };
+  }, [uid, request]);
+
+  const confirm = async (confirmation) => {
     if (!request || processing.current) return;
-    const confirmation = normalizePairingCode(code);
     if (!/^[0-9a-f]{12}$/.test(confirmation)) {
       setError("invalidCode");
       return;
@@ -51,8 +84,8 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
     try {
       const response = await readVaultPairing(uid, request.id);
       if (!alive.current) return;
-      if (!response?.ciphertext) {
-        setError(response ? "waiting" : "expired");
+      if (!response?.ciphertext || response.rejected_at) {
+        setError(response?.rejected_at ? "rejected" : response ? "waiting" : "expired");
         return;
       }
       const secret = await decryptVaultPairing(uid, request, response, confirmation);
@@ -67,20 +100,31 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
   };
 
   return (
-    <Sheet open title={t("pairing.request")} description={t("pairing.requestHelp")}
+    <Sheet open title={t("pairing.request")} description={t("pairing:requestHelp")}
       onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
       {request ? (
-        <form onSubmit={confirm} className="space-y-3">
-          <p className="text-sm font-medium">{t("pairing.requestCode")}</p>
+        <div className="space-y-3">
+          <p className="text-sm font-medium">{t("pairing:requestCode")}</p>
           <p data-testid="pairing-request-code" className="select-all rounded-xl bg-muted p-3 text-center font-mono">{formatPairingCode(request.id)}</p>
-          <Label htmlFor="pairing-confirmation">{t("pairing.confirmation")}</Label>
-          <Input id="pairing-confirmation" autoCapitalize="characters" autoComplete="off" spellCheck={false}
-            value={code} onChange={(event) => setCode(event.target.value)} maxLength={17} required disabled={busy} />
-          <Button type="submit" disabled={busy}>{t("pairing.confirm")}</Button>
-        </form>
+          {comparison && (
+            <div className="space-y-2" role="status">
+              <p className="text-sm">{t("pairing:compareConfirmation")}</p>
+              <p data-testid="pairing-compare-confirmation" className="rounded-xl bg-muted p-3 text-center font-mono">{formatPairingCode(comparison)}</p>
+              <Button type="button" disabled={busy} onClick={() => confirm(comparison)}>{t("pairing:codesMatch")}</Button>
+            </div>
+          )}
+          {!["expired", "rejected"].includes(error) && (
+            <form onSubmit={(event) => { event.preventDefault(); confirm(normalizePairingCode(code)); }} className="space-y-3">
+              <Label htmlFor="pairing-confirmation">{t("pairing:confirmation")}</Label>
+              <Input id="pairing-confirmation" autoCapitalize="characters" autoComplete="off" spellCheck={false}
+                value={code} onChange={(event) => setCode(event.target.value)} maxLength={17} required disabled={busy} />
+              <Button type="submit" variant="outline" disabled={busy}>{t("pairing:confirm")}</Button>
+            </form>
+          )}
+        </div>
       ) : !error && <p role="status">{t("common.loadingPage")}</p>}
-      {error && <p role="alert" className="text-sm text-destructive">{t(`pairing.${error}`)}</p>}
-      {(error === "expired" || (!request && error)) && (
+      {error && <p role="alert" className="text-sm text-destructive">{t(`pairing:${error}`)}</p>}
+      {(["expired", "rejected"].includes(error) || (!request && error)) && (
         <Button variant="outline" onClick={() => setGeneration((value) => value + 1)}>{t("common.retry")}</Button>
       )}
     </Sheet>
