@@ -130,7 +130,7 @@ const BudgetsPage = () => {
               <CategoryBadge category={value} type="expense" size="sm" />
               <label htmlFor={inputId} className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-[15px] font-semibold leading-snug">{label}</span>
-                <span data-amount={average ? "true" : undefined} className="truncate text-xs text-muted-foreground">
+                <span data-amount={average ? "true" : undefined} className="text-xs text-muted-foreground">
                   {average ? t("budgets.average", { amount: formatCurrency(minorToMajor(average)) }) : t("budgets.noAverage")}
                 </span>
               </label>
@@ -153,7 +153,7 @@ const BudgetsPage = () => {
         })}
       </ul>
 
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <div className="sticky bottom-[calc(var(--mobile-nav-height,76px)+env(safe-area-inset-bottom)+0.75rem)] z-20 flex flex-col-reverse gap-2 rounded-2xl bg-background/95 p-2 shadow-lg sm:flex-row sm:justify-end md:static md:bg-transparent md:p-0 md:shadow-none">
         {hasSuggestions && (
           <Button variant="outline" onClick={applySuggestions} disabled={!ready || saving}>{t("budgets.useSuggestions")}</Button>
         )}

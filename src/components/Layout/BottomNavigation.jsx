@@ -5,8 +5,9 @@ import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { cn } from "../../lib/utils.js";
 import { hapticTap } from "../../platform/haptics.js";
+import { BOTTOM_NAV_HEIGHT_PX } from "../../router/tabs.js";
 
-export const BOTTOM_NAV_HEIGHT_PX = 76;
+export { BOTTOM_NAV_HEIGHT_PX };
 
 /**
  * Mobile tab bar: three everyday destinations in a pill, with the "new

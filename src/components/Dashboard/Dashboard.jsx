@@ -65,6 +65,7 @@ const Dashboard = () => {
   const deletingRef = useRef(false);
   const requestIdRef = useRef(0);
   const [localHour, setLocalHour] = useState(() => new Date().getHours());
+  const [todayKey, setTodayKey] = useState(todayDateKey);
   const monthKey = JSON.stringify([isDemo ? "demo" : currentUser?.uid ?? null, startDate, endDate]);
   const monthData = monthResult.key === monthKey ? monthResult.data : EMPTY_TRANSACTIONS;
 
@@ -98,14 +99,18 @@ const Dashboard = () => {
   }, [isDemo, transactions, currentUser, fetchAllTransactions, startDate, endDate, monthKey, t]);
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => setLocalHour(new Date().getHours()), 60_000);
+    const intervalId = window.setInterval(() => {
+      setLocalHour(new Date().getHours());
+      setTodayKey(todayDateKey());
+    }, 60_000);
     return () => window.clearInterval(intervalId);
   }, []);
 
   const stats = useMemo(() => {
     if (transactionsLoading) return null;
-    return calculateStats(monthData, startDate, endDate);
-  }, [monthData, startDate, endDate, transactionsLoading]);
+    const actual = isCurrentMonth ? monthData.filter((item) => item.date && (item.dateKey || format(item.date, "yyyy-MM-dd")) <= todayKey) : monthData;
+    return calculateStats(actual, startDate, endDate);
+  }, [monthData, startDate, endDate, transactionsLoading, isCurrentMonth, todayKey]);
 
   const monthTransactions = useMemo(
     () => monthData.filter((item) => item.date && item.date >= startDate && item.date <= endDate),
@@ -294,6 +299,8 @@ const Dashboard = () => {
                       ["current", formatCurrency(balance)],
                       ["income", formatSignedAmount(projection.remainingRecurringIncome, "income")],
                       ["expense", formatSignedAmount(projection.remainingRecurringExpense, "expense")],
+                      ["scheduledIncome", formatSignedAmount(projection.scheduledIncome, "income")],
+                      ["scheduledExpense", formatSignedAmount(projection.scheduledExpense, "expense")],
                       ["variable", formatSignedAmount(projection.remainingVariableExpense, "expense")],
                     ].map(([key, value]) => (
                       <div key={key} className="flex flex-wrap justify-between gap-x-2">
@@ -387,6 +394,16 @@ const Dashboard = () => {
           {showUpcoming && <UpcomingCard />}
           {hasBudgets && <BudgetCard breakdown={stats?.categoryBreakdown || {}} isCurrentMonth={isCurrentMonth} startDate={startDate} endDate={endDate} monthParam={monthParam} />}
         </div>
+      )}
+
+      {(!hasBudgets || !showUpcoming) && !isLoading && (
+        <section className="surface space-y-3 p-4 md:hidden" aria-label={t("budgets.planning")}>
+          <h2 className="font-bold">{t("budgets.planning")}</h2>
+          <div className="flex flex-wrap gap-2">
+            {!hasBudgets && <Link to="/budgets" className="chip">{t("budgets.title")}</Link>}
+            {!showUpcoming && <Link to="/recurring" className="chip">{t("recurring.title")}</Link>}
+          </div>
+        </section>
       )}
 
       <TransactionModal

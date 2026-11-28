@@ -112,6 +112,8 @@
   },
   "dashboard": {
     "forecast": {
+      "scheduledIncome": "Scheduled income",
+      "scheduledExpense": "Scheduled expenses",
       "current": "Period balance so far",
       "income": "Expected recurring income",
       "expense": "Expected recurring expenses",
@@ -880,6 +882,9 @@
     "contact": "Contact"
   },
   "offline": {
+    "syncFailed_one": "Sync failed. 1 transaction is still waiting.",
+    "syncFailed_other": "Sync failed. {{count}} transactions are still waiting.",
+    "lastSync": "Last successful sync: {{time}}",
     "title": "You are offline.",
     "body": "You can still add new transactions: they will sync automatically when you are back online.",
     "bodyWithPending_one": "1 transaction waiting to sync.",
@@ -955,6 +960,8 @@
     "help": "This help"
   },
   "csvImport": {
+    "currencyCol": "Currency",
+    "unsupportedCurrency": "These transactions use a currency other than EUR and will not be imported.",
     "retryFailed": "Retry ({{count}})",
     "checking": "Checking existing transactions…",
     "historyError": "Could not check for duplicates. Select the file again to retry.",

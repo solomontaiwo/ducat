@@ -84,4 +84,15 @@ describe("csvImport", () => {
     expect(result.valid[0]).toMatchObject({ type: "expense", amountMinor: 250 });
     expect(result.valid[1]).toMatchObject({ type: "income", amountMinor: 2500 });
   });
+
+  it("rejects explicitly foreign currency rows while preserving euro rows", () => {
+    const csv = parseCsvText("Data;Descrizione;Importo;Currency\n2026-11-20;Hotel;-120,50;USD\n2026-11-21;Train;-£20,00;\n2026-11-22;Caffè;-2,50;EUR");
+    const mapping = detectCsvColumns(csv.headers);
+    const result = mapCsvRowsToTransactions(csv.rows, mapping);
+    expect(mapping.currency).toBe(3);
+    expect(result.unsupportedCurrency).toEqual([1, 2]);
+    expect(result.skipped).toBe(2);
+    expect(result.valid).toHaveLength(1);
+    expect(result.valid[0].amountMinor).toBe(250);
+  });
 });

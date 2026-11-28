@@ -97,14 +97,14 @@ fn build_app_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wr
     let search = MenuItemBuilder::with_id("focus-search", "Search")
         .accelerator("CmdOrCtrl+K")
         .build(app)?;
-    let file_submenu = SubmenuBuilder::new(app, "File")
+    let file_submenu = SubmenuBuilder::with_id(app, "menu-file", "File")
         .item(&new_tx)
         .item(&search)
         .separator()
         .item(&PredefinedMenuItem::close_window(app, None)?)
         .build()?;
 
-    let edit_submenu = SubmenuBuilder::new(app, "Edit")
+    let edit_submenu = SubmenuBuilder::with_id(app, "menu-edit", "Edit")
         .item(&PredefinedMenuItem::undo(app, None)?)
         .item(&PredefinedMenuItem::redo(app, None)?)
         .separator()
@@ -132,7 +132,7 @@ fn build_app_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wr
     let nav_budgets = MenuItemBuilder::with_id("nav-budgets", "Budgets")
         .accelerator("CmdOrCtrl+5")
         .build(app)?;
-    let view_submenu = SubmenuBuilder::new(app, "View")
+    let view_submenu = SubmenuBuilder::with_id(app, "menu-view", "View")
         .item(&privacy)
         .separator()
         .item(&nav_overview)
@@ -144,7 +144,7 @@ fn build_app_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wr
         .item(&PredefinedMenuItem::fullscreen(app, None)?)
         .build()?;
 
-    let window_submenu = SubmenuBuilder::new(app, "Window")
+    let window_submenu = SubmenuBuilder::with_id(app, "menu-window", "Window")
         .item(&PredefinedMenuItem::minimize(app, None)?)
         .item(&PredefinedMenuItem::maximize(app, None)?)
         .build()?;
@@ -156,6 +156,41 @@ fn build_app_menu(app: &tauri::App) -> tauri::Result<tauri::menu::Menu<tauri::Wr
         .item(&view_submenu)
         .item(&window_submenu)
         .build()
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn set_menu_language(app: tauri::AppHandle, language: String) -> Result<(), String> {
+    use tauri::menu::MenuItemKind;
+    let italian = language.starts_with("it");
+    let labels = [
+        ("menu-file", "File", "File"), ("menu-edit", "Modifica", "Edit"),
+        ("menu-view", "Vista", "View"), ("menu-window", "Finestra", "Window"),
+        ("open-profile", "Impostazioni…", "Settings…"),
+        ("new-transaction", "Nuovo movimento", "New Transaction"),
+        ("focus-search", "Cerca", "Search"),
+        ("toggle-privacy", "Nascondi / Mostra importi", "Hide / Show Amounts"),
+        ("nav-dashboard", "Panoramica", "Overview"),
+        ("nav-transactions", "Movimenti", "Transactions"),
+        ("nav-analytics", "Analisi", "Insights"),
+        ("nav-recurring", "Ricorrenti", "Recurring"),
+        ("nav-budgets", "Budget mensili", "Budgets"),
+    ];
+    let menu = app.menu().ok_or("Menu unavailable")?;
+    for item in menu.items().map_err(|error| error.to_string())? {
+        if let MenuItemKind::Submenu(submenu) = item {
+            for (id, it, en) in labels {
+                let label = if italian { it } else { en };
+                if submenu.id().as_ref() == id {
+                    submenu.set_text(label).map_err(|error| error.to_string())?;
+                }
+                if let Some(MenuItemKind::MenuItem(entry)) = submenu.get(id) {
+                    entry.set_text(label).map_err(|error| error.to_string())?;
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -176,7 +211,8 @@ pub fn run() {
         archive_keychain::archive_key_status,
         archive_keychain::unlock_archive_key,
         archive_keychain::save_archive_key,
-        archive_keychain::remove_archive_key
+        archive_keychain::remove_archive_key,
+        set_menu_language
     ]);
 
     builder

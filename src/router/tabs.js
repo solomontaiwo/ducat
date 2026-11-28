@@ -4,5 +4,6 @@
  * are the destinations of the native tab bar on the iPhone Duo.
  */
 export const TAB_PATHS = Object.freeze(["/dashboard", "/transactions", "/analytics"]);
+export const BOTTOM_NAV_HEIGHT_PX = 76;
 
 export const isTabPath = (pathname) => TAB_PATHS.includes(pathname);

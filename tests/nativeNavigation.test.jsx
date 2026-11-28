@@ -120,7 +120,7 @@ describe("app layout with the native tab bar", () => {
     vi.doMock("../src/context/PrivacyProvider.jsx", () => ({ usePrivacy: () => ({ locked: mocks.locked, toggleHideAmounts: vi.fn() }) }));
     vi.doMock("../src/hooks/useOnlineStatus.js", () => ({ useOnlineStatus: () => true }));
     vi.doMock("react-responsive", () => ({ useMediaQuery: () => mocks.mobileLayout }));
-    vi.doMock("react-i18next", () => ({ useTranslation: () => ({ t: (key) => key }) }));
+    vi.doMock("react-i18next", () => ({ useTranslation: () => ({ t: (key) => key, i18n: { language: "it" } }) }));
     vi.doMock("../src/components/Layout/BottomNavigation", () => ({
       default: () => <nav data-testid="web-tab-bar" />,
       BOTTOM_NAV_HEIGHT_PX: 76,
@@ -137,7 +137,7 @@ describe("app layout with the native tab bar", () => {
 
   it("never loads the bridge in the web build", async () => {
     await renderLayout({ mode: "production" });
-    expect(screen.getByTestId("web-tab-bar")).toBeInTheDocument();
+    expect(await screen.findByTestId("web-tab-bar")).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(mocks.native.subscribe).toBeNull();
   });

@@ -114,6 +114,9 @@ preferences is cached on the device (`src/utils/offlineCache.js`). Without a
 connection the app shows that copy with an offline banner. New transactions are
 queued on the device (`src/utils/offlineQueue.js`) and sent once the connection
 is back; each carries a request id, so a replay never creates duplicates.
+On the web, the application shell and previously loaded static resources are
+available offline. Features whose resources have not yet been loaded still need
+a connection.
 
 Universal Links: the app declares `applinks:<domain>` in
 `ios/App/App/App.entitlements`, and `scripts/generate-aasa.mjs` writes

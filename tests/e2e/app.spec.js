@@ -1262,3 +1262,26 @@ test("advanced filters, future scheduled transactions and safe bulk delete with 
   await page.getByRole("status").getByRole("button", { name: /^(annulla|undo)$/i }).click();
   await expect(page.getByRole("button", { name: /Bolletta futura/ })).toHaveCount(1);
 });
+
+test("a future expense is included in the forecast but not the current balance", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 12, 12));
+  await page.goto(".");
+  await page.getByRole("button", { name: /prova (la )?demo/i }).first().click();
+  await expect(page).toHaveURL(/\/transactions$/);
+  await goTo(page, "dashboard");
+  const summary = page.getByRole("region", { name: /riepilogo/i });
+  await expect(summary).toContainText("2.425,00");
+  await page.getByRole("button", { name: ADD_BUTTON }).first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("#transaction-amount").fill("89,00");
+  await dialog.locator("#transaction-description").fill("Bolletta futura");
+  await dialog.getByRole("radio", { name: /altra data/i }).click();
+  await dialog.locator("#transaction-date").fill("2026-11-20");
+  await dialog.getByRole("button", { name: /89,00/ }).click();
+  await expect(dialog).toBeHidden();
+  await goTo(page, "dashboard");
+  await expect(summary).toContainText("2.425,00");
+  await summary.getByText(/proiezione fine mese/i).click();
+  await expect(summary).toContainText("Uscite programmate");
+  await expect(summary).toContainText("−89,00");
+});

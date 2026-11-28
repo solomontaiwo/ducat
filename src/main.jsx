@@ -31,9 +31,8 @@ if (CSS.supports("font", "-apple-system-body")) {
   }).observe(sample);
 }
 
-// Registering a service worker makes the web app installable. The worker does
-// not cache anything (see public/sw.js), so it never serves stale data. The
-// packaged shells load their bundle locally and must not register one.
+// The web worker caches the application shell and visited static assets.
+// Packaged shells load their bundle locally and do not register it.
 if (import.meta.env.PROD && isWeb() && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {});

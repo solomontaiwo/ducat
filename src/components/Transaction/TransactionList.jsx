@@ -696,7 +696,8 @@ const TransactionList = () => {
         </header>
 
         <div className="space-y-3">
-          <label className="relative block">
+          <div className="flex items-center gap-2">
+          <label className="relative block min-w-0 flex-1">
             <span className="sr-only">{t("searchTransactions")}</span>
             <FiSearch className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <input
@@ -710,6 +711,18 @@ const TransactionList = () => {
               aria-describedby={isSearching ? "search-scope-help" : undefined}
             />
           </label>
+          <button
+            type="button"
+            className="chip shrink-0"
+            aria-pressed={showAdvancedFilters || hasAdvancedActive}
+            onClick={() => setShowAdvancedFilters((open) => !open)}
+            data-testid="toggle-advanced-filters"
+          >
+            <FiSliders className="h-3.5 w-3.5" aria-hidden="true" />
+            {t("transactions.filters.advanced")}
+            {hasAdvancedActive && <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />}
+          </button>
+          </div>
           {isSearching && (
             <p id="search-scope-help" className="px-1 text-xs font-medium text-muted-foreground" aria-live="polite">
               {isLoadingHistory ? t("transactions.searchLoading") : t("transactions.searchScope")}
@@ -764,16 +777,6 @@ const TransactionList = () => {
             <button
               type="button"
               className="chip"
-              aria-pressed={showAdvancedFilters || hasAdvancedActive}
-              onClick={() => setShowAdvancedFilters((open) => !open)}
-              data-testid="toggle-advanced-filters"
-            >
-              <FiSliders className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("transactions.filters.advanced")}
-            </button>
-            <button
-              type="button"
-              className="chip"
               aria-pressed={selectionMode}
               onClick={() => (selectionMode ? exitSelection() : setSelectionMode(true))}
               data-testid="toggle-bulk-select"
@@ -809,13 +812,13 @@ const TransactionList = () => {
           </div>
           {showAdvancedFilters && (
             <div data-testid="advanced-filters-panel" className="surface grid grid-cols-2 gap-3 p-3.5 sm:grid-cols-4">
-              <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+              <label className="col-span-2 flex min-w-0 flex-col gap-1 overflow-hidden text-xs font-semibold text-muted-foreground sm:col-span-1">
                 {t("analytics.from")}
-                <Input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} className="h-10 text-sm" />
+                <Input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} className="block h-10 min-w-0 max-w-full appearance-none text-sm" />
               </label>
-              <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+              <label className="col-span-2 flex min-w-0 flex-col gap-1 overflow-hidden text-xs font-semibold text-muted-foreground sm:col-span-1">
                 {t("analytics.to")}
-                <Input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className="h-10 text-sm" />
+                <Input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className="block h-10 min-w-0 max-w-full appearance-none text-sm" />
               </label>
               <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
                 {t("transactions.filters.minAmount")}
