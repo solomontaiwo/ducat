@@ -32,17 +32,16 @@ npm run ios:open        # apre il progetto in Xcode
 
 In Xcode: seleziona il team, poi Run su un simulatore iPhone o iPad.
 
-Le build per TestFlight si fanno dalla CI: **Actions → iOS build → Run
-workflow** su `main`, con `upload` attivo. Il workflow costruisce l'app web in
-modalità produzione, firma l'archivio con il certificato Apple Distribution e
-il profilo App Store dei segreti (`scripts/ios-release-signing.mjs` passa la
-configurazione Release a firma manuale solo in CI) e lo carica su App Store
-Connect; il numero di build è il numero dell'esecuzione. Non caricare archivi
-fatti in locale: userebbero le impostazioni di `.env.mobile.local` (backend di
-sviluppo e badge DEV).
+La CI carica la build su TestFlight dopo che **Quality and deploy** termina
+con successo sul commit `chore(release)` pubblicato su `main`. Per rilanciare
+manualmente il caricamento, usa **Actions → iOS build → Run workflow** su
+`main` con `upload` attivo.
 
-Lancia sempre la build per il simulatore (senza firma) a ogni modifica: è
-quella che verifica che il progetto compili.
+Il workflow compila per il simulatore e, quando è previsto l'upload, firma
+l'archivio con il certificato Apple Distribution e il profilo App Store
+configurati nei segreti di CI. Il numero di build è quello dell'esecuzione.
+Per TestFlight usa gli archivi generati in CI. Gli archivi locali incorporano
+le impostazioni di `.env.mobile.local`, incluso il backend di sviluppo.
 
 ## 3. Build locale Mac App Store
 

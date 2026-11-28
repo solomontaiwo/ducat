@@ -122,13 +122,11 @@ Universal Links: the app declares `applinks:<domain>` in
 
 ## App Store releases
 
-Two separate workflows, both started manually from the Actions tab:
-
-- **iOS build** (`.github/workflows/ios.yml`) — builds for the simulator on
-  every run; when `upload` is enabled it archives with the App Store
-  distribution certificate and profile from the secrets, exports and uploads
-  to TestFlight. Upload TestFlight builds only from CI on `main`: a local
-  archive would embed the local `.env.mobile.local` settings.
+- **iOS build** (`.github/workflows/ios.yml`) uploads to TestFlight after the
+  quality checks pass for a `chore(release)` push on `main`. Under **Actions →
+  iOS build → Run workflow**, you can build for the simulator or enable
+  `upload` on `main` to sign, archive and upload a build manually. Use CI for
+  TestFlight builds because local archives embed `.env.mobile.local` settings.
 - **Mac App Store** (`.github/workflows/macos-appstore.yml`) — builds the
   universal sandboxed app, signs it with the Mac App Store entitlements and
   produces the `.pkg` for App Store Connect.
