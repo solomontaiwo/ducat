@@ -16,13 +16,13 @@ import { suggestCategory } from "../../utils/categorySuggest.js";
 import { usePlanning } from "../../context/PlanningProvider.jsx";
 import { FREQUENCIES, occurrenceDateKey } from "../../utils/recurrence.js";
 import { enUS, it as itLocale } from "date-fns/locale";
+import { useMediaQuery } from "react-responsive";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Select } from "../ui/select";
 import Switch from "../ui/switch";
-import { useMediaQuery } from "react-responsive";
 import { hapticSuccess } from "../../platform/haptics.js";
 import { dismissKeyboardOnEnter } from "../../platform/native.js";
+import TransactionCategoryPicker from "./TransactionCategoryPicker.jsx";
 
 const QUICK_ADD_PREF_KEY = "ducat-quick-add-preferences";
 const CALC_OPERATORS = ["+", "−", "×", "÷"];
@@ -92,9 +92,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
   const { visibleExpenseCategories: expenseCategories, visibleIncomeCategories: incomeCategories, expenseCategories: allExpense, incomeCategories: allIncome } = useCategories();
   const { preferences, ready: planningReady } = usePlanning();
   const notification = useNotification();
-  // Short phone screens (iPhone Duo outer screen): a denser form, with the
-  // category in a menu instead of a grid of chips.
-  const compact = useMediaQuery({ maxWidth: 767, maxHeight: 740 });
+  const compactAmount = useMediaQuery({ maxWidth: 767, maxHeight: 740 });
   const { t, i18n } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const requestIdRef = useRef(crypto.randomUUID());
@@ -330,7 +328,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
                 "min-w-0 bg-transparent text-right font-display font-extrabold tabular-nums tracking-tight text-foreground outline-none placeholder:text-muted-foreground/50 focus-visible:outline-none",
                 isExpression ? "w-[11ch] text-3xl" : "w-[7.5ch] text-5xl"
               )}
-              style={{ fontSize: isExpression ? "2rem" : compact ? "2.25rem" : "3rem" }}
+              style={{ fontSize: isExpression ? "2rem" : compactAmount ? "2.25rem" : "3rem" }}
             />
             <span className="font-display text-3xl font-bold text-muted-foreground" aria-hidden="true">€</span>
           </div>
@@ -392,6 +390,12 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
 
         <fieldset className="space-y-3">
           <legend className="mb-3 text-sm font-bold short:mb-2">{t("transactionModal.category")}</legend>
+          <TransactionCategoryPicker
+            categories={categories}
+            type={formData.type}
+            value={formData.category}
+            onChange={(value) => { setCategoryTouched(true); setField("category", value); }}
+          />
           {showSuggestionHint && (
             <p className="flex items-center gap-2 rounded-xl bg-accent px-3 py-2 text-[13px] text-accent-foreground" data-testid="category-suggestion">
               <span className="font-bold">{t("transactionModal.suggested")}</span>
@@ -401,43 +405,6 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
                   : t("transactionModal.suggestedFromDescription")}
               </span>
             </p>
-          )}
-          {compact ? (
-            <Select
-              id={`${idPrefix}-category`}
-              aria-label={t("transactionModal.category")}
-              value={formData.category}
-              onChange={(event) => { setCategoryTouched(true); setField("category", event.target.value); }}
-            >
-              {categories.map((category) => (
-                <option key={category.value} value={category.value}>{category.label}</option>
-              ))}
-            </Select>
-          ) : (
-          <div
-            role="radiogroup"
-            aria-label={t("transactionModal.category")}
-            className="flex flex-wrap gap-2"
-            onKeyDown={(event) => handleRadioKeyDown(
-              event,
-              categories.map((category) => category.value),
-              formData.category,
-              (next) => { setCategoryTouched(true); setField("category", next); }
-            )}
-          >
-            {categories.map((category) => (
-              <button
-                key={category.value}
-                type="button"
-                role="radio"
-                aria-checked={formData.category === category.value}
-                className="chip"
-                onClick={() => { setCategoryTouched(true); setField("category", category.value); }}
-              >
-                {category.label}
-              </button>
-            ))}
-          </div>
           )}
         </fieldset>
         </div>

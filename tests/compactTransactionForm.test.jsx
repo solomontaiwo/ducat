@@ -20,7 +20,7 @@ vi.mock("../src/utils/categories.jsx", () => {
     useCategories: () => ({
       visibleExpenseCategories: expense,
       visibleIncomeCategories: income,
-      expenseCategories: expense,
+      expenseCategories: [...expense, { value: "viaggi", label: "Travel" }],
       incomeCategories: income,
     }),
   };
@@ -41,14 +41,17 @@ beforeEach(() => {
 });
 afterEach(() => cleanup());
 
-describe("transaction form on short phone screens", () => {
-  it("picks the category from a menu and saves it", async () => {
+describe("transaction form category picker", () => {
+  it("picks the category from a sheet and saves it", async () => {
     render(<TransactionForm onSubmit={mocks.onSubmit} onCancel={vi.fn()} />);
     expect(screen.queryByRole("radio", { name: "Groceries" })).toBeNull();
-    const menu = screen.getByRole("combobox", { name: "transactionModal.category" });
-    expect(menu).toHaveValue("supermercato");
-
-    fireEvent.change(menu, { target: { value: "trasporti" } });
+    fireEvent.click(screen.getByRole("button", { name: "transactionModal.category: Groceries" }));
+    expect(screen.getByRole("dialog", { name: "transactionModal.selectCategory" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Groceries", pressed: true })).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Travel" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Transportation", pressed: false }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "transactionModal.category: Transportation" })).toBeVisible();
     fireEvent.change(screen.getByLabelText("transactionModal.amount"), { target: { value: "12.50" } });
     fireEvent.submit(document.querySelector("form"));
 
@@ -64,10 +67,17 @@ describe("transaction form on short phone screens", () => {
     expect(amount.closest("[data-amount]")).toBeNull();
   });
 
-  it("keeps the category chips on taller screens", () => {
+  it("keeps the category grid on wider screens", () => {
     mocks.compact = false;
     render(<TransactionForm onSubmit={mocks.onSubmit} onCancel={vi.fn()} />);
     expect(screen.getByRole("radio", { name: "Groceries" })).toHaveAttribute("aria-checked", "true");
-    expect(screen.queryByRole("combobox", { name: "transactionModal.category" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "transactionModal.category: Groceries" })).toBeNull();
+  });
+
+  it("keeps a hidden category available when editing a transaction that uses it", () => {
+    const transaction = { id: "trip", type: "expense", amount: 18, description: "Trip", category: "viaggi", dateKey: "2026-11-28" };
+    render(<TransactionForm transaction={transaction} onSubmit={mocks.onSubmit} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "transactionModal.category: Travel" }));
+    expect(screen.getByRole("button", { name: "Travel", pressed: true })).toBeVisible();
   });
 });
