@@ -370,7 +370,8 @@ const LandingPage = () => {
 
       <footer className="mx-auto flex w-full max-w-6xl flex-wrap justify-between gap-4 border-t border-border/70 px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-6 text-sm text-muted-foreground">
         <span>© {t("appName")}</span>
-        <span className="flex gap-6">
+        <span className="flex flex-wrap gap-6">
+          <a href={`${import.meta.env.BASE_URL}support/`} className="hover:text-foreground">{t("landing.footer.support")}</a>
           <Link to="/privacy" className="hover:text-foreground">{t("landing.footer.privacy")}</Link>
           <Link to="/terms" className="hover:text-foreground">{t("landing.footer.terms")}</Link>
           <Link to="/login" className="hover:text-foreground">{t("landing.login")}</Link>
