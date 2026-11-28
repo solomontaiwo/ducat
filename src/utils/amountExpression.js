@@ -6,6 +6,8 @@
  * `eval` or `Function`.
  */
 
+import { accountFractionDigits } from "./currency.js";
+
 const OPERATOR_RE = /[+\-−*×/÷]/;
 const ALLOWED_EXPR_RE = /^[0-9.,+\-−*×/÷()\s]+$/;
 
@@ -58,11 +60,12 @@ const tokenize = (input) => {
 };
 
 /**
- * Evaluates a positive arithmetic expression, rounded to 2 decimal places.
+ * Evaluates a positive arithmetic expression, rounded to the decimal places of
+ * the account currency (two for EUR, none for JPY).
  * Returns `null` if the expression is incomplete, invalid, divides by zero, or
  * evaluates to a non-positive number.
  */
-export const evaluateAmountExpression = (raw) => {
+export const evaluateAmountExpression = (raw, digits = accountFractionDigits()) => {
   const text = String(raw || "").trim();
   if (!text || !ALLOWED_EXPR_RE.test(text)) return null;
   const tokens = tokenize(text);
@@ -121,11 +124,12 @@ export const evaluateAmountExpression = (raw) => {
 
   const result = parseExpr();
   if (pos !== tokens.length || !Number.isFinite(result) || result <= 0) return null;
-  const rounded = Math.round((result + Number.EPSILON) * 100) / 100;
+  const factor = 10 ** digits;
+  const rounded = Math.round((result + Number.EPSILON) * factor) / factor;
   return rounded > 0 ? rounded : null;
 };
 
 /** Formats a numeric result back into a clean decimal string (e.g. `17.30` -> `"17.30"`, `25` -> `"25"`). */
-export const formatEvaluatedAmount = (value) => (
-  Number.isInteger(value) ? String(value) : value.toFixed(2)
+export const formatEvaluatedAmount = (value, digits = accountFractionDigits()) => (
+  Number.isInteger(value) ? String(value) : value.toFixed(digits)
 );

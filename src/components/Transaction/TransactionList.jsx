@@ -23,7 +23,9 @@ import MonthSwitcher from "../ui/MonthSwitcher.jsx";
 import { useMonthRange } from "../../hooks/useMonthRange.js";
 import { useTransactionFilter } from "../../hooks/useTransactionFilter.jsx";
 import { dateKeyToDate, isDateKey } from "../../utils/dateUtils.js";
-import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
+import { formatSignedAmount, moneyLocale } from "../../utils/formatCurrency.jsx";
+import { currencySymbol } from "../../utils/currency.js";
+import { useAccountCurrency } from "../../hooks/useAccountCurrency.js";
 import { cn } from "../../lib/utils.js";
 import { useNotification } from "../../utils/notificationUtils";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
@@ -53,6 +55,9 @@ const parseInitialFilters = (search) => {
 
 const TransactionList = () => {
   const { t, i18n } = useTranslation();
+  // Rows format amounts in the account currency: render again when it changes.
+  const currency = useAccountCurrency();
+  const currencyLabel = currencySymbol(currency, moneyLocale(i18n.language));
   const notification = useNotification();
   const { currentUser, loading: authLoading } = useAuth();
   const {
@@ -818,7 +823,7 @@ const TransactionList = () => {
                 <Input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} className="block h-10 min-w-0 max-w-full appearance-none text-sm" />
               </label>
               <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
-                {t("transactions.filters.minAmount")}
+                {t("transactions.filters.minAmount", { symbol: currencyLabel })}
                 <Input
                   inputMode="decimal"
                   placeholder="0"
@@ -828,7 +833,7 @@ const TransactionList = () => {
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
-                {t("transactions.filters.maxAmount")}
+                {t("transactions.filters.maxAmount", { symbol: currencyLabel })}
                 <Input
                   inputMode="decimal"
                   placeholder="—"

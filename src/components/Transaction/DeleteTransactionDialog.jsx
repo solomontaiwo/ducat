@@ -1,12 +1,14 @@
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
+import { useAccountCurrency } from "../../hooks/useAccountCurrency.js";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 
 /** Confirmation step shown before a transaction is permanently deleted. */
 const DeleteTransactionDialog = ({ open, transaction, formatDate, getCategoryLabel, onCancel, onConfirm, busy = false }) => {
   const { t } = useTranslation();
+  useAccountCurrency();
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !busy && onCancel()}>
       <DialogContent className="max-w-md">

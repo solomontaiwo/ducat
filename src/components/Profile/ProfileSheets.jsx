@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { Reorder, useDragControls } from "framer-motion";
-import { FiMenu } from "react-icons/fi";
+import { FiCheck, FiMenu, FiSearch } from "react-icons/fi";
 import { endOfDay, subMonths } from "date-fns";
 import Sheet from "../ui/sheet";
 import { Button } from "../ui/button";
@@ -20,7 +20,10 @@ import { formatCycleRange } from "../../utils/monthLabel.js";
 import { exportAnalyticsCsv, exportAnalyticsPdf } from "../../utils/analyticsExport.js";
 import { dateToDateKey } from "../../utils/dateUtils.js";
 import { requestEmailChange, requestPasswordReset } from "../../services/accountService.js";
-import { DEFAULT_QUICK_AMOUNTS } from "../../schemas/planning.js";
+import { DEFAULT_QUICK_AMOUNTS, MAX_QUICK_AMOUNT } from "../../schemas/planning.js";
+import { SUPPORTED_CURRENCIES, currencySymbol } from "../../utils/currency.js";
+import { currencyName, deviceCurrency } from "../../utils/currencyRegions.js";
+import formatCurrency, { moneyLocale } from "../../utils/formatCurrency.jsx";
 
 const SegmentedField = ({ label, options, value, onChange }) => (
   <div
@@ -299,7 +302,7 @@ export const QuickAddSheet = ({ open, onClose }) => {
   }, [type, categories, category]);
 
   const save = async () => {
-    const quickAmounts = [...new Set(amounts.map((value) => parseInt(value, 10)).filter((value) => value > 0 && value <= 100000))];
+    const quickAmounts = [...new Set(amounts.map((value) => parseInt(value, 10)).filter((value) => value > 0 && value <= MAX_QUICK_AMOUNT))];
     const ok = await savePreferences({
       defaultType: type,
       defaultCategory: type === "last" ? null : category || null,
@@ -353,20 +356,139 @@ export const QuickAddSheet = ({ open, onClose }) => {
               value={amounts[index] || ""}
               onChange={(event) => setAmounts((current) => {
                 const next = [...current];
-                next[index] = event.target.value.replace(/\D/g, "").slice(0, 6);
+                next[index] = event.target.value.replace(/\D/g, "").slice(0, String(MAX_QUICK_AMOUNT).length);
                 return next;
               })}
               className="h-11 px-2 text-center tabular-nums"
             />
           ))}
         </div>
-        <p className="text-[13px] text-muted-foreground">{t("profilePage.quickAdd.amountsHint")}</p>
+        <p className="text-[13px] text-muted-foreground">{t("profilePage.quickAdd.amountsHint", { currency: preferences.currency })}</p>
       </div>
     </Sheet>
   );
 };
 
 QuickAddSheet.propTypes = { open: PropTypes.bool.isRequired, onClose: PropTypes.func.isRequired };
+
+const EXAMPLE_AMOUNT = 1250;
+
+/**
+ * Account currency. Amounts are never converted, so a change is confirmed
+ * with an example of what it does to a recorded amount.
+ */
+export const CurrencySheet = ({ open, onClose }) => {
+  const { t, i18n } = useTranslation();
+  const { preferences, ready, savePreferences } = usePlanning();
+  const notification = useNotification();
+  const [query, setQuery] = useState("");
+  const [pending, setPending] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const language = i18n.language?.startsWith("en") ? "en" : "it";
+  const locale = moneyLocale(language);
+  const current = preferences.currency;
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery("");
+    setPending(null);
+  }, [open]);
+
+  const options = useMemo(() => {
+    // Built when the sheet opens: names and symbols of every currency.
+    if (!open) return [];
+    const suggested = new Set([current, deviceCurrency()]);
+    const all = SUPPORTED_CURRENCIES.map((code) => ({ code, name: currencyName(code, language), symbol: currencySymbol(code, locale) }));
+    const byName = (first, second) => first.name.localeCompare(second.name, language);
+    return [
+      ...all.filter((item) => suggested.has(item.code)).sort((first, second) => (first.code === current ? -1 : second.code === current ? 1 : 0)),
+      ...all.filter((item) => !suggested.has(item.code)).sort(byName),
+    ];
+  }, [open, current, language, locale]);
+
+  const needle = query.trim().toLocaleLowerCase(language);
+  const visible = needle
+    ? options.filter((item) => item.code.toLowerCase().includes(needle) || item.name.toLocaleLowerCase(language).includes(needle) || item.symbol.toLocaleLowerCase(language) === needle)
+    : options;
+
+  const confirm = async () => {
+    if (!pending) return;
+    setSaving(true);
+    try {
+      if (await savePreferences({ currency: pending })) {
+        notification.success(t("profilePage.currency.changed", { currency: currencyName(pending, language) }));
+        onClose();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const footer = pending ? (
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button variant="outline" size="lg" onClick={() => setPending(null)} disabled={saving}>{t("cancel")}</Button>
+      <Button size="lg" onClick={confirm} disabled={!ready || saving} data-testid="currency-confirm">{t("profilePage.currency.confirm")}</Button>
+    </div>
+  ) : null;
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title={pending ? t("profilePage.currency.confirmTitle", { currency: currencyName(pending, language) }) : t("profilePage.currency.title")}
+      description={pending
+        ? t("profilePage.currency.confirmBody", {
+          before: formatCurrency(EXAMPLE_AMOUNT, locale, current),
+          after: formatCurrency(EXAMPLE_AMOUNT, locale, pending),
+        })
+        : t("profilePage.currency.hint")}
+      footer={footer}
+    >
+      {!pending && (
+        <>
+          <div className="relative">
+            <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("profilePage.currency.search")}
+              aria-label={t("profilePage.currency.search")}
+              className="h-11 pl-9"
+            />
+          </div>
+          {visible.length ? (
+            <div role="radiogroup" aria-label={t("profilePage.currency.title")} className="surface divide-y divide-border overflow-hidden">
+              {visible.map((item) => (
+                <button
+                  key={item.code}
+                  type="button"
+                  role="radio"
+                  aria-checked={item.code === current}
+                  data-testid={`currency-${item.code}`}
+                  disabled={!ready}
+                  onClick={() => (item.code === current ? onClose() : setPending(item.code))}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50"
+                >
+                  <span className="flex h-9 min-w-9 shrink-0 items-center justify-center rounded-xl bg-muted px-1.5 text-[13px] font-extrabold" aria-hidden="true">{item.symbol}</span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-[15px] font-semibold leading-snug">{item.name}</span>
+                    <span className="text-[13px] text-muted-foreground">{item.code}</span>
+                  </span>
+                  {item.code === current && <FiCheck className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("profilePage.currency.noResults", { query: query.trim() })}</p>
+          )}
+        </>
+      )}
+    </Sheet>
+  );
+};
+
+CurrencySheet.propTypes = { open: PropTypes.bool.isRequired, onClose: PropTypes.func.isRequired };
 
 /* ── Categories ────────────────────────────────────────────────────────── */
 const CategoryItem = ({ item, hidden, count, onToggle, t }) => {

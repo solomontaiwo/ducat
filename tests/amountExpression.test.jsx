@@ -6,6 +6,7 @@ import {
   hasAmountExpression,
   sanitizeAmountInput,
 } from "../src/utils/amountExpression.js";
+import { setAccountCurrency } from "../src/utils/currency.js";
 
 const mocks = vi.hoisted(() => ({
   notification: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
@@ -133,5 +134,16 @@ describe("QuickAddForm inline calculator", () => {
       amountMinor: 1730,
       amount: 17.3,
     }));
+  });
+});
+
+describe("amount expressions and the account currency", () => {
+  it("rounds to the decimals of the account currency", () => {
+    expect(evaluateAmountExpression("100 / 3")).toBe(33.33);
+    expect(formatEvaluatedAmount(33.33)).toBe("33.33");
+    setAccountCurrency("JPY");
+    expect(evaluateAmountExpression("100 / 3")).toBe(33);
+    expect(evaluateAmountExpression("1000 / 8")).toBe(125);
+    expect(formatEvaluatedAmount(33.4)).toBe("33");
   });
 });

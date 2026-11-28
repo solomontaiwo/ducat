@@ -204,11 +204,30 @@ describe("transactions", () => {
   it("reject invalid amounts, currencies, types and ids", async () => {
     await asUser(ALICE);
     await expect(insertTransaction(transaction({ id: "a1", amount_minor: 0 }))).rejects.toThrow(/check/);
-    await expect(insertTransaction(transaction({ id: "a2", amount_minor: 100000001 }))).rejects.toThrow(/check/);
-    await expect(insertTransaction(transaction({ id: "a3", currency: "USD" }))).rejects.toThrow(/check/);
+    await expect(insertTransaction(transaction({ id: "a2", amount_minor: 100000000000001 }))).rejects.toThrow(/check/);
+    for (const [index, currency] of ["usd", "EURO", "", "U$D"].entries()) {
+      await expect(insertTransaction(transaction({ id: `a3${index}`, currency }))).rejects.toThrow(/check/);
+    }
     await expect(insertTransaction(transaction({ id: "a4", type: "transfer" }))).rejects.toThrow(/check/);
     await expect(insertTransaction(transaction({ id: "a/5" }))).rejects.toThrow(/check/);
     await expect(insertTransaction(transaction({ id: "a6", description: "  " }))).rejects.toThrow(/check/);
+  });
+
+  it("accept the account currency and amounts for currencies with a small unit", async () => {
+    await asUser(ALICE);
+    await insertTransaction(transaction({ id: "usd", currency: "USD" }));
+    await insertTransaction(transaction({ id: "jpy", currency: "JPY", amount_minor: 100000001 }));
+    await insertTransaction(transaction({ id: "vnd", currency: "VND", amount_minor: 100000000000000 }));
+    const { rows } = await db.query("select id, currency, amount_minor from public.transactions order by id");
+    expect(rows).toEqual([
+      { id: "jpy", currency: "JPY", amount_minor: 100000001 },
+      { id: "usd", currency: "USD", amount_minor: 1250 },
+      { id: "vnd", currency: "VND", amount_minor: 100000000000000 },
+    ]);
+    // Euro stays the default for writers that do not send a currency.
+    const row = transaction({ id: "default" });
+    delete row.currency;
+    expect((await insertTransaction(row)).rows[0].currency).toBe("EUR");
   });
 
   it("keep owner and creation time on update", async () => {
@@ -250,6 +269,18 @@ describe("recurring rules", () => {
     await asUser(BOB);
     expect((await db.query("select * from public.recurring")).rows).toEqual([]);
     expect((await db.query("update public.recurring set paused = true where id = $1 returning id", [id])).rows).toEqual([]);
+  });
+
+  it("accept any currency code and the larger amount ceiling", async () => {
+    await asUser(ALICE);
+    const insert = (currency, amount) => db.query(
+      `insert into public.recurring (type, amount_minor, currency, description, category, frequency, anchor_date_key)
+       values ('expense', $1, $2, 'Rent', 'housing', 'monthly', '2026-01-05') returning currency, amount_minor`,
+      [amount, currency]
+    );
+    expect((await insert("GBP", 100000000000000)).rows).toEqual([{ currency: "GBP", amount_minor: 100000000000000 }]);
+    await expect(insert("gbp", 1000)).rejects.toThrow(/check/);
+    await expect(insert("GBP", 100000000000001)).rejects.toThrow(/check/);
   });
 
   it("only move forward", async () => {

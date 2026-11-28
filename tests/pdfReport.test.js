@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createPDFReport } from "../src/utils/pdfUtils.jsx";
+import { createPDFReport, pdfMoney } from "../src/utils/pdfUtils.jsx";
+import { setAccountCurrency } from "../src/utils/currency.js";
 
 const tx = (id, type, amount, day) => ({
   id, type, amount, amountMinor: Math.round(amount * 100), category: type === "income" ? "stipendio" : "supermercato",
@@ -36,5 +37,25 @@ describe("createPDFReport", () => {
     });
     expect(model.transactions).toHaveLength(categories.length + 1);
     expect(doc.internal.getNumberOfPages()).toBeGreaterThanOrEqual(2);
+  });
+
+  it("writes amounts in the account currency, with the ISO code when the font has no symbol", () => {
+    setAccountCurrency("USD");
+    expect(pdfMoney(1234.5, "en-GB")).toBe("$1,234.50");
+    setAccountCurrency("JPY");
+    expect(pdfMoney(1234, "it-IT")).toMatch(/^1\.234\s¥$/);
+    setAccountCurrency("INR");
+    expect(pdfMoney(1234.5, "en-GB")).toMatch(/^INR\s1,234\.50$/);
+    setAccountCurrency("PLN");
+    expect(pdfMoney(10, "it-IT")).toMatch(/^10,00\sPLN$/);
+
+    const { doc } = createPDFReport({
+      transactions: [tx("a", "income", 2500, 1), tx("b", "expense", 42.3, 2)],
+      startDate: new Date(2026, 9, 1),
+      endDate: new Date(2026, 9, 31),
+      periodLabel: "October 2026",
+      lang: "en",
+    });
+    expect(doc.output("arraybuffer").byteLength).toBeGreaterThan(1000);
   });
 });

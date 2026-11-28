@@ -5,6 +5,7 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import { useCategories } from "../../utils/categories.jsx";
 import { detectCsvColumns, mapCsvRowsToTransactions, parseCsvText } from "../../utils/csvImport.js";
 import { formatSignedAmount } from "../../utils/formatCurrency.jsx";
+import { useAccountCurrency } from "../../hooks/useAccountCurrency.js";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -16,6 +17,7 @@ const MAX_IMPORT_ROWS = 500;
 
 const ImportCsvSheet = ({ onClose }) => {
   const { t } = useTranslation();
+  const currency = useAccountCurrency();
   const { addTransaction, addTransactionsBatch, fetchAllTransactions } = useUnifiedTransactions();
   const { expenseCategories, incomeCategories } = useCategories();
   const [csv, setCsv] = useState(null);
@@ -76,6 +78,7 @@ const ImportCsvSheet = ({ onClose }) => {
       expenseCategories,
       incomeCategories,
       defaultNegative,
+      currency,
     });
     if (!Object.keys(categoryOverrides).length) return mapped;
     return {
@@ -86,7 +89,7 @@ const ImportCsvSheet = ({ onClose }) => {
           : item
       )),
     };
-  }, [csv, mapping, existing, expenseCategories, incomeCategories, defaultNegative, categoryOverrides]);
+  }, [csv, mapping, existing, expenseCategories, incomeCategories, defaultNegative, categoryOverrides, currency]);
 
   const setCol = (field, value) => setMapping((prev) => ({ ...prev, [field]: Number(value) }));
 
@@ -198,7 +201,7 @@ const ImportCsvSheet = ({ onClose }) => {
             </p>
             {preview.unsupportedCurrency.length > 0 && (
               <div role="alert" className="text-destructive">
-                <p>{t("csvImport.unsupportedCurrency")}</p>
+                <p>{t("csvImport.unsupportedCurrency", { currency })}</p>
                 <ul>{preview.unsupportedCurrency.map((number) => <li key={number}>{t("csvImport.record", { number })}</li>)}</ul>
               </div>
             )}

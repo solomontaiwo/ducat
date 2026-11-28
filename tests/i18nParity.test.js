@@ -30,7 +30,7 @@ describe("money errors", () => {
     ["1.2345", "money.decimals"],
     [Number.NaN, "money.notFinite"],
     ["0", "money.notPositive"],
-    [2_000_000, "money.tooLarge"],
+    [2_000_000_000_000, "money.tooLarge"],
   ])("expose a stable i18n key for %s", (value, key) => {
     try {
       parseMoneyToMinor(value);

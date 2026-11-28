@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => {
     ],
     preferences: {
       monthStartDay: 1, defaultType: "last", defaultCategory: null, quickAmounts: [5, 10, 20, 50, 100],
-      hiddenCategories: [], categoryOrder: { expense: [], income: [] }, lastBackupAt: null,
+      hiddenCategories: [], categoryOrder: { expense: [], income: [] }, lastBackupAt: null, currency: "EUR",
     },
     addTransaction: vi.fn(),
     savePreferences: vi.fn(async () => true),
@@ -123,6 +123,58 @@ describe("Profile", () => {
     fireEvent.click(within(sheet).getByRole("button", { name: "profilePage.monthStart.later" }));
     fireEvent.click(within(sheet).getByRole("button", { name: "save" }));
     await waitFor(() => expect(mocks.savePreferences).toHaveBeenCalledWith({ monthStartDay: 28 }));
+  });
+
+  it("shows the account currency and switches it after confirming that amounts are not converted", async () => {
+    render(<Profile />);
+    const row = screen.getByTestId("row-currency");
+    expect(row).toHaveTextContent("profilePage.currency.title");
+    expect(row).toHaveTextContent("Euro · EUR");
+    expect(row).toHaveTextContent("€");
+    fireEvent.click(row);
+    const sheet = await screen.findByRole("dialog");
+    // The current currency comes first and is checked.
+    const options = within(sheet).getAllByRole("radio");
+    expect(options[0]).toHaveAttribute("data-testid", "currency-EUR");
+    expect(options[0]).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.change(within(sheet).getByRole("searchbox"), { target: { value: "dollaro statunitense" } });
+    expect(within(sheet).getAllByRole("radio").map((option) => option.dataset.testid)).toEqual(["currency-USD"]);
+    fireEvent.click(within(sheet).getByTestId("currency-USD"));
+
+    expect(within(sheet).getByText(/profilePage.currency.confirmTitle/)).toHaveTextContent("Dollaro statunitense");
+    const body = within(sheet).getByText(/profilePage.currency.confirmBody/);
+    expect(body.textContent).toMatch(/"before":"1\.250,00\s€"/);
+    expect(body.textContent).toMatch(/"after":"1\.250,00\s\$"/);
+    expect(mocks.savePreferences).not.toHaveBeenCalled();
+
+    fireEvent.click(within(sheet).getByTestId("currency-confirm"));
+    await waitFor(() => expect(mocks.savePreferences).toHaveBeenCalledWith({ currency: "USD" }));
+    expect(mocks.notification.success).toHaveBeenCalledWith(expect.stringContaining("Dollaro statunitense"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("goes back to the list from the confirmation, and finds currencies by code", async () => {
+    render(<Profile />);
+    fireEvent.click(screen.getByTestId("row-currency"));
+    const sheet = await screen.findByRole("dialog");
+    fireEvent.change(within(sheet).getByRole("searchbox"), { target: { value: "jpy" } });
+    fireEvent.click(within(sheet).getByTestId("currency-JPY"));
+    expect(within(sheet).getByText(/profilePage.currency.confirmBody/).textContent).toMatch(/"after":"1\.250\s¥"/);
+    fireEvent.click(within(sheet).getByRole("button", { name: "cancel" }));
+    expect(within(sheet).getByRole("searchbox")).toBeInTheDocument();
+    fireEvent.change(within(sheet).getByRole("searchbox"), { target: { value: "zzz" } });
+    expect(within(sheet).getByText(/profilePage.currency.noResults/)).toBeInTheDocument();
+    expect(mocks.savePreferences).not.toHaveBeenCalled();
+  });
+
+  it("closes without saving when the current currency is picked again", async () => {
+    render(<Profile />);
+    fireEvent.click(screen.getByTestId("row-currency"));
+    const sheet = await screen.findByRole("dialog");
+    fireEvent.click(within(sheet).getByTestId("currency-EUR"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(mocks.savePreferences).not.toHaveBeenCalled();
   });
 
   it("saves quick-add defaults", async () => {

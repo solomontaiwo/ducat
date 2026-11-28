@@ -11,7 +11,9 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import Sheet from "../ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
-import formatCurrency, { formatSignedAmount } from "../../utils/formatCurrency.jsx";
+import formatCurrency, { formatSignedAmount, moneyLocale } from "../../utils/formatCurrency.jsx";
+import { currencySymbol } from "../../utils/currency.js";
+import { useAccountCurrency } from "../../hooks/useAccountCurrency.js";
 import { minorToMajor, parseMoneyToMinor } from "../../utils/money.js";
 import { todayDateKey } from "../../utils/dateUtils.js";
 import { FREQUENCIES, firstIndexFrom, monthlyEquivalentMinor, nextOccurrence, reanchorForFrequency, upcomingOccurrences } from "../../utils/recurrence.js";
@@ -29,6 +31,7 @@ const toAmountInput = (minor, language) => {
 
 const RecurringPage = () => {
   const { t, i18n } = useTranslation();
+  const currency = useAccountCurrency();
   const { recurring, ready, updateRecurring, deleteRecurring, skipOccurrence } = usePlanning();
   const { openAddTransaction, canAdd } = useAddTransaction();
   const { expenseCategories, incomeCategories } = useCategories();
@@ -278,7 +281,7 @@ const RecurringPage = () => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit-recurring-amount">{t("transaction.amount")}</Label>
+            <Label htmlFor="edit-recurring-amount">{t("transaction.amount", { symbol: currencySymbol(currency, moneyLocale(i18n.language)) })}</Label>
             <Input
               id="edit-recurring-amount"
               inputMode="decimal"

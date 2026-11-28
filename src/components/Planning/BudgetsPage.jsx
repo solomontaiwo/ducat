@@ -8,7 +8,9 @@ import { useNotification } from "../../utils/notificationUtils.jsx";
 import { useNavigate } from "../../router/RouterProvider";
 import { CategoryBadge } from "../Transaction/TransactionRow.jsx";
 import { Button } from "../ui/button";
-import formatCurrency from "../../utils/formatCurrency.jsx";
+import formatCurrency, { moneyLocale } from "../../utils/formatCurrency.jsx";
+import { currencySymbol } from "../../utils/currency.js";
+import { useAccountCurrency } from "../../hooks/useAccountCurrency.js";
 import { minorToMajor, parseMoneyToMinor } from "../../utils/money.js";
 import { AVERAGE_MONTHS, averageByCategory, averageRange, suggestLimitMinor } from "../../utils/budgets.js";
 import BackButton from "./BackButton.jsx";
@@ -21,6 +23,7 @@ const toInput = (minor, language) => {
 
 const BudgetsPage = () => {
   const { t, i18n } = useTranslation();
+  const currency = useAccountCurrency();
   const { currentUser } = useAuth();
   const { isDemo, transactions, fetchAllTransactions } = useUnifiedTransactions();
   const { budgets, ready, saveBudgets, preferences } = usePlanning();
@@ -145,7 +148,7 @@ const BudgetsPage = () => {
                   aria-label={t("budgets.limitFor", { category: label })}
                   className="h-11 w-full rounded-xl border border-input bg-card pl-3 pr-8 text-right text-base font-semibold tabular-nums outline-none transition placeholder:font-normal placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
                 />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden="true">€</span>
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground" aria-hidden="true">{currencySymbol(currency, moneyLocale(i18n.language))}</span>
               </div>
             </li>
           );

@@ -46,6 +46,7 @@ import {
   readOfflineQueue,
   removeOfflineTransaction,
 } from "../src/utils/offlineQueue.js";
+import { setAccountCurrency } from "../src/utils/currency.js";
 import { UnifiedTransactionProvider, useUnifiedTransactions } from "../src/context/UnifiedTransactionProvider.jsx";
 import OfflineNotice from "../src/components/Layout/OfflineNotice.jsx";
 
@@ -94,6 +95,15 @@ describe("offlineQueue store", () => {
 
     removeOfflineTransaction("u1", "req-1");
     expect(readOfflineQueue("u1")).toHaveLength(0);
+  });
+
+  it("keeps the account currency of the moment an item was queued", () => {
+    setAccountCurrency("GBP");
+    const queued = enqueueOfflineTransaction("u1", sample, { requestId: "req-gbp" });
+    setAccountCurrency("EUR");
+    expect(queued.entry.payload.currency).toBe("GBP");
+    expect(queuedItemToTransaction("u1", readOfflineQueue("u1")[0]).currency).toBe("GBP");
+    expect(() => enqueueOfflineTransaction("u1", { ...sample, currency: "XYZ" }, { requestId: "req-x" })).toThrow("Invalid currency");
   });
 
   it("rejects invalid payloads before touching storage", () => {

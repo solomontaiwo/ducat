@@ -22,7 +22,7 @@ describe('backup validation', () => {
   it.each([
     { schemaVersion: 1 }, { transactions: [{ ...transaction, amountMinor: 0 }] },
     { transactions: [{ ...transaction, dateKey: '2026-02-30' }] },
-    { transactions: [{ ...transaction, currency: 'USD' }] }, { transactions: [transaction, transaction] },
+    { transactions: [{ ...transaction, currency: 'XYZ' }] }, { transactions: [transaction, transaction] },
     { recurring: [{ id: 'invalid' }] }, { budgets: { food: -1 } }, { preferences: { monthStartDay: 32 } },
   ])('rejects invalid backups: %j', override => expect(() => parseAccountBackup(backup(override), 'owner')).toThrow());
   it('rejects another account and malformed JSON', () => {

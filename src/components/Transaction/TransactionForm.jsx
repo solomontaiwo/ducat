@@ -7,7 +7,9 @@ import { useNotification } from "../../utils/notificationUtils.jsx";
 import { minorToMajor, parseMoneyToMinor } from "../../utils/money";
 import { evaluateAmountExpression, formatEvaluatedAmount, hasAmountExpression, sanitizeAmountInput } from "../../utils/amountExpression.js";
 import { coerceDateKey, dateKeyToDate, DATE_KEY_FORMAT, todayDateKey } from "../../utils/dateUtils";
-import formatCurrency, { formatCompactCurrency } from "../../utils/formatCurrency.jsx";
+import formatCurrency, { formatCompactCurrency, moneyLocale } from "../../utils/formatCurrency.jsx";
+import { currencySymbol } from "../../utils/currency.js";
+import { useAccountCurrency } from "../../hooks/useAccountCurrency.js";
 import { readLocalValue, writeLocalValue } from "../../utils/storage.js";
 import { cn } from "../../lib/utils.js";
 import { handleRadioKeyDown } from "../../utils/radioGroup.js";
@@ -94,6 +96,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
   const notification = useNotification();
   const compactAmount = useMediaQuery({ maxWidth: 767, maxHeight: 740 });
   const { t, i18n } = useTranslation();
+  const currency = useAccountCurrency();
   const [submitting, setSubmitting] = useState(false);
   const requestIdRef = useRef(crypto.randomUUID());
   const amountInputRef = useRef(null);
@@ -359,7 +362,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
               )}
               style={{ fontSize: isExpression ? "2rem" : compactAmount ? "2.25rem" : "3rem" }}
             />
-            <span className="font-display text-3xl font-bold text-muted-foreground" aria-hidden="true">€</span>
+            <span className="font-display text-3xl font-bold text-muted-foreground" aria-hidden="true">{currencySymbol(currency, moneyLocale(i18n.language))}</span>
           </div>
           {isExpression && evaluatedAmount !== null && (
             <button

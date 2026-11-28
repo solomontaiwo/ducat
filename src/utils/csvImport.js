@@ -1,6 +1,8 @@
 import { isValid, parse } from "date-fns";
 import { dateKeyToDate, isDateKey } from "./dateUtils.js";
 import { MAX_AMOUNT_MINOR, minorToMajor } from "./money.js";
+import { currencyFractionDigits, getAccountCurrency } from "./currency.js";
+import { currencyTokens } from "./currencyRegions.js";
 import { suggestCategory } from "./categorySuggest.js";
 
 const DATE_FORMATS = ["yyyy-MM-dd", "dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy", "yyyy/MM/dd", "MM/dd/yyyy"];
@@ -139,8 +141,29 @@ export const parseFlexibleDateKey = (raw) => {
   return null;
 };
 
-/** Parses signed, currency-decorated or Italian-formatted numbers into minor units + sign. */
-export const parseFlexibleAmount = (raw) => {
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Removes the ways of writing the account currency ("$", "US$", "USD") from an amount. */
+const stripCurrency = (text, currency) => currencyTokens(currency)
+  .reduce((result, token) => result.replace(new RegExp(escapeRegExp(token), "gi"), ""), text);
+
+/** True when an amount is written in a currency other than the account's. */
+const hasForeignCurrency = (text, currency) => {
+  const rest = stripCurrency(String(text || ""), currency);
+  return /\p{Sc}/u.test(rest) || /(?:^|[^A-Za-z])[A-Za-z]{3}(?![A-Za-z])/.test(rest);
+};
+
+/** True when a currency column names a currency other than the account's. */
+const isForeignCurrencyCode = (value, currency) => {
+  const text = String(value || "").trim();
+  return Boolean(text) && !currencyTokens(currency).some((token) => token.toLowerCase() === text.toLowerCase());
+};
+
+/**
+ * Parses signed, currency-decorated or Italian-formatted numbers into minor
+ * units + sign. Amounts with decimals are rejected for currencies without them.
+ */
+export const parseFlexibleAmount = (raw, currency = getAccountCurrency()) => {
   let text = String(raw || "").trim();
   if (!text) return null;
 
@@ -149,7 +172,7 @@ export const parseFlexibleAmount = (raw) => {
     negative = true;
     text = text.slice(1, -1).trim();
   }
-  text = text.replace(/[€\s]/g, "").replace(/EUR/gi, "");
+  text = stripCurrency(text, currency).replace(/[\p{Sc}\s]/gu, "");
   if (text.endsWith("-") || text.endsWith("−")) {
     negative = true;
     text = text.slice(0, -1);
@@ -190,6 +213,7 @@ export const parseFlexibleAmount = (raw) => {
   if (!Number.isFinite(numeric) || numeric <= 0) return null;
   const amountMinor = Math.round(numeric * 100);
   if (amountMinor <= 0 || amountMinor > MAX_AMOUNT_MINOR) return null;
+  if (currencyFractionDigits(currency) === 0 && amountMinor % 100 !== 0) return null;
   return {
     sign: negative ? "expense" : "income",
     amountMinor,
@@ -232,7 +256,7 @@ const dedupeSignature = (dateKey, type, amountMinor, description) => (
 export const mapCsvRowsToTransactions = (
   rows = [],
   mapping = {},
-  { existing = [], expenseCategories = [], incomeCategories = [], defaultNegative = false } = {}
+  { existing = [], expenseCategories = [], incomeCategories = [], defaultNegative = false, currency = getAccountCurrency() } = {}
 ) => {
   const existingCounts = new Map();
   for (const item of existing) {
@@ -248,9 +272,10 @@ export const mapCsvRowsToTransactions = (
   let duplicates = 0;
 
   for (const [index, row] of rows.entries()) {
-    const currency = mapping.currency >= 0 ? String(row[mapping.currency] || "").trim() : "";
+    const rowCurrency = mapping.currency >= 0 ? String(row[mapping.currency] || "").trim() : "";
     const amounts = [mapping.amount, mapping.debit, mapping.credit].filter((column) => column >= 0).map((column) => String(row[column] || ""));
-    if ((currency && !/^(EUR|EURO|€)$/i.test(currency)) || amounts.some((amount) => /[$£¥₹₽₺₩₿]|\b(?!EUR\b)[A-Za-z]{3}\b/i.test(amount))) {
+    // Amounts are never converted: rows in another currency are left out.
+    if (isForeignCurrencyCode(rowCurrency, currency) || amounts.some((amount) => hasForeignCurrency(amount, currency))) {
       unsupportedCurrency.push(index + 1);
       skipped += 1;
       continue;
@@ -261,7 +286,7 @@ export const mapCsvRowsToTransactions = (
     let amountInfo = null;
     let resolvedType = null;
     if (mapping.amount >= 0 && row[mapping.amount]) {
-      amountInfo = parseFlexibleAmount(row[mapping.amount]);
+      amountInfo = parseFlexibleAmount(row[mapping.amount], currency);
       if (amountInfo) {
         const typeHint = mapping.type >= 0 ? normalizeTypeHint(row[mapping.type]) : null;
         if (typeHint) {
@@ -275,8 +300,8 @@ export const mapCsvRowsToTransactions = (
         }
       }
     } else {
-      const debitVal = mapping.debit >= 0 ? parseFlexibleAmount(row[mapping.debit]) : null;
-      const creditVal = mapping.credit >= 0 ? parseFlexibleAmount(row[mapping.credit]) : null;
+      const debitVal = mapping.debit >= 0 ? parseFlexibleAmount(row[mapping.debit], currency) : null;
+      const creditVal = mapping.credit >= 0 ? parseFlexibleAmount(row[mapping.credit], currency) : null;
       if (debitVal) {
         amountInfo = debitVal;
         resolvedType = "expense";
