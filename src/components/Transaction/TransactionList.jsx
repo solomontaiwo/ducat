@@ -29,6 +29,7 @@ import { useNotification } from "../../utils/notificationUtils";
 import HeaderProfileButton from "../Layout/HeaderProfileButton.jsx";
 import PullToRefresh from "../ui/PullToRefresh.jsx";
 import { useOptionalLocation } from "../../router/RouterProvider";
+import { dismissKeyboardOnEnter } from "../../platform/native.js";
 
 const EMPTY_ROWS = [];
 const TYPE_FILTERS = ["all", "expense", "income"];
@@ -700,6 +701,8 @@ const TransactionList = () => {
             <FiSearch className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             <input
               type="search"
+              enterKeyHint="search"
+              onKeyDown={dismissKeyboardOnEnter}
               className="h-12 w-full rounded-2xl border border-input bg-card pl-11 pr-4 text-base outline-none transition placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-ring"
               placeholder={t("searchTransactions")}
               value={searchTerm}
