@@ -5,7 +5,7 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import { usePlanning } from "../../context/PlanningProvider.jsx";
 import { usePrivacy } from "../../context/PrivacyProvider.jsx";
 import { AddTransactionContext } from "../../context/AddTransactionContext.jsx";
-import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
+import { BOTTOM_NAV_HEIGHT_PX } from "../../router/tabs.js";
 import OfflineNotice from "./OfflineNotice.jsx";
 import { currentVault } from "../../services/vaultSession.js";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus.js";
@@ -17,8 +17,10 @@ import { useTranslation } from "react-i18next";
 
 const PendingDeviceApproval = lazy(() => import("../Profile/ApproveDeviceSheet.jsx")
   .then(({ PendingDeviceApproval }) => ({ default: PendingDeviceApproval })));
+const BottomNavigation = lazy(() => import("./BottomNavigation"));
 const Sidebar = lazy(() => import("./Sidebar"));
-const TransactionModal = lazy(() => import("../Transaction/TransactionModal"));
+const loadTransactionModal = () => import("../Transaction/TransactionModal");
+const TransactionModal = lazy(loadTransactionModal);
 const AppLockOverlay = lazy(() => import("./AppLockOverlay"));
 const ShortcutsDialog = lazy(() => import("./ShortcutsDialog"));
 const DemoImportPrompt = lazy(() => import("./DemoImportPrompt"));
@@ -35,7 +37,11 @@ const AppLayout = ({ children }) => {
   const { error: planningError, retry: retryPlanning } = usePlanning();
   const { locked, toggleHideAmounts } = usePrivacy();
   const online = useOnlineStatus();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  useEffect(() => {
+    if (!isDesktopApp() || !navigator.platform.startsWith("Mac")) return;
+    import("@tauri-apps/api/core").then(({ invoke }) => invoke("set_menu_language", { language: i18n.language })).catch(() => {});
+  }, [i18n.language]);
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const [showAddModal, setShowAddModal] = useState(false);
   // The native tab bar steps aside while any dialog or sheet is open.
@@ -54,6 +60,9 @@ const AppLayout = ({ children }) => {
 
   const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
   const showNavigation = !isPublicRoute && (currentUser || isDemo);
+  useEffect(() => {
+    if (showNavigation) loadTransactionModal().catch(() => {});
+  }, [showNavigation]);
   const addDisabled = isDemo && !canAddMoreTransactions;
   // Signed up, email not confirmed yet, trying the app with local data only.
   const pendingTrial = isDemo && Boolean(currentUser?.pending);
@@ -231,7 +240,7 @@ const AppLayout = ({ children }) => {
           </div>
         </main>
 
-        {showWebBottomNav && <BottomNavigation onAdd={openAddTransaction} addDisabled={addDisabled} />}
+        {showWebBottomNav && <Suspense fallback={null}><BottomNavigation onAdd={openAddTransaction} addDisabled={addDisabled} /></Suspense>}
         {isMobileApp() && (
           <Suspense fallback={null}>
             <NativeNavigationBridge

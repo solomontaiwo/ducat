@@ -1,11 +1,11 @@
 import { differenceInCalendarDays, endOfDay, startOfDay } from "date-fns";
 import { coerceDateKey, todayDateKey } from "./dateUtils.js";
 import { getTransactionAmountMinor, minorToMajor } from "./money.js";
-import { nextOccurrence, occurrenceDateKey } from "./recurrence.js";
+import { nextOccurrence, occurrenceDateKey, occurrenceRequestId } from "./recurrence.js";
 
 const MAX_OCCURRENCES_PER_RULE = 12;
 
-const sumRemainingRecurringMinor = (recurring, afterKey, upToKey) => {
+const sumRemainingRecurringMinor = (recurring, afterKey, upToKey, scheduled) => {
   let incomeMinor = 0;
   let expenseMinor = 0;
   for (const rule of recurring || []) {
@@ -15,6 +15,9 @@ const sumRemainingRecurringMinor = (recurring, afterKey, upToKey) => {
       const dateKey = occurrenceDateKey(rule.anchorDateKey, rule.frequency, index + step);
       if (dateKey > upToKey) break;
       if (dateKey > afterKey) {
+        const requestId = occurrenceRequestId(rule.id, dateKey).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+        const matched = scheduled.findIndex((item) => item.clientRequestId === requestId || item.id?.endsWith(`_${requestId}`));
+        if (matched !== -1) { scheduled.splice(matched, 1); continue; }
         if (rule.type === "income") incomeMinor += rule.amountMinor;
         else if (rule.type === "expense") expenseMinor += rule.amountMinor;
       }
@@ -62,15 +65,21 @@ export const computeMonthProjection = ({
   const elapsedDays = differenceInCalendarDays(now, start) + 1;
   const remainingDays = totalDays - elapsedDays;
   if (elapsedDays < 2 || remainingDays <= 0) return null;
-  if (stats.totalIncome === 0 && stats.totalExpense === 0 && !recurring.length) return null;
-
   const todayKey = coerceDateKey(now) || todayDateKey();
   const endKey = coerceDateKey(end);
-  const remainingRecurring = sumRemainingRecurringMinor(recurring, todayKey, endKey);
+  const future = monthTransactions.filter((item) => {
+    const dateKey = item.dateKey || coerceDateKey(item.date);
+    return dateKey > todayKey && dateKey <= endKey;
+  });
+  if (stats.totalIncome === 0 && stats.totalExpense === 0 && !recurring.length && !future.length) return null;
+  const scheduled = future.map((item) => ({ ...item, dateKey: item.dateKey || coerceDateKey(item.date) }));
+  const remainingRecurring = sumRemainingRecurringMinor(recurring, todayKey, endKey, [...scheduled]);
+  const scheduledIncomeMinor = scheduled.filter((item) => item.type === "income").reduce((sum, item) => sum + getTransactionAmountMinor(item), 0);
+  const scheduledExpenseMinor = scheduled.filter((item) => item.type === "expense").reduce((sum, item) => sum + getTransactionAmountMinor(item), 0);
 
   // Exclude recurring bills already posted this month from the variable daily pace
   // so an 800€ rent on day 1 does not extrapolate into 12.000€ of daily spending.
-  const expenses = monthTransactions.filter((item) => item.type === "expense");
+  const expenses = monthTransactions.filter((item) => item.type === "expense" && (item.dateKey || coerceDateKey(item.date)) <= todayKey);
   const variableSpentMinor = expenses.length
     ? expenses
       .filter((item) => !isLikelyRecurringExpense(item, recurring))
@@ -82,8 +91,8 @@ export const computeMonthProjection = ({
 
   const currentIncomeMinor = Math.round(stats.totalIncome * 100);
   const currentExpenseMinor = Math.round(stats.totalExpense * 100);
-  const projectedIncomeMinor = currentIncomeMinor + remainingRecurring.incomeMinor;
-  const projectedExpenseMinor = currentExpenseMinor + remainingRecurring.expenseMinor + projectedVariableRemainingMinor;
+  const projectedIncomeMinor = currentIncomeMinor + remainingRecurring.incomeMinor + scheduledIncomeMinor;
+  const projectedExpenseMinor = currentExpenseMinor + remainingRecurring.expenseMinor + scheduledExpenseMinor + projectedVariableRemainingMinor;
   const projectedBalanceMinor = projectedIncomeMinor - projectedExpenseMinor;
 
   return {
@@ -95,6 +104,8 @@ export const computeMonthProjection = ({
     projectedBalance: minorToMajor(projectedBalanceMinor),
     remainingRecurringExpense: minorToMajor(remainingRecurring.expenseMinor),
     remainingRecurringIncome: minorToMajor(remainingRecurring.incomeMinor),
+    scheduledIncome: minorToMajor(scheduledIncomeMinor),
+    scheduledExpense: minorToMajor(scheduledExpenseMinor),
     remainingVariableExpense: minorToMajor(projectedVariableRemainingMinor),
     dailyVariableExpense: minorToMajor(Math.round(dailyVariableMinor)),
   };

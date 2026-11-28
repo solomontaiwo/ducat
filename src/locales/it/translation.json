@@ -112,6 +112,8 @@
   },
   "dashboard": {
     "forecast": {
+      "scheduledIncome": "Entrate programmate",
+      "scheduledExpense": "Uscite programmate",
       "current": "Saldo del periodo finora",
       "income": "Entrate ricorrenti attese",
       "expense": "Addebiti ricorrenti attesi",
@@ -880,6 +882,9 @@
     "contact": "Contatti"
   },
   "offline": {
+    "syncFailed_one": "Sincronizzazione non riuscita. 1 movimento in attesa.",
+    "syncFailed_other": "Sincronizzazione non riuscita. {{count}} movimenti in attesa.",
+    "lastSync": "Ultima sincronizzazione riuscita: {{time}}",
     "title": "Sei offline.",
     "body": "Puoi comunque aggiungere nuovi movimenti: verranno sincronizzati appena torna la connessione.",
     "bodyWithPending_one": "1 movimento in attesa di sincronizzazione.",
@@ -955,6 +960,8 @@
     "help": "Questa guida"
   },
   "csvImport": {
+    "currencyCol": "Valuta",
+    "unsupportedCurrency": "Questi movimenti hanno una valuta diversa da EUR e non saranno importati.",
     "retryFailed": "Riprova ({{count}})",
     "checking": "Controllo dei movimenti già presenti…",
     "historyError": "Impossibile verificare i duplicati. Seleziona di nuovo il file per riprovare.",

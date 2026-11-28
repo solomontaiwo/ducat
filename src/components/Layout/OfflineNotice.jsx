@@ -10,7 +10,7 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 const OfflineNotice = () => {
   const { t } = useTranslation();
   const online = useOnlineStatus();
-  const { pendingOfflineCount = 0, syncingOfflineQueue = false, syncOfflineQueue } = useUnifiedTransactions();
+  const { pendingOfflineCount = 0, syncingOfflineQueue = false, offlineSyncFailed = false, lastOfflineSync, syncOfflineQueue } = useUnifiedTransactions();
 
   if (online && pendingOfflineCount === 0) return null;
 
@@ -41,12 +41,13 @@ const OfflineNotice = () => {
       <p className="min-w-0 flex-1 font-medium text-accent-foreground">
         {syncingOfflineQueue
           ? t("offline.syncing", { count: pendingOfflineCount })
-          : t("offline.pendingReady", { count: pendingOfflineCount })}
+          : offlineSyncFailed ? t("offline.syncFailed", { count: pendingOfflineCount }) : t("offline.pendingReady", { count: pendingOfflineCount })}
+        {lastOfflineSync && <span className="block text-xs font-normal">{t("offline.lastSync", { time: new Date(lastOfflineSync).toLocaleString() })}</span>}
       </p>
       {!syncingOfflineQueue && syncOfflineQueue && (
         <button
           type="button"
-          onClick={() => syncOfflineQueue()}
+          onClick={() => syncOfflineQueue().catch(() => {})}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-primary/40 bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
         >
           <FiRefreshCw className="h-3.5 w-3.5" aria-hidden="true" />

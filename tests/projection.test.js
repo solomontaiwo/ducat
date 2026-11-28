@@ -41,6 +41,21 @@ describe("computeMonthProjection", () => {
     expect(computeMonthProjection({ stats, startDate, endDate, today: new Date(2026, 10, 30) })).toBeNull();
     expect(computeMonthProjection({ stats, startDate, endDate, today: new Date(2026, 11, 5) })).toBeNull();
   });
+
+  it("adds future transactions once and excludes them from the spending pace", () => {
+    const recurring = [{ id: "rent", type: "expense", amountMinor: 80000, category: "casa", frequency: "monthly", anchorDateKey: "2026-11-20", nextIndex: 0, paused: false }];
+    const monthTransactions = [
+      { type: "expense", amountMinor: 10000, category: "spesa", date: new Date(2026, 10, 5) },
+      { id: "owner_rec-rent-2026-11-20", type: "expense", amountMinor: 80000, category: "casa", date: new Date(2026, 10, 20) },
+      { type: "income", amountMinor: 50000, category: "stipendio", date: new Date(2026, 10, 25) },
+    ];
+    const result = computeMonthProjection({ stats: { totalIncome: 0, totalExpense: 100 }, monthTransactions, recurring, startDate, endDate, today });
+    expect(result.dailyVariableExpense).toBe(10);
+    expect(result.scheduledExpense).toBe(800);
+    expect(result.scheduledIncome).toBe(500);
+    expect(result.remainingRecurringExpense).toBe(0);
+    expect(result.projectedBalance).toBe(-600);
+  });
 });
 
 describe("projectBudgetRow", () => {

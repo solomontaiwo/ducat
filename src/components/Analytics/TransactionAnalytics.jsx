@@ -58,7 +58,7 @@ const KpiTile = ({ label, value, note, tone, delta, maskNote = false }) => {
           tile, so even five-digit amounts fit on one line. Keeping container
           containment on an inner wrapper avoids interfering with row subgrid. */}
       <div className="min-w-0 self-baseline [container-type:inline-size]">
-        <span className={cn("amount block text-2xl sm:text-[1.75rem] cols2:whitespace-nowrap cols2:[font-size:clamp(1.0625rem,15cqi,1.75rem)]", tone === "income" && "text-income")}>{value}</span>
+        <span className={cn("amount block [overflow-wrap:anywhere] text-2xl sm:text-[1.75rem] cols2:whitespace-nowrap cols2:[font-size:clamp(1.0625rem,15cqi,1.75rem)]", tone === "income" && "text-income")}>{value}</span>
       </div>
       <span
         className="self-start text-xs font-medium leading-snug text-muted-foreground"
@@ -343,7 +343,7 @@ const TransactionAnalytics = () => {
         )}
       </div>
 
-      <section className="grid grid-cols-2 gap-3 cols2:grid-cols-4 lg:grid-cols-4 lg:gap-4" aria-label={t("analytics.summary")}>
+      <section className="analytics-summary grid grid-cols-2 gap-3 cols2:grid-cols-4 lg:grid-cols-4 lg:gap-4" aria-label={t("analytics.summary")}>
         <KpiTile
           label={t("dashboard.income")}
           value={formatCurrency(stats.totalIncome)}
@@ -415,7 +415,7 @@ const TransactionAnalytics = () => {
         </section>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:gap-5">
+      <div className="analytics-charts grid grid-cols-1 gap-4 lg:gap-5">
         <section className="surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="trend-title">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="trend-title" className="text-lg font-bold">{t("analytics.monthlyTrend")}</h2>

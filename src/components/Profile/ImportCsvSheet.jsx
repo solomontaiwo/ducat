@@ -19,7 +19,7 @@ const ImportCsvSheet = ({ onClose }) => {
   const { addTransaction, addTransactionsBatch, fetchAllTransactions } = useUnifiedTransactions();
   const { expenseCategories, incomeCategories } = useCategories();
   const [csv, setCsv] = useState(null);
-  const [mapping, setMapping] = useState({ date: -1, description: -1, amount: -1, debit: -1, credit: -1, category: -1, type: -1 });
+  const [mapping, setMapping] = useState({ date: -1, description: -1, amount: -1, debit: -1, credit: -1, category: -1, type: -1, currency: -1 });
   const [defaultNegative, setDefaultNegative] = useState(false);
   const [categoryOverrides, setCategoryOverrides] = useState({});
   const [existing, setExisting] = useState([]);
@@ -161,6 +161,7 @@ const ImportCsvSheet = ({ onClose }) => {
               {renderColumnPicker("debit", t("csvImport.debit"))}
               {renderColumnPicker("credit", t("csvImport.credit"))}
               {renderColumnPicker("type", t("csvImport.typeCol"))}
+              {renderColumnPicker("currency", t("csvImport.currencyCol"))}
             </div>
             {mapping.amount >= 0 && (
               <label className="flex items-center gap-2.5 text-xs font-medium text-muted-foreground">
@@ -195,6 +196,12 @@ const ImportCsvSheet = ({ onClose }) => {
             <p className="font-semibold" role="status">
               {t("csvImport.readySummary", { ready: preview.valid.length, duplicates: preview.duplicates, skipped: preview.skipped })}
             </p>
+            {preview.unsupportedCurrency.length > 0 && (
+              <div role="alert" className="text-destructive">
+                <p>{t("csvImport.unsupportedCurrency")}</p>
+                <ul>{preview.unsupportedCurrency.map((number) => <li key={number}>{t("csvImport.record", { number })}</li>)}</ul>
+              </div>
+            )}
             {preview.valid.length > 0 && (
               <ul className="divide-y divide-border pt-1 text-xs">
                 {preview.valid.slice(0, 6).map((item) => {

@@ -91,6 +91,8 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
   const [pendingTransactions, setPendingTransactions] = useState([]);
   const [pendingMutations, setPendingMutations] = useState([]);
   const [syncingOfflineQueue, setSyncingOfflineQueue] = useState(false);
+  const [offlineSyncFailed, setOfflineSyncFailed] = useState(false);
+  const [lastOfflineSync, setLastOfflineSync] = useState(null);
   const [queueRevision, setQueueRevision] = useState(0);
   // Several writes can overlap: only the last one finishing turns the flag off.
   const processingRef = useRef(0);
@@ -105,6 +107,11 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
   }, []);
   const notification = useNotification();
   const { t } = useTranslation();
+
+  useEffect(() => {
+    setOfflineSyncFailed(false);
+    setLastOfflineSync(null);
+  }, [currentUser?.uid]);
 
   const refreshPending = useCallback(async (uid) => {
     if (!hasStoredOfflineQueue(uid)) {
@@ -244,6 +251,7 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
     const archive = currentVault(currentUser.uid);
     syncingRef.current = true;
     setSyncingOfflineQueue(true);
+    setOfflineSyncFailed(false);
     try {
       const [{ flushOfflineQueue, flushOfflineMutations }, { TransactionService }] = await Promise.all([
         loadOfflineQueue(),
@@ -271,8 +279,13 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
         (operation) => runQueue(currentUser.uid, operation, archive),
       );
       const totalSynced = addResult.synced + mutResult.synced;
+      setOfflineSyncFailed(addResult.failed + mutResult.failed > 0);
+      if (totalSynced > 0) setLastOfflineSync(Date.now());
       if (totalSynced > 0) notification.success(t("offline.synced", { count: totalSynced }));
       return { synced: totalSynced, failed: addResult.failed + mutResult.failed };
+    } catch (error) {
+      setOfflineSyncFailed(true);
+      throw error;
     } finally {
       syncingRef.current = false;
       setSyncingOfflineQueue(false);
@@ -529,11 +542,13 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
     stopDemo,
     pendingOfflineCount: pendingTransactions.length + pendingMutations.length,
     syncingOfflineQueue,
+    offlineSyncFailed,
+    lastOfflineSync,
     syncOfflineQueue,
   }), [
     transactions, loading, isProcessing, addTransaction, addTransactionsBatch, updateTransaction, deleteTransaction,
     fetchAllTransactions, fetchTransactionPage, getTotalTransactionCount, getTransactionTotals,
-    getFirstTransactionDate, recentRevision, getStats, stopDemo, pendingTransactions.length, pendingMutations.length, syncingOfflineQueue, syncOfflineQueue,
+    getFirstTransactionDate, recentRevision, getStats, stopDemo, pendingTransactions.length, pendingMutations.length, syncingOfflineQueue, offlineSyncFailed, lastOfflineSync, syncOfflineQueue,
   ]);
 
   return (

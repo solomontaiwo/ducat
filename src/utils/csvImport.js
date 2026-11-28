@@ -13,6 +13,7 @@ const HEADER_HINTS = {
   credit: ["avere", "entrate", "entrata", "accrediti", "accredito", "credit", "inflow"],
   category: ["categoria", "category", "gruppo", "tag"],
   type: ["tipo", "type", "segno", "direzione"],
+  currency: ["currency", "divisa", "valuta", "currency code", "codice valuta"],
 };
 
 const detectDelimiter = (sampleLine) => {
@@ -114,8 +115,10 @@ export const detectCsvColumns = (headers = []) => {
   const category = pick(HEADER_HINTS.category, used);
   if (category >= 0) used.add(category);
   const type = pick(HEADER_HINTS.type, used);
+  if (type >= 0) used.add(type);
+  const currency = pick(HEADER_HINTS.currency, used);
 
-  return { date, description, amount, debit, credit, category, type };
+  return { date, description, amount, debit, credit, category, type, currency };
 };
 
 /** Parses common ISO, Italian and bank CSV date strings into `YYYY-MM-DD`. */
@@ -146,7 +149,7 @@ export const parseFlexibleAmount = (raw) => {
     negative = true;
     text = text.slice(1, -1).trim();
   }
-  text = text.replace(/[€$£\s]/g, "").replace(/EUR/gi, "");
+  text = text.replace(/[€\s]/g, "").replace(/EUR/gi, "");
   if (text.endsWith("-") || text.endsWith("−")) {
     negative = true;
     text = text.slice(0, -1);
@@ -240,10 +243,18 @@ export const mapCsvRowsToTransactions = (
   const seenInBatch = new Map();
   const valid = [];
   const recordNumbers = new Map();
+  const unsupportedCurrency = [];
   let skipped = 0;
   let duplicates = 0;
 
   for (const [index, row] of rows.entries()) {
+    const currency = mapping.currency >= 0 ? String(row[mapping.currency] || "").trim() : "";
+    const amounts = [mapping.amount, mapping.debit, mapping.credit].filter((column) => column >= 0).map((column) => String(row[column] || ""));
+    if ((currency && !/^(EUR|EURO|€)$/i.test(currency)) || amounts.some((amount) => /[$£¥₹₽₺₩₿]|\b(?!EUR\b)[A-Za-z]{3}\b/i.test(amount))) {
+      unsupportedCurrency.push(index + 1);
+      skipped += 1;
+      continue;
+    }
     const dateKey = mapping.date >= 0 ? parseFlexibleDateKey(row[mapping.date]) : null;
     if (!dateKey) { skipped += 1; continue; }
 
@@ -313,5 +324,5 @@ export const mapCsvRowsToTransactions = (
     });
   }
 
-  return { valid, skipped, duplicates, recordNumbers };
+  return { valid, skipped, duplicates, recordNumbers, unsupportedCurrency };
 };
