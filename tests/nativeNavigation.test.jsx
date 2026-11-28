@@ -155,6 +155,7 @@ describe("app layout with the native tab bar", () => {
     const { container } = await renderLayout();
     expect(screen.getByTestId("web-tab-bar")).toBeInTheDocument();
     expect(container.querySelector("main")).toHaveClass("app-content-safe-mobile");
+    expect(container.firstChild.style.getPropertyValue("--mobile-nav-height")).toBe("76px");
     // The layout is sent even before the native bar exists.
     expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ layout: "phone", visible: true }));
 
@@ -162,6 +163,7 @@ describe("app layout with the native tab bar", () => {
     expect(screen.queryByTestId("web-tab-bar")).toBeNull();
     expect(container.querySelector('[data-native-profile-navigation="true"]')).toBeInTheDocument();
     expect(container.querySelector("main")).toHaveClass("app-content-safe-bottom");
+    expect(container.firstChild.style.getPropertyValue("--mobile-nav-height")).toBe("0px");
     expect(mocks.native.update).toHaveBeenLastCalledWith({
       visible: true,
       layout: "phone",
@@ -171,6 +173,9 @@ describe("app layout with the native tab bar", () => {
       profileMode: "account",
       labels: { dashboard: "navbar.dashboard", transactions: "navbar.transactions", analytics: "navbar.analytics", profile: "navbar.profileAndSettings", add: "navbar.add" },
     });
+    act(() => mocks.native.subscribe.onAvailability(false, false));
+    expect(container.querySelector("main")).toHaveClass("app-content-safe-mobile");
+    expect(container.firstChild.style.getPropertyValue("--mobile-nav-height")).toBe("76px");
   });
 
   it("keeps the header shortcut when an older native bar lacks profile support", async () => {
