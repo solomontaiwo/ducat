@@ -18,7 +18,7 @@ const HeaderProfileButton = ({ className }) => {
   const { isDemo } = useUnifiedTransactions();
 
   if (!currentUser && !isDemo) return null;
-  const base = "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition md:hidden";
+  const base = "header-profile-link flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition md:hidden";
 
   if (isDemo && currentUser?.pending) {
     return (

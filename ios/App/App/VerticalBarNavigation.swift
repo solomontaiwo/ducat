@@ -23,6 +23,7 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
         Destination(identifier: "dashboard", path: "/dashboard", title: "Overview", symbol: "house"),
         Destination(identifier: "transactions", path: "/transactions", title: "Transactions", symbol: "list.bullet"),
         Destination(identifier: "analytics", path: "/analytics", title: "Insights", symbol: "chart.bar"),
+        Destination(identifier: "profile", path: "/profile", title: "Profile and settings", symbol: "gearshape"),
     ]
     private static let addIdentifier = "add"
 
@@ -110,12 +111,19 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
     /// Applies the state sent by the web app: whether its navigation is showing
     /// (signed in or demo, no modal open), the current page, the demo badge,
     /// whether a movement can be added, and the translated labels.
-    func apply(visible: Bool, path: String?, badge: String?, addEnabled: Bool, sidebar: Bool, labels: [String: String]) {
+    func apply(visible: Bool, path: String?, badge: String?, addEnabled: Bool, sidebar: Bool, profileMode: String, labels: [String: String]) {
         for tab in tabs {
             if let label = labels[tab.identifier], !label.isEmpty, tab.title != label { tab.title = label }
         }
         tabs.first { $0.identifier == "transactions" }?.badgeValue = badge
         tabs.first { $0.identifier == Self.addIdentifier }?.isEnabled = addEnabled
+        let profileSymbol: String
+        switch profileMode {
+        case "register": profileSymbol = "person.badge.plus"
+        case "verifyEmail": profileSymbol = "envelope"
+        default: profileSymbol = "gearshape"
+        }
+        tabs.first { $0.identifier == "profile" }?.image = UIImage(systemName: profileSymbol)
         if let path, let destination = Self.destinations.first(where: { $0.path == path }),
            selectedTab?.identifier != destination.identifier,
            let tab = tabs.first(where: { $0.identifier == destination.identifier }),
@@ -141,6 +149,10 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
     func tabBarController(_ tabBarController: UITabBarController, shouldSelectTab tab: UITab) -> Bool {
         if tab.identifier == Self.addIdentifier {
             NativeNavigationPlugin.emit("addRequested", [:])
+            return false
+        }
+        if tab.identifier == "profile" {
+            NativeNavigationPlugin.emit("profileRequested", [:])
             return false
         }
         if tab.identifier == selectedTab?.identifier,
@@ -183,7 +195,8 @@ final class VerticalBarTabController: UITabBarController, UITabBarControllerDele
 /// Bridge between the native tab bar and the web app.
 ///
 /// JavaScript calls `getState` and `update`; the plugin sends `stateChanged`
-/// (`{ available }`), `tabSelected` (`{ path }`) and `addRequested`.
+/// (`{ available, profileNavigation }`), `tabSelected` (`{ path }`),
+/// `profileRequested` and `addRequested`.
 @objc(NativeNavigationPlugin)
 public class NativeNavigationPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "NativeNavigationPlugin"
@@ -212,12 +225,12 @@ public class NativeNavigationPlugin: CAPPlugin, CAPBridgedPlugin {
     static func updateAvailability(_ value: Bool) {
         guard available != value else { return }
         available = value
-        emit("stateChanged", ["available": value])
+        emit("stateChanged", ["available": value, "profileNavigation": true])
     }
 
     @objc func getState(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            call.resolve(["available": Self.available])
+            call.resolve(["available": Self.available, "profileNavigation": true])
         }
     }
 
@@ -227,10 +240,11 @@ public class NativeNavigationPlugin: CAPPlugin, CAPBridgedPlugin {
         let badge = call.getString("badge")
         let addEnabled = call.getBool("addEnabled") ?? true
         let sidebar = call.getString("layout") == "sidebar"
+        let profileMode = call.getString("profileMode") ?? "account"
         let labels = (call.getObject("labels") ?? [:]).compactMapValues { $0 as? String }
         DispatchQueue.main.async {
             if #available(iOS 27.1, *), let controller = Self.controller as? VerticalBarTabController {
-                controller.apply(visible: visible, path: path, badge: badge, addEnabled: addEnabled, sidebar: sidebar, labels: labels)
+                controller.apply(visible: visible, path: path, badge: badge, addEnabled: addEnabled, sidebar: sidebar, profileMode: profileMode, labels: labels)
             }
             call.resolve()
         }

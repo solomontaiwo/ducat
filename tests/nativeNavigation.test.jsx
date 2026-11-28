@@ -21,7 +21,7 @@ const asCapacitorProxy = (target) => new Proxy(target, {
   get: (object, prop) => (prop in object ? object[prop] : () => Promise.reject({ code: "UNIMPLEMENTED" })),
 });
 
-const fakePlugin = ({ available = true, getStateError = null } = {}) => {
+const fakePlugin = ({ available = true, profileNavigation = true, getStateError = null } = {}) => {
   const listeners = {};
   const removed = [];
   return asCapacitorProxy({
@@ -33,7 +33,7 @@ const fakePlugin = ({ available = true, getStateError = null } = {}) => {
     }),
     getState: vi.fn(async () => {
       if (getStateError) throw getStateError;
-      return { available };
+      return { available, profileNavigation };
     }),
     update: vi.fn(async () => undefined),
   });
@@ -69,23 +69,25 @@ describe("native navigation bridge", () => {
   it("reports availability, forwards tab and add events, and stops listening", async () => {
     vi.stubEnv("MODE", "mobile");
     const { subscribeNativeNavigation, updateNativeNavigation } = await loadModule();
-    const handlers = { onAvailability: vi.fn(), onSelect: vi.fn(), onAdd: vi.fn() };
+    const handlers = { onAvailability: vi.fn(), onSelect: vi.fn(), onAdd: vi.fn(), onProfile: vi.fn() };
     const unsubscribe = subscribeNativeNavigation(handlers);
-    await waitFor(() => expect(handlers.onAvailability).toHaveBeenCalledWith(true));
+    await waitFor(() => expect(handlers.onAvailability).toHaveBeenCalledWith(true, true));
     expect(mocks.registerPlugin).toHaveBeenCalledWith("NativeNavigation");
 
     mocks.plugin.listeners.tabSelected({ path: "/analytics" });
     mocks.plugin.listeners.addRequested({});
+    mocks.plugin.listeners.profileRequested({});
     mocks.plugin.listeners.stateChanged({ available: false });
     expect(handlers.onSelect).toHaveBeenCalledWith("/analytics");
     expect(handlers.onAdd).toHaveBeenCalledTimes(1);
-    expect(handlers.onAvailability).toHaveBeenLastCalledWith(false);
+    expect(handlers.onProfile).toHaveBeenCalledTimes(1);
+    expect(handlers.onAvailability).toHaveBeenLastCalledWith(false, false);
 
     await updateNativeNavigation({ visible: true, path: "/dashboard" });
     expect(mocks.plugin.update).toHaveBeenCalledWith({ visible: true, path: "/dashboard" });
 
     unsubscribe();
-    expect(mocks.plugin.removed.sort()).toEqual(["addRequested", "stateChanged", "tabSelected"]);
+    expect(mocks.plugin.removed.sort()).toEqual(["addRequested", "profileRequested", "stateChanged", "tabSelected"]);
   });
 
   it("keeps the web navigation with an app build that has no plugin", async () => {
@@ -156,8 +158,9 @@ describe("app layout with the native tab bar", () => {
     // The layout is sent even before the native bar exists.
     expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ layout: "phone", visible: true }));
 
-    act(() => mocks.native.subscribe.onAvailability(true));
+    act(() => mocks.native.subscribe.onAvailability(true, true));
     expect(screen.queryByTestId("web-tab-bar")).toBeNull();
+    expect(container.querySelector('[data-native-profile-navigation="true"]')).toBeInTheDocument();
     expect(container.querySelector("main")).toHaveClass("app-content-safe-bottom");
     expect(mocks.native.update).toHaveBeenLastCalledWith({
       visible: true,
@@ -165,8 +168,16 @@ describe("app layout with the native tab bar", () => {
       path: "/dashboard",
       badge: null,
       addEnabled: true,
-      labels: { dashboard: "navbar.dashboard", transactions: "navbar.transactions", analytics: "navbar.analytics", add: "navbar.add" },
+      profileMode: "account",
+      labels: { dashboard: "navbar.dashboard", transactions: "navbar.transactions", analytics: "navbar.analytics", profile: "navbar.profileAndSettings", add: "navbar.add" },
     });
+  });
+
+  it("keeps the header shortcut when an older native bar lacks profile support", async () => {
+    const { container } = await renderLayout();
+    act(() => mocks.native.subscribe.onAvailability(true, false));
+    expect(screen.queryByTestId("web-tab-bar")).toBeNull();
+    expect(container.querySelector('[data-native-profile-navigation="true"]')).toBeNull();
   });
 
   it("navigates from native tabs and opens the new-transaction form", async () => {
@@ -176,6 +187,9 @@ describe("app layout with the native tab bar", () => {
     act(() => mocks.native.subscribe.onSelect("/javascript:alert(1)"));
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
     expect(mocks.navigate).toHaveBeenCalledWith("/transactions");
+
+    act(() => mocks.native.subscribe.onProfile());
+    expect(mocks.navigate).toHaveBeenLastCalledWith("/profile");
 
     act(() => mocks.native.subscribe.onAdd());
     expect(await screen.findByTestId("add-modal")).toBeInTheDocument();
@@ -207,9 +221,20 @@ describe("app layout with the native tab bar", () => {
     };
     await renderLayout();
     act(() => mocks.native.subscribe.onAvailability(true));
-    expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ badge: "1/10", addEnabled: false }));
+    expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ badge: "1/10", addEnabled: false, profileMode: "register", labels: expect.objectContaining({ profile: "navbar.register" }) }));
+    act(() => mocks.native.subscribe.onProfile());
+    expect(mocks.navigate).toHaveBeenLastCalledWith("/register");
     act(() => mocks.native.subscribe.onAdd());
     expect(screen.queryByTestId("add-modal")).toBeNull();
+  });
+
+  it("opens email confirmation from the profile action for a pending trial", async () => {
+    mocks.user = { pending: true, email: "test@example.com" };
+    mocks.unified = { ...mocks.unified, isDemo: true };
+    await renderLayout();
+    expect(mocks.native.update).toHaveBeenLastCalledWith(expect.objectContaining({ profileMode: "verifyEmail", labels: expect.objectContaining({ profile: "demo.confirmEmail" }) }));
+    act(() => mocks.native.subscribe.onProfile());
+    expect(mocks.navigate).toHaveBeenCalledWith("/verify-email");
   });
 
   it("keeps only the web sidebar in the wide layout", async () => {
