@@ -991,7 +991,7 @@ test("suggests the category and turns a movement into a recurring one", async ({
   await expect(page.getByRole("button", { name: /Netflix.*ogni settimana/i })).toBeVisible();
 });
 
-test("budgets appear on the overview only once set", async ({ page }) => {
+test("budgets appear on the overview only once set", async ({ page, isMobile }) => {
   await page.goto(".");
   await page.getByRole("button", { name: /prova (la )?demo/i }).first().click();
   await expect(page).toHaveURL(/\/transactions$/);
@@ -999,6 +999,19 @@ test("budgets appear on the overview only once set", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByRole("region", { name: /budget del mese/i })).toHaveCount(0);
   await goTo(page, "budgets");
+  if (isMobile) {
+    const actions = page.getByRole("button", { name: /salva budget/i }).locator("..");
+    const webBottom = await actions.evaluate((element) => element.getBoundingClientRect().bottom);
+    await expect(actions).toHaveCSS("bottom", "88px");
+    await actions.evaluate((element) => element.closest("main").parentElement.style.setProperty("--mobile-nav-height", "0px"));
+    const nativeBottom = await actions.evaluate((element) => element.getBoundingClientRect().bottom);
+    await expect(actions).toHaveCSS("bottom", "12px");
+    if (Math.abs(page.viewportSize().height - webBottom - 88) < 1) {
+      expect(nativeBottom - webBottom).toBeCloseTo(76, 0);
+      expect(page.viewportSize().height - nativeBottom).toBeCloseTo(12, 0);
+    }
+    await actions.evaluate((element) => element.closest("main").parentElement.style.setProperty("--mobile-nav-height", "76px"));
+  }
   await page.getByLabel(/budget mensile per spesa$/i).fill("40");
   await page.getByRole("button", { name: /salva budget/i }).click();
   await expect(page).toHaveURL(/dashboard$/);

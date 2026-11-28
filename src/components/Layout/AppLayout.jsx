@@ -173,7 +173,7 @@ const AppLayout = ({ children }) => {
       <div
         className="flex min-h-screen flex-col text-foreground"
         data-native-profile-navigation={showNavigation && isMobile && nativeProfileNavigation ? "true" : undefined}
-        style={{ "--mobile-nav-height": `${BOTTOM_NAV_HEIGHT_PX}px` }}
+        style={{ "--mobile-nav-height": `${showWebBottomNav ? BOTTOM_NAV_HEIGHT_PX : 0}px` }}
       >
         {showNavigation && <div className="top-scroll-fade" aria-hidden="true" />}
         {showNavigation && !isMobile && (
