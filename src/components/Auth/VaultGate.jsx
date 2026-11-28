@@ -6,8 +6,8 @@ import { useNotification } from "../../utils/notificationUtils.jsx";
 import { archiveKeychain } from "../../platform/authStorage.js";
 import { clearOfflineForUser } from "../../utils/offlineCache.js";
 import { createRecoveryVault, decodeBytes, encodeBytes, isVaultPin, newRecoveryCode, unwrapVaultKey } from "../../utils/vaultCrypto.js";
-import { clearVaultDeviceSession, isVaultPinLocked, loadVaultPin, rememberVaultDeviceSession, resumeVaultDeviceSession, saveVaultPin, verifyVaultPin } from "../../utils/vaultDeviceUnlock.js";
-import { loadVaultAccount, openVault, readCachedVaultAccount, startVault, watchVaultAccount } from "../../services/vaultService.js";
+import { clearPairedVaultSession, clearVaultDeviceSession, isVaultPinLocked, loadVaultPin, rememberPairedVaultSession, rememberVaultDeviceSession, resumePairedVaultSession, resumeVaultDeviceSession, saveVaultPin, verifyVaultPin } from "../../utils/vaultDeviceUnlock.js";
+import { loadVaultAccount, openVault, readCachedVaultAccount, startVault, vaultAuthSession, watchVaultAccount } from "../../services/vaultService.js";
 import { hasLegacyVaultQueue, runVaultQueue } from "../../services/vaultQueue.js";
 import { currentVault, setCurrentVault } from "../../services/vaultSession.js";
 import { Button } from "../ui/button.jsx";
@@ -74,6 +74,14 @@ const VaultAccess = ({ uid, logout, children }) => {
         await rememberVaultDeviceSession(uid, trustedPin, bytes).catch(() => notification.warning(t("vault.sessionSaveError")));
         if (!alive.current) await clearVaultDeviceSession(uid);
       }
+      if (options?.rememberPairing && alive.current) {
+        const authSession = await vaultAuthSession(uid).catch(() => null);
+        if (authSession && alive.current) {
+          await rememberPairedVaultSession(uid, current.keys, authSession, bytes)
+            .catch(() => notification.warning(t("vault.sessionSaveError")));
+          if (!alive.current) await clearPairedVaultSession(uid);
+        }
+      }
       if (!alive.current) return;
       setCurrentVault(archive);
       setReady(true);
@@ -108,6 +116,17 @@ const VaultAccess = ({ uid, logout, children }) => {
       }
     }
     if (!alive.current || currentVault(uid)) return;
+    if (!localPin) {
+      const secret = await resumePairedVaultSession(uid, current.keys, vaultAuthSession).catch(() => null);
+      if (secret) {
+        try { if (alive.current) await unlock(current, secret, false, false, options); }
+        catch (failure) {
+          if (failure?.name === "OperationError" || /Invalid archive/i.test(failure?.message || "")) {
+            await clearPairedVaultSession(uid);
+          }
+        } finally { secret.fill(0); }
+      }
+    }
     if (localPin) {
       const secret = await resumeVaultDeviceSession(uid, localPin).catch(() => null);
       if (secret) {
@@ -247,14 +266,34 @@ const VaultAccess = ({ uid, logout, children }) => {
     }
   };
 
-  const onDeviceApproved = (secret) => {
-    pairedKey.current?.fill(0);
-    pairedKey.current = secret;
-    setPaired(true);
+  const onDeviceApproved = useCallback(async (secret, automatic) => {
+    if (!alive.current || processing.current) {
+      secret.fill(0);
+      return;
+    }
     setCredential("");
     setError(null);
     setShowPairing(false);
-  };
+    if (!automatic) {
+      pairedKey.current?.fill(0);
+      pairedKey.current = secret;
+      setPaired(true);
+      return;
+    }
+
+    processing.current = true;
+    setBusy(true);
+    try {
+      const keepKey = Boolean(deviceKey?.available && !deviceKey.configured && remember);
+      await unlock(account, secret, keepKey, false, { rememberPairing: !deviceKey?.available && keepSession && !pinEntry });
+    } catch {
+      if (alive.current) setError("unavailable");
+    } finally {
+      secret.fill(0);
+      processing.current = false;
+      if (alive.current) setBusy(false);
+    }
+  }, [account, deviceKey, keepSession, pinEntry, remember, unlock]);
 
   const unlockWithDevice = async () => {
     if (processing.current || !account?.active) return;

@@ -15,7 +15,7 @@ export default function ApproveDeviceSheet({ uid, onClose }) {
   const requests = usePendingVaultPairings(uid);
   const [reviewing, setReviewing] = useState(null);
   const [code, setCode] = useState("");
-  const [confirmation, setConfirmation] = useState(null);
+  const [approval, setApproval] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const processing = useRef(false);
@@ -37,7 +37,7 @@ export default function ApproveDeviceSheet({ uid, onClose }) {
         else setError("requestMissing");
       } else {
         const result = await approveVaultPairing(vault, id);
-        if (result) setConfirmation(formatPairingCode(result));
+        if (result) setApproval(result);
         else setError("requestMissing");
       }
     } catch {
@@ -48,14 +48,20 @@ export default function ApproveDeviceSheet({ uid, onClose }) {
     }
   };
 
+  const description = approval
+    ? approval.automatic ? "pairing:automaticApproved" : "pairing:approvedHelp"
+    : reviewing ? "pairing:reviewHelp" : "pairing:approveHelp";
+
   return (
-    <Sheet open title={t("pairing.approve")} description={t(confirmation ? "pairing:approvedHelp" : reviewing ? "pairing:reviewHelp" : "pairing:approveHelp")}
+    <Sheet open title={t("pairing.approve")} description={t(description)}
       onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
-      {confirmation ? (
-        <div className="space-y-2">
-          <p className="text-sm font-medium">{t("pairing:confirmation")}</p>
-          <p data-testid="pairing-confirmation" className="select-all rounded-xl bg-muted p-3 text-center font-mono">{confirmation}</p>
-        </div>
+      {approval ? (
+        approval.automatic ? null : (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">{t("pairing:confirmation")}</p>
+            <p data-testid="pairing-confirmation" className="select-all rounded-xl bg-muted p-3 text-center font-mono">{formatPairingCode(approval.confirmation)}</p>
+          </div>
+        )
       ) : reviewing ? (
         <div className="space-y-3">
           <p className="rounded-xl bg-muted p-3 text-center font-mono">{formatPairingCode(reviewing)}</p>
