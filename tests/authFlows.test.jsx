@@ -152,7 +152,7 @@ describe("Register", () => {
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/verify-email", { replace: true }));
     expect(mocks.signUp).toHaveBeenCalledWith({ email: "ada@example.com", password: "long-enough-1", displayName: "Ada Lovelace" });
     expect(mocks.markPendingVerification).toHaveBeenCalledWith("ada@example.com", "long-enough-1");
-    expect(mocks.notification.success).toHaveBeenCalled();
+    expect(mocks.notification.success).not.toHaveBeenCalled();
   });
 
   it("goes straight to the dashboard when confirmation is not required", async () => {

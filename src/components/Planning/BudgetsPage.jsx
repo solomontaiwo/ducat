@@ -94,7 +94,6 @@ const BudgetsPage = () => {
     setSaving(true);
     try {
       if (await saveBudgets(limits)) {
-        notification.success(t("budgets.saved"));
         setTouched(false);
         navigate("/dashboard");
       }

@@ -112,6 +112,6 @@ describe("RecurringPage editing", () => {
       anchorDateKey: "2023-04-10",
     }));
     expect(mocks.hapticSuccess).toHaveBeenCalledOnce();
-    expect(mocks.notification.success).toHaveBeenCalledWith("recurring.updated");
+    expect(mocks.notification.success).not.toHaveBeenCalled();
   });
 });

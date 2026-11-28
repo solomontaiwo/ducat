@@ -38,7 +38,6 @@ const VerifyEmail = () => {
     try {
       const refreshed = await refreshCurrentUser();
       if (refreshed?.emailVerified) {
-        notification.success(t("auth.verifyEmail.verified"));
         navigate("/dashboard", { replace: true });
       } else if (refreshed?.needsSignIn) {
         await logout();

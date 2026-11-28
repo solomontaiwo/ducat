@@ -85,7 +85,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
   }, []);
 
   // Adds a new demo transaction
-  const addDemoTransaction = useCallback(async (transactionData, { silent = false } = {}) => {
+  const addDemoTransaction = useCallback(async (transactionData) => {
     try {
       const current = latestRef.current;
       const rules = transactionData.recurring || transactionData.recurringOccurrence
@@ -134,7 +134,6 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
       setDemoTransactions(updatedTransactions);
       setRevision((value) => value + 1);
       if (nextRules !== rules) emitLocalChange("demo-recurring");
-      if (!silent) notification.success(t('demo.transactionAdded'));
       return true;
     } catch (error) {
       console.error("Unable to save demo transaction", error);
@@ -161,7 +160,6 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
       latestRef.current = updatedTransactions;
       setDemoTransactions(updatedTransactions);
       setRevision((value) => value + 1);
-      if (!silent) notification.success(t('demo.transactionUpdated'));
       return true;
     } catch (error) {
       console.error("Unable to update demo transaction", error);
@@ -170,8 +168,8 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
     }
   }, [saveDemoTransactions, notification, t]);
 
-  // Deletes a demo transaction; `silent` lets the caller show its own (undo) toast.
-  const deleteDemoTransaction = useCallback(async (transactionId, { silent = false } = {}) => {
+  // Deletes a demo transaction.
+  const deleteDemoTransaction = useCallback(async (transactionId) => {
     const current = latestRef.current;
     // Already gone (double action or another tab): treat as success.
     if (!current.some(transaction => transaction.id === transactionId)) return true;
@@ -183,7 +181,6 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
       latestRef.current = updatedTransactions;
       setDemoTransactions(updatedTransactions);
       setRevision((value) => value + 1);
-      if (!silent) notification.success(t('demo.transactionDeleted'));
       return true;
     } catch (error) {
       console.error("Unable to delete demo transaction", error);
@@ -202,7 +199,6 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
     latestRef.current = [];
     setDemoTransactions([]);
     setRevision((value) => value + 1);
-    notification.success(t('demo.allTransactionsCleared'));
     return true;
   }, [notification, t]);
 
@@ -285,7 +281,6 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
     latestRef.current = normalizedSamples;
     setDemoTransactions(normalizedSamples);
     setRevision((value) => value + 1);
-    notification.info(t('demo.sampleTransactionsAdded'));
     return true;
   }, [saveDemoTransactions, notification, t]);
 

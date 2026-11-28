@@ -167,7 +167,7 @@ describe("Profile", () => {
       "Ada Lovelace"
     ));
     await waitFor(() => expect(mocks.refreshProfileName).toHaveBeenCalled());
-    expect(mocks.notification.success).toHaveBeenCalledWith("profile.usernameSuccess");
+    expect(mocks.notification.success).not.toHaveBeenCalled();
   });
 
   it("reports a failed rename", async () => {
