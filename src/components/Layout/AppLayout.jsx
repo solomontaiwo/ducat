@@ -7,6 +7,7 @@ import { usePrivacy } from "../../context/PrivacyProvider.jsx";
 import { AddTransactionContext } from "../../context/AddTransactionContext.jsx";
 import BottomNavigation, { BOTTOM_NAV_HEIGHT_PX } from "./BottomNavigation";
 import OfflineNotice from "./OfflineNotice.jsx";
+import { currentVault } from "../../services/vaultSession.js";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus.js";
 import { useAnyDialogOpen } from "../ui/dialogStack.js";
 import { isDesktop as isDesktopApp, isMobile as isMobileApp } from "../../platform/index.js";
@@ -14,6 +15,8 @@ import { useMediaQuery } from "react-responsive";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 
+const PendingDeviceApproval = lazy(() => import("../Profile/ApproveDeviceSheet.jsx")
+  .then(({ PendingDeviceApproval }) => ({ default: PendingDeviceApproval })));
 const Sidebar = lazy(() => import("./Sidebar"));
 const TransactionModal = lazy(() => import("../Transaction/TransactionModal"));
 const AppLockOverlay = lazy(() => import("./AppLockOverlay"));
@@ -172,6 +175,11 @@ const AppLayout = ({ children }) => {
           }
         >
           <div className="w-full space-y-5">
+            {showNavigation && !locked && currentUser?.emailVerified && currentVault(currentUser.uid)?.canPair() && (
+              <Suspense fallback={null}>
+                <PendingDeviceApproval key={currentUser.uid} uid={currentUser.uid} />
+              </Suspense>
+            )}
             {showNavigation && (!online || pendingOfflineCount > 0) && (
               <Suspense fallback={null}>
                 <OfflineNotice />

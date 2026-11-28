@@ -47,19 +47,7 @@
   },
   "pairing": {
     "approve": "Approve a device",
-    "request": "Approve from another device",
-    "approveHelp": "Enter the pairing code from the new device.",
-    "requestHelp": "On the unlocked device, open Profile → Security → Approve a device and enter the code below.",
-    "requestCode": "Pairing code",
-    "confirmation": "Confirmation code",
-    "approvedHelp": "Enter this code on the new device.",
-    "confirm": "Confirm pairing",
-    "invalidCode": "Check the code and try again.",
-    "requestMissing": "Request expired or already approved.",
-    "expired": "Code expired. Generate a new one.",
-    "waiting": "Approve the request on your other device first.",
-    "confirmFailed": "Check the confirmation code.",
-    "failed": "Pairing failed. Try again."
+    "request": "Approve from another device"
   },
   "appName": "Ducat",
   "recentTransactions": {

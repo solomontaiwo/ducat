@@ -545,6 +545,7 @@ describe("encrypted archive", () => {
     expect(await startVault(ALICE, keys)).toBe(true);
     const request = await createVaultPairing();
     const start = () => db.query("select public.start_vault_pairing($1,$2,$3) as created", [ALICE, request.id, request.publicKey]);
+    const reject = () => db.query("select public.reject_vault_pairing($1,$2) as rejected", [ALICE, request.id]);
     expect((await start()).rows[0].created).toBe(false);
     await db.query("select public.finish_vault($1, 0)", [ALICE]);
     expect((await start()).rows[0].created).toBe(true);
@@ -555,12 +556,14 @@ describe("encrypted archive", () => {
       await asUser(BOB);
       expect((await db.query("select * from public.vault_pairings")).rows).toEqual([]);
       await expect(start()).rejects.toMatchObject({ code: "42501" });
+      await expect(reject()).rejects.toMatchObject({ code: "42501" });
       await asUser(ALICE);
       const approve = (receiver) => db.query("select public.approve_vault_pairing($1,$2,$3,$4,$5) as approved",
         [ALICE, request.id, receiver, encrypted.sender, encrypted.ciphertext]);
       expect((await approve((await createVaultPairing()).publicKey)).rows[0].approved).toBe(false);
       expect((await approve(request.publicKey)).rows[0].approved).toBe(true);
       expect((await approve(request.publicKey)).rows[0].approved).toBe(false);
+      expect((await reject()).rows[0].rejected).toBe(false);
       const [response] = (await db.query("select * from public.vault_pairings")).rows;
       expect(JSON.stringify(response)).not.toContain(encrypted.confirmation);
       await expect(decryptVaultPairing(ALICE, request, response, "000000000000")).rejects.toThrow("confirmation");
@@ -568,6 +571,10 @@ describe("encrypted archive", () => {
       await db.query("select public.remove_vault_pairing($1,$2)", [ALICE, request.id]);
       expect((await db.query("select * from public.vault_pairings")).rows).toEqual([]);
       expect((await start()).rows[0].created).toBe(true);
+      expect((await reject()).rows[0].rejected).toBe(true);
+      expect((await reject()).rows[0].rejected).toBe(false);
+      expect((await approve(request.publicKey)).rows[0].approved).toBe(false);
+      expect((await db.query("select rejected_at from public.vault_pairings")).rows[0].rejected_at).toBeTruthy();
       await asAdmin();
       await db.query("update public.vault_pairings set expires_at = now() - interval '1 second'");
       await asUser(ALICE);

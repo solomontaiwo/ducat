@@ -186,6 +186,9 @@ export const encryptVaultPairing = async (uid, id, receiver, secret) => {
   };
 };
 
+export const vaultPairingConfirmation = async (uid, request, sender) =>
+  (await pairingCipher(uid, request.id, request.publicKey, sender, request.privateKey, sender)).confirmation;
+
 export const decryptVaultPairing = async (uid, request, { sender_public: sender, ciphertext }, confirmation) => {
   const cipher = await pairingCipher(uid, request.id, request.publicKey, sender, request.privateKey, sender);
   if (cipher.confirmation !== confirmation) throw new Error("Pairing confirmation does not match");

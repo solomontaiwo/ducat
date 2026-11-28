@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "../src/locales/en/translation.json";
 import it_ from "../src/locales/it/translation.json";
+import pairing from "../src/locales/pairing.json";
 import { MoneyError, parseMoneyToMinor } from "../src/utils/money.js";
 
 const flatten = (object, prefix = "") => Object.entries(object).flatMap(([key, value]) =>
@@ -12,6 +13,7 @@ describe("translations", () => {
     const english = new Set(flatten(en));
     expect([...italian].filter((key) => !english.has(key))).toEqual([]);
     expect([...english].filter((key) => !italian.has(key))).toEqual([]);
+    expect(flatten(pairing.en).sort()).toEqual(flatten(pairing.it).sort());
   });
 
   it("have a translation for every money and validation error key", () => {

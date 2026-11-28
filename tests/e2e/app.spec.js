@@ -81,6 +81,7 @@ const mockVaultAccount = (uid, keys) => {
   const writes = [];
   let revision = 0;
   let active = Boolean(keys);
+  let pairingRequestsMigrated = true;
   const prepare = async (tab) => {
     await tab.addInitScript((auth) => {
       if (!localStorage.getItem("ducat-auth")) localStorage.setItem("ducat-auth", JSON.stringify(auth));
@@ -95,20 +96,39 @@ const mockVaultAccount = (uid, keys) => {
         return route.fulfill({ json: true });
       }
       if (endpoint === "vault_pairings") {
-        const id = new URL(route.request().url()).searchParams.get("id")?.slice(3);
+        const params = new URL(route.request().url()).searchParams;
+        if (!pairingRequestsMigrated && (params.has("rejected_at") || params.get("select")?.includes("rejected_at"))) {
+          return route.fulfill({ status: 400, json: { code: "42703", message: "column rejected_at does not exist" } });
+        }
+        const id = params.get("id")?.slice(3);
         const row = pairings.get(id);
-        return route.fulfill({ json: row ? [row] : [] });
+        if (row && !pairingRequestsMigrated) {
+          const legacy = { ...row };
+          delete legacy.rejected_at;
+          return route.fulfill({ json: [legacy] });
+        }
+        const pending = [...pairings.values()].filter((request) => !request.ciphertext && !request.rejected_at);
+        return route.fulfill({ json: id ? (row ? [row] : []) : pending });
       }
       if (endpoint === "start_vault_pairing") {
         const { p_id, p_receiver } = route.request().postDataJSON();
-        pairings.set(p_id, { receiver_public: p_receiver, sender_public: null, ciphertext: null });
+        pairings.set(p_id, {
+          id: p_id, expires_at: new Date(Date.now() + 600_000).toISOString(),
+          receiver_public: p_receiver, sender_public: null, ciphertext: null, rejected_at: null,
+        });
         return route.fulfill({ json: true });
       }
       if (endpoint === "approve_vault_pairing") {
         const { p_id, p_sender, p_receiver, p_ciphertext } = route.request().postDataJSON();
         const request = pairings.get(p_id);
-        if (request?.receiver_public !== p_receiver || request.ciphertext) return route.fulfill({ json: false });
-        pairings.set(p_id, { receiver_public: p_receiver, sender_public: p_sender, ciphertext: p_ciphertext });
+        if (request?.receiver_public !== p_receiver || request.ciphertext || request.rejected_at) return route.fulfill({ json: false });
+        Object.assign(request, { sender_public: p_sender, ciphertext: p_ciphertext });
+        return route.fulfill({ json: true });
+      }
+      if (endpoint === "reject_vault_pairing") {
+        const request = pairings.get(route.request().postDataJSON().p_id);
+        if (!request || request.ciphertext || request.rejected_at) return route.fulfill({ json: false });
+        request.rejected_at = new Date().toISOString();
         return route.fulfill({ json: true });
       }
       if (endpoint === "remove_vault_pairing") {
@@ -138,7 +158,7 @@ const mockVaultAccount = (uid, keys) => {
       return route.fulfill({ status: 404, json: { message: `Unexpected test request: ${endpoint}` } });
     });
   };
-  return { prepare, records, writes, getKeys: () => keys };
+  return { prepare, records, writes, getKeys: () => keys, setPairingRequestsMigrated: (value) => { pairingRequestsMigrated = value; } };
 };
 
 test("unlocks an archive on two devices and persists offline writes only as ciphertext", async ({ page, browser, context }) => {
@@ -265,28 +285,56 @@ test("activates an archive with a device PIN and resumes or recovers on demand",
   await unlock(page);
   await ready(page);
 
-  await page.goto("profile");
-  await page.getByLabel("PIN del dispositivo", { exact: true }).fill("135791");
-  await unlock(page);
-  await page.getByRole("button", { name: "Approva un dispositivo", exact: true }).click();
-
   const second = await browser.newContext({ locale: "it-IT", baseURL: page.url() });
   try {
     const tab = await second.newPage();
     await fixture.prepare(tab);
+    fixture.setPairingRequestsMigrated(false);
     await tab.goto("transactions");
     await tab.getByRole("button", { name: "Approva da un altro dispositivo" }).click();
-    const pairingCode = await tab.getByTestId("pairing-request-code").innerText();
-    const source = page.getByRole("dialog");
-    await source.getByLabel("Codice di abbinamento").fill(pairingCode);
-    await source.getByRole("button", { name: "Approva un dispositivo" }).click();
-    const confirmation = await source.getByTestId("pairing-confirmation").innerText();
+    const manualCode = await tab.getByTestId("pairing-request-code").innerText();
     const request = tab.getByRole("dialog");
+    const source = page.getByRole("dialog");
+    await page.goto("profile");
+    await page.getByLabel("PIN del dispositivo", { exact: true }).fill("135791");
+    await page.getByLabel("Ricorda lo sblocco su questo dispositivo").uncheck();
+    await unlock(page);
+    await page.getByRole("button", { name: "Approva un dispositivo", exact: true }).click();
+    await source.getByLabel("Codice di abbinamento").fill(manualCode);
+    await source.getByRole("button", { name: "Approva un dispositivo" }).click();
+    const manualConfirmation = await source.getByTestId("pairing-confirmation").innerText();
+    await request.getByLabel("Codice di conferma").fill(manualConfirmation);
+    await request.getByRole("button", { name: "Conferma abbinamento" }).click();
+    await expect(tab.getByText("Dispositivo approvato. Scegli il PIN da usare qui.")).toBeVisible();
+
+    fixture.setPairingRequestsMigrated(true);
+    await tab.reload();
+    await tab.getByRole("button", { name: "Approva da un altro dispositivo" }).click();
+    const pairingCode = await tab.getByTestId("pairing-request-code").innerText();
+    const openPending = async (code) => {
+      await page.getByRole("button", { name: "Vedi richieste" }).click();
+      await source.getByRole("button", { name: code, exact: true }).click();
+    };
+
+    await page.goto("transactions");
+    await page.getByLabel("PIN del dispositivo", { exact: true }).fill("135791");
+    await unlock(page);
+    await openPending(pairingCode);
+    await source.getByRole("button", { name: "Rifiuta richiesta" }).click();
+    await expect(request.getByRole("alert")).toHaveText("La richiesta è stata rifiutata.", { timeout: 12000 });
+    await request.getByRole("button", { name: "Riprova" }).click();
+    await expect(tab.getByTestId("pairing-request-code")).not.toHaveText(pairingCode);
+
+    const renewedCode = await tab.getByTestId("pairing-request-code").innerText();
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await openPending(renewedCode);
+    await source.getByRole("button", { name: "I codici coincidono" }).click();
+    const confirmation = await source.getByTestId("pairing-confirmation").innerText();
     await request.getByLabel("Codice di conferma").fill("0000 0000 0000");
     await request.getByRole("button", { name: "Conferma abbinamento" }).click();
     await expect(request.getByRole("alert")).toBeVisible();
-    await request.getByLabel("Codice di conferma").fill(confirmation);
-    await request.getByRole("button", { name: "Conferma abbinamento" }).click();
+    await expect(request.getByTestId("pairing-compare-confirmation")).toHaveText(confirmation, { timeout: 12000 });
+    await request.getByRole("button", { name: "I codici coincidono" }).click();
     await expect(request).toBeHidden();
     await expect(tab.getByText("Dispositivo approvato. Scegli il PIN da usare qui.")).toBeVisible();
     await fillPin(tab, "135791");

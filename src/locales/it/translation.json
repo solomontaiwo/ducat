@@ -47,19 +47,7 @@
   },
   "pairing": {
     "approve": "Approva un dispositivo",
-    "request": "Approva da un altro dispositivo",
-    "approveHelp": "Inserisci il codice di abbinamento che vedi sul nuovo dispositivo.",
-    "requestHelp": "Sul dispositivo già sbloccato, apri Profilo → Sicurezza → Approva un dispositivo e inserisci il codice qui sotto.",
-    "requestCode": "Codice di abbinamento",
-    "confirmation": "Codice di conferma",
-    "approvedHelp": "Inserisci questo codice sul nuovo dispositivo per completare l’abbinamento.",
-    "confirm": "Conferma abbinamento",
-    "invalidCode": "Controlla il codice e riprova.",
-    "requestMissing": "Richiesta scaduta o già approvata.",
-    "expired": "Il codice è scaduto. Generane uno nuovo.",
-    "waiting": "Approva prima la richiesta sull’altro dispositivo.",
-    "confirmFailed": "Verifica il codice di conferma e riprova.",
-    "failed": "Abbinamento non riuscito. Riprova."
+    "request": "Approva da un altro dispositivo"
   },
   "appName": "Ducat",
   "recentTransactions": {
