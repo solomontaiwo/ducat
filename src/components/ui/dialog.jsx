@@ -41,7 +41,7 @@ const DialogContent = React.forwardRef(({ className, children, variant = "defaul
   const ownMaxWidth = /(^|\s)(sm:)?max-w-/.test(className ?? "");
   return (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={variant === "sheet" ? "dialog-overlay-full-sheet" : undefined} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(

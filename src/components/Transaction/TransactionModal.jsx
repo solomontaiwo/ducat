@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { FiTrash2 } from "react-icons/fi";
@@ -6,6 +6,7 @@ import { useUnifiedTransactions } from "../../context/UnifiedTransactionProvider
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import TransactionForm from "./TransactionForm.jsx";
+import { isMobile } from "../../platform/index.js";
 
 /**
  * Full-screen sheet on phones, centred dialog from `sm` up, wider with the
@@ -23,6 +24,45 @@ const TransactionModal = ({ show, onClose, onSubmit, onDelete, transaction, init
   const { addTransaction, updateTransaction } = useUnifiedTransactions();
   const { t } = useTranslation();
   const contentRef = useRef(null);
+  const keyboardVisibleRef = useRef(false);
+  const pendingCloseRef = useRef(null);
+  const closeTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isMobile() || document.documentElement.dataset.host === "macos") return undefined;
+    const onKeyboardShow = () => { keyboardVisibleRef.current = true; };
+    const onKeyboardHide = () => {
+      keyboardVisibleRef.current = false;
+      pendingCloseRef.current?.();
+    };
+    window.addEventListener("keyboardWillShow", onKeyboardShow);
+    window.addEventListener("keyboardDidHide", onKeyboardHide);
+    return () => {
+      window.removeEventListener("keyboardWillShow", onKeyboardShow);
+      window.removeEventListener("keyboardDidHide", onKeyboardHide);
+      clearTimeout(closeTimerRef.current);
+      pendingCloseRef.current = null;
+    };
+  }, []);
+
+  const closeDialog = useCallback(() => {
+    if (pendingCloseRef.current) return;
+    if (!keyboardVisibleRef.current) {
+      onClose();
+      return;
+    }
+    // Let the native WebView finish resizing before the sheet slides away.
+    const finish = () => {
+      if (!pendingCloseRef.current) return;
+      pendingCloseRef.current = null;
+      clearTimeout(closeTimerRef.current);
+      onClose();
+    };
+    pendingCloseRef.current = finish;
+    closeTimerRef.current = setTimeout(finish, 750);
+    const focused = document.activeElement;
+    if (contentRef.current?.contains(focused) && focused instanceof HTMLElement) focused.blur();
+  }, [onClose]);
 
   // Focus lands on the dialog itself, not on its first button: opened from the
   // iOS tab bar or a Home Screen quick action there is no touch in the page,
@@ -39,12 +79,12 @@ const TransactionModal = ({ show, onClose, onSubmit, onDelete, transaction, init
       : isEdit
         ? await updateTransaction(activeTransaction.id, payload)
         : await addTransaction(payload);
-    if (success) onClose();
+    if (success) closeDialog();
     return success;
-  }, [activeTransaction, addTransaction, isEdit, onClose, onSubmit, updateTransaction]);
+  }, [activeTransaction, addTransaction, closeDialog, isEdit, onSubmit, updateTransaction]);
 
   return (
-    <Dialog open={show} onOpenChange={(open) => (!open ? onClose() : null)}>
+    <Dialog open={show} onOpenChange={(open) => (!open ? closeDialog() : null)}>
       <DialogContent
         ref={contentRef}
         variant="sheet"
@@ -70,7 +110,7 @@ const TransactionModal = ({ show, onClose, onSubmit, onDelete, transaction, init
           transaction={activeTransaction}
           initialDraft={activeDraft}
           onSubmit={handleSubmit}
-          onCancel={onClose}
+          onCancel={closeDialog}
         />
       </DialogContent>
     </Dialog>
