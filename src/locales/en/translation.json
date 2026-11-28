@@ -695,7 +695,7 @@
     "planning": "Planning"
   },
   "profilePage": {
-    "title": "Profile",
+    "title": "Profile and settings",
     "account": "Your account",
     "verified": "verified ✓",
     "memberSince": "With Ducat since {{date}}",

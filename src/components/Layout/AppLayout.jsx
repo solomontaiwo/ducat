@@ -46,6 +46,11 @@ const AppLayout = ({ children }) => {
   const [isSendingVerification, setIsSendingVerification] = useState(false);
   // True when iOS shows the native tab bar in the vertical bar instead of ours.
   const [nativeNavigation, setNativeNavigation] = useState(false);
+  const [nativeProfileNavigation, setNativeProfileNavigation] = useState(false);
+  const handleNativeAvailability = useCallback((available, profileNavigation) => {
+    setNativeNavigation(available);
+    setNativeProfileNavigation(available && profileNavigation);
+  }, []);
 
   const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
   const showNavigation = !isPublicRoute && (currentUser || isDemo);
@@ -158,6 +163,7 @@ const AppLayout = ({ children }) => {
     <AddTransactionContext.Provider value={addContext}>
       <div
         className="flex min-h-screen flex-col text-foreground"
+        data-native-profile-navigation={showNavigation && isMobile && nativeProfileNavigation ? "true" : undefined}
         style={{ "--mobile-nav-height": `${BOTTOM_NAV_HEIGHT_PX}px` }}
       >
         {showNavigation && <div className="top-scroll-fade" aria-hidden="true" />}
@@ -229,12 +235,13 @@ const AppLayout = ({ children }) => {
         {isMobileApp() && (
           <Suspense fallback={null}>
             <NativeNavigationBridge
-              onAvailabilityChange={setNativeNavigation}
+              onAvailabilityChange={handleNativeAvailability}
               visible={Boolean(showNavigation && isMobile && !showAddModal && !anyDialogOpen && !(hasAccount && locked))}
               layout={isMobile ? "phone" : "sidebar"}
               path={location.pathname}
               badge={isDemo ? `${transactions.filter((item) => !item.isSample).length}/${maxTransactions}` : null}
               addEnabled={!addDisabled}
+              profilePath={hasAccount ? "/profile" : pendingTrial ? "/verify-email" : "/register"}
               onNavigate={navigate}
               onAdd={openAddTransaction}
             />

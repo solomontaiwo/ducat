@@ -25,7 +25,7 @@ const getPlugin = () => {
  * Listens to the native tab bar. Returns an unsubscribe function.
  * `onAvailability(boolean)` reports whether the native bar replaces the web one.
  */
-export const subscribeNativeNavigation = ({ onAvailability, onSelect, onAdd }) => {
+export const subscribeNativeNavigation = ({ onAvailability, onSelect, onAdd, onProfile }) => {
   const pending = getPlugin();
   if (!pending) return () => {};
   let active = true;
@@ -37,12 +37,13 @@ export const subscribeNativeNavigation = ({ onAvailability, onSelect, onAdd }) =
       else handle.remove();
     };
     await Promise.all([
-      listen("stateChanged", ({ available }) => onAvailability(Boolean(available))),
+      listen("stateChanged", ({ available, profileNavigation }) => onAvailability(Boolean(available), Boolean(profileNavigation))),
       listen("tabSelected", ({ path }) => onSelect(path)),
       listen("addRequested", () => onAdd()),
+      listen("profileRequested", () => onProfile?.()),
     ]);
-    const { available } = await plugin.getState();
-    if (active) onAvailability(Boolean(available));
+    const { available, profileNavigation } = await plugin.getState();
+    if (active) onAvailability(Boolean(available), Boolean(profileNavigation));
   }).catch(() => {
     // Older app builds have no NativeNavigation plugin: keep the web navigation.
     if (active) onAvailability(false);
