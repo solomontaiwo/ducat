@@ -353,13 +353,18 @@
       border-right: 1px solid hsl(var(--border));
     }
   }
-  /* On wider screens the summary and recent transactions sit side by side. */
+  /* On wider screens keep the quick-entry form at the full available width. */
   @container (min-width: 34em) {
     .dashboard-summary {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
-    .dashboard-summary > .spending-card {
+    .dashboard-summary > .recent-card {
       grid-column: 1 / -1;
+      grid-row: 2;
+    }
+    .dashboard-summary > .spending-card {
+      grid-column: 2;
+      grid-row: 1;
     }
   }
   /* Wider, the summary card takes a little more room. */

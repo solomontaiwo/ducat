@@ -9,7 +9,11 @@ import { Button } from "../ui/button";
 
 const RecentTransactions = ({ transactions = [], loading = false, onSelect, onAddFirst, emptyLabel, limit = 5 }) => {
   const { t, i18n } = useTranslation();
-  const recent = [...transactions].sort(compareTransactions).slice(0, limit);
+  const recent = [...transactions].sort((first, second) => {
+    const dateDifference = new Date(second.date) - new Date(first.date);
+    const creationDifference = (new Date(second.createdAt).getTime() || 0) - (new Date(first.createdAt).getTime() || 0);
+    return dateDifference || creationDifference || compareTransactions(first, second);
+  }).slice(0, limit);
 
   if (loading) {
     return (
