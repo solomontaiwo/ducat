@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import "../../utils/pairingTranslations.js";
-import { decryptVaultPairing, vaultPairingConfirmation } from "../../utils/vaultCrypto.js";
-import { cancelVaultPairing, formatPairingCode, normalizePairingCode, readVaultPairing, requestVaultPairing, watchVaultPairings } from "../../services/vaultPairingService.js";
+import { decryptVaultPairing, openApprovedVaultPairing, vaultPairingConfirmation } from "../../utils/vaultCrypto.js";
+import { cancelVaultPairing, formatPairingCode, normalizePairingCode, readVaultPairing, readVaultPairingKeyCheck, requestVaultPairing, watchVaultPairings } from "../../services/vaultPairingService.js";
 import { Button } from "../ui/button.jsx";
 import { Input } from "../ui/input.jsx";
 import { Label } from "../ui/label.jsx";
@@ -13,6 +13,7 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
   const { t } = useTranslation(["translation", "pairing"]);
   const [request, setRequest] = useState(null);
   const [comparison, setComparison] = useState(null);
+  const [legacyResponse, setLegacyResponse] = useState(false);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -27,6 +28,7 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
     setRequest(null);
     setError(null);
     setComparison(null);
+    setLegacyResponse(false);
     setCode("");
     requestVaultPairing(uid).then((value) => {
       pending = value;
@@ -44,8 +46,9 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
     if (!request) return undefined;
     let active = true;
     let loading = false;
+    let automaticFinished = false;
     const refresh = async () => {
-      if (loading || processing.current || document.visibilityState === "hidden") return;
+      if (loading || automaticFinished || processing.current || document.visibilityState === "hidden") return;
       loading = true;
       try {
         const response = await readVaultPairing(uid, request.id);
@@ -53,9 +56,23 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
         if (!response || response.rejected_at) {
           setComparison(null);
           setError(response?.rejected_at ? "rejected" : "expired");
+        } else if (response.ciphertext && request.automatic && response.automatic_approval) {
+          const keyCheck = await readVaultPairingKeyCheck(uid);
+          if (!active) return;
+          automaticFinished = true;
+          try {
+            const secret = await openApprovedVaultPairing(uid, request, response, keyCheck);
+            if (active) onApproved(secret, true);
+            else secret.fill(0);
+          } catch {
+            if (active) setError("automaticFailed");
+          }
         } else if (response.ciphertext) {
           const value = await vaultPairingConfirmation(uid, request, response.sender_public);
-          if (active) setComparison(value);
+          if (active) {
+            setLegacyResponse(true);
+            setComparison(value);
+          }
         }
       } catch {
         // A failed refresh can recover on the next event or manual confirmation.
@@ -70,7 +87,7 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
       stop();
       clearInterval(timer);
     };
-  }, [uid, request]);
+  }, [uid, request, onApproved]);
 
   const confirm = async (confirmation) => {
     if (!request || processing.current) return;
@@ -99,7 +116,7 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
     }
   };
 
-  const ended = error === "expired" || error === "rejected";
+  const ended = error === "expired" || error === "rejected" || error === "automaticFailed";
 
   return (
     <Sheet open title={t("pairing.request")} description={t("pairing:requestHelp")}
@@ -118,7 +135,7 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
               <Button type="button" disabled={busy} onClick={() => confirm(comparison)}>{t("pairing:codesMatch")}</Button>
             </div>
           )}
-          {!ended && (
+          {!ended && (!request.automatic || legacyResponse) && (
             <details className="border-t pt-3">
               <summary className="cursor-pointer rounded text-sm text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
                 {t("pairing:manualConfirmation")}

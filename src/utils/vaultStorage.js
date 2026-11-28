@@ -43,5 +43,5 @@ export const readVaultLocal = (uid, name) => storage(`${uid}:${name}`);
 export const storeVaultLocal = (uid, name, value, matches = () => true) => storage(`${uid}:${name}`,
   (current) => matches(current) ? { value } : null);
 export const removeVaultLocal = (uid, name) => storage(`${uid}:${name}`, () => ({ remove: true }));
-export const clearVaultLocal = (uid) => Promise.all(["snapshot", "keys", "queue", "pin", "device-unlock"].map((name) =>
+export const clearVaultLocal = (uid) => Promise.all(["snapshot", "keys", "queue", "pin", "device-unlock", "paired-session"].map((name) =>
   removeVaultLocal(uid, name)));

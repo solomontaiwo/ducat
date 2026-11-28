@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 
-import { createRecoveryVault, createVaultPairing, decryptVaultPairing, createVaultKeys, newRecoveryCode, unwrapVaultKey, vaultCrypto } from "../../src/utils/vaultCrypto.js";
+import { createRecoveryVault, createVaultPairing, decryptVaultPairing, createVaultKeys, newRecoveryCode, openApprovedVaultPairing, unwrapVaultKey, vaultCrypto } from "../../src/utils/vaultCrypto.js";
 import { loadVaultAccount, openVault, startVault } from "../../src/services/vaultService.js";
 import { setCurrentVault, vaultRecord } from "../../src/services/vaultSession.js";
 import { TransactionService } from "../../src/services/transactionService.jsx";
@@ -580,6 +580,27 @@ describe("encrypted archive", () => {
       await asUser(ALICE);
       expect((await db.query("select * from public.vault_pairings")).rows).toEqual([]);
       expect((await approve(request.publicKey)).rows[0].approved).toBe(false);
+
+      const next = await createVaultPairing();
+      const transfer = await archive.pairDevice(next.id, next.publicKey);
+      const startAutomatic = () => db.query("select public.start_vault_pairing_automatic($1,$2,$3) as created",
+        [ALICE, next.id, next.publicKey]);
+      const acceptAutomatic = (keyCheck) => db.query("select public.approve_vault_pairing_automatic($1,$2,$3,$4,$5,$6) as approved",
+        [ALICE, next.id, next.publicKey, transfer.sender, transfer.ciphertext, keyCheck]);
+      expect((await startAutomatic()).rows[0].created).toBe(false);
+      await asUser(ALICE, { session_id: "requesting-device" });
+      expect((await startAutomatic()).rows[0].created).toBe(true);
+      expect((await acceptAutomatic(transfer.keyCheck)).rows[0].approved).toBe(false);
+      await asUser(BOB, { session_id: "other-account" });
+      await expect(acceptAutomatic(transfer.keyCheck)).rejects.toMatchObject({ code: "42501" });
+      await asUser(ALICE, { session_id: "trusted-device" });
+      expect((await acceptAutomatic(transfer.keyCheck)).rows[0].approved).toBe(true);
+      expect((await acceptAutomatic(transfer.keyCheck)).rows[0].approved).toBe(false);
+      const [approved] = (await db.query("select * from public.vault_pairings")).rows;
+      expect(approved.automatic_approval).toBe(true);
+      const [vaultAccount] = (await db.query("select pairing_key_check from public.vault_accounts")).rows;
+      await expect(openApprovedVaultPairing(ALICE, next, approved, "0".repeat(64))).rejects.toThrow("Invalid archive key");
+      await expect(openApprovedVaultPairing(ALICE, next, approved, vaultAccount.pairing_key_check)).resolves.toEqual(secret);
     } finally {
       secret.fill(0);
       archive.close();

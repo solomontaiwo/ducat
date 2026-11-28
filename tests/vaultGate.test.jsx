@@ -37,6 +37,7 @@ vi.mock("../src/services/vaultService.js", () => ({
   readCachedVaultAccount: mocks.readCachedVaultAccount,
   openVault: mocks.openVault,
   startVault: vi.fn(),
+  vaultAuthSession: vi.fn(),
   watchVaultAccount: mocks.watchVaultAccount,
 }));
 vi.mock("../src/utils/vaultDeviceUnlock.js", () => ({
@@ -45,6 +46,7 @@ vi.mock("../src/utils/vaultDeviceUnlock.js", () => ({
   loadVaultPin: mocks.loadVaultPin,
   rememberVaultDeviceSession: vi.fn(() => Promise.resolve()),
   resumeVaultDeviceSession: mocks.resumeVaultDeviceSession,
+  resumePairedVaultSession: vi.fn(() => Promise.resolve(null)),
   saveVaultPin: vi.fn(),
   verifyVaultPin: vi.fn(),
 }));

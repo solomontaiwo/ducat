@@ -1,8 +1,9 @@
-import { createDevicePin, decodeBytes, deviceSessionCrypto, encodeBytes, unlockDevicePin } from "./vaultCrypto.js";
+import { createDevicePin, createPairedVaultSession, decodeBytes, deviceSessionCrypto, encodeBytes, openPairedVaultSession, unlockDevicePin } from "./vaultCrypto.js";
 import { readVaultLocal, removeVaultLocal, storeVaultLocal } from "./vaultStorage.js";
 
 const MAX_PIN_ATTEMPTS = 5;
 const DEVICE_UNLOCK = "device-unlock";
+const PAIRED_SESSION = "paired-session";
 
 export const loadVaultPin = async (uid, keys) => {
   if (keys?.v !== 2) return null;
@@ -65,4 +66,19 @@ export const resumeVaultDeviceSession = async (uid, entry) => {
     // A changed PIN or key invalidates the remembered device unlock.
     return null;
   }
+};
+
+export const clearPairedVaultSession = (uid) => removeVaultLocal(uid, PAIRED_SESSION).catch(() => {});
+
+export const rememberPairedVaultSession = async (uid, keys, authSession, secret) => {
+  const entry = await createPairedVaultSession(uid, authSession, keys.recovery, secret);
+  await storeVaultLocal(uid, PAIRED_SESSION, entry);
+};
+
+export const resumePairedVaultSession = async (uid, keys, getAuthSession) => {
+  const entry = await readVaultLocal(uid, PAIRED_SESSION);
+  if (!entry || keys?.v !== 2) return null;
+  const authSession = await getAuthSession(uid);
+  if (!authSession || authSession !== entry.authSession) return null;
+  return openPairedVaultSession(uid, authSession, keys.recovery, entry);
 };

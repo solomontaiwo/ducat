@@ -194,3 +194,26 @@ export const decryptVaultPairing = async (uid, request, { sender_public: sender,
   if (cipher.confirmation !== confirmation) throw new Error("Pairing confirmation does not match");
   return new Uint8Array(await decrypt(cipher.key, ciphertext, cipher.scope));
 };
+
+export const openApprovedVaultPairing = async (uid, request, { sender_public: sender, ciphertext }, keyCheck) => {
+  const cipher = await pairingCipher(uid, request.id, request.publicKey, sender, request.privateKey, sender);
+  const bytes = new Uint8Array(await decrypt(cipher.key, ciphertext, cipher.scope));
+  try {
+    if (await (await vaultCrypto(uid, bytes)).id("pairing-key", uid) !== keyCheck) {
+      throw new Error("Invalid archive key");
+    }
+    return bytes;
+  } catch (error) {
+    bytes.fill(0);
+    throw error;
+  }
+};
+
+export const createPairedVaultSession = async (uid, authSession, recovery, secret) => {
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const sealed = await encrypt(key, secret, context(uid, "paired-session", authSession, recovery));
+  return { key, sealed, authSession };
+};
+
+export const openPairedVaultSession = async (uid, authSession, recovery, { key, sealed }) =>
+  new Uint8Array(await decrypt(key, sealed, context(uid, "paired-session", authSession, recovery)));

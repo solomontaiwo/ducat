@@ -82,14 +82,26 @@ const mockVaultAccount = (uid, keys) => {
   let revision = 0;
   let active = Boolean(keys);
   let pairingRequestsMigrated = true;
-  const prepare = async (tab) => {
+  let automaticPairing = false;
+  let pairingKeyCheck = null;
+  const prepare = async (tab, sessionId) => {
+    const browserSession = sessionId ? {
+      ...session,
+      access_token: session.access_token.replace(token, Buffer.from(JSON.stringify({
+        sub: uid, exp: expires_at, role: "authenticated", session_id: sessionId,
+      })).toString("base64url")),
+    } : session;
     await tab.addInitScript((auth) => {
       if (!localStorage.getItem("ducat-auth")) localStorage.setItem("ducat-auth", JSON.stringify(auth));
-    }, session);
+    }, browserSession);
     await tab.routeWebSocket("**/realtime/v1/websocket*", () => {});
     await tab.route((url) => url.pathname.startsWith("/rest/v1/") || url.pathname.startsWith("/auth/v1/"), async (route) => {
       const endpoint = new URL(route.request().url()).pathname.split("/").at(-1);
-      if (endpoint === "vault_accounts") return route.fulfill({ json: keys ? [{ keys, active, revision }] : [] });
+      if (endpoint === "vault_accounts") {
+        const select = new URL(route.request().url()).searchParams.get("select");
+        const values = select === "pairing_key_check" ? { pairing_key_check: pairingKeyCheck } : { keys, active, revision };
+        return route.fulfill({ json: keys ? [values] : [] });
+      }
       if (endpoint === "start_vault") {
         if (keys) return route.fulfill({ json: false });
         ({ p_keys: keys } = route.request().postDataJSON());
@@ -110,19 +122,26 @@ const mockVaultAccount = (uid, keys) => {
         const pending = [...pairings.values()].filter((request) => !request.ciphertext && !request.rejected_at);
         return route.fulfill({ json: id ? (row ? [row] : []) : pending });
       }
-      if (endpoint === "start_vault_pairing") {
+      if (endpoint.endsWith("_automatic") && !automaticPairing) {
+        return route.fulfill({ status: 404, json: { code: "PGRST202", message: "Function not found" } });
+      }
+      if (endpoint === "start_vault_pairing" || endpoint === "start_vault_pairing_automatic") {
         const { p_id, p_receiver } = route.request().postDataJSON();
         pairings.set(p_id, {
           id: p_id, expires_at: new Date(Date.now() + 600_000).toISOString(),
           receiver_public: p_receiver, sender_public: null, ciphertext: null, rejected_at: null,
+          request_session: endpoint.endsWith("_automatic") ? sessionId : null,
         });
         return route.fulfill({ json: true });
       }
-      if (endpoint === "approve_vault_pairing") {
-        const { p_id, p_sender, p_receiver, p_ciphertext } = route.request().postDataJSON();
+      if (endpoint === "approve_vault_pairing" || endpoint === "approve_vault_pairing_automatic") {
+        const { p_id, p_sender, p_receiver, p_ciphertext, p_key_check } = route.request().postDataJSON();
         const request = pairings.get(p_id);
         if (request?.receiver_public !== p_receiver || request.ciphertext || request.rejected_at) return route.fulfill({ json: false });
-        Object.assign(request, { sender_public: p_sender, ciphertext: p_ciphertext });
+        const automatic = endpoint.endsWith("_automatic");
+        if (automatic && (!request.request_session || request.request_session === sessionId)) return route.fulfill({ json: false });
+        if (automatic) pairingKeyCheck = p_key_check;
+        Object.assign(request, { sender_public: p_sender, ciphertext: p_ciphertext, automatic_approval: automatic });
         return route.fulfill({ json: true });
       }
       if (endpoint === "reject_vault_pairing") {
@@ -158,7 +177,11 @@ const mockVaultAccount = (uid, keys) => {
       return route.fulfill({ status: 404, json: { message: `Unexpected test request: ${endpoint}` } });
     });
   };
-  return { prepare, records, writes, getKeys: () => keys, setPairingRequestsMigrated: (value) => { pairingRequestsMigrated = value; } };
+  return {
+    prepare, records, writes, getKeys: () => keys,
+    setPairingRequestsMigrated: (value) => { pairingRequestsMigrated = value; },
+    enableAutomaticPairing: () => { automaticPairing = true; },
+  };
 };
 
 test("unlocks an archive on two devices and persists offline writes only as ciphertext", async ({ page, browser, context }) => {
@@ -225,7 +248,7 @@ test("unlocks an archive on two devices and persists offline writes only as ciph
 
 test("activates an archive with a device PIN and resumes or recovers on demand", async ({ page, browser, context }) => {
   test.skip(process.env.VITE_ENABLE_ENCRYPTED_VAULT !== "true", "New activation is opt-in for test builds");
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   const uid = "00000000-0000-4000-8000-0000000000bb";
   const pin = "012345";
   const fixture = mockVaultAccount(uid);
@@ -359,6 +382,38 @@ test("activates an archive with a device PIN and resumes or recovers on demand",
     await ready(tab);
   } finally {
     await second.close();
+  }
+
+  fixture.enableAutomaticPairing();
+  const third = await browser.newContext({ locale: "it-IT", baseURL: page.url() });
+  try {
+    const tab = await third.newPage();
+    await fixture.prepare(tab, "automatic-pairing-requester");
+    await tab.goto("transactions");
+    await tab.getByRole("button", { name: "Approva da un altro dispositivo" }).click();
+    const pairingCode = await tab.getByTestId("pairing-request-code").innerText();
+    await page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await page.getByRole("button", { name: "Vedi richieste" }).click();
+    const source = page.getByRole("dialog");
+    await source.getByRole("button", { name: pairingCode, exact: true }).click();
+    await source.getByRole("button", { name: "I codici coincidono" }).click();
+    await expect(source.getByText("Dispositivo approvato. Ducat si aprirà sul nuovo dispositivo.")).toBeVisible();
+    await expect(tab.getByRole("button", { name: ADD_BUTTON }).first()).toBeVisible({ timeout: 15000 });
+    await tab.reload();
+    await ready(tab);
+    await tab.evaluate(() => {
+      const auth = JSON.parse(localStorage.getItem("ducat-auth"));
+      const [header, payload, signature] = auth.access_token.split(".");
+      const claims = JSON.parse(atob(payload.replaceAll("-", "+").replaceAll("_", "/")));
+      claims.session_id = "unapproved-session";
+      auth.access_token = [header, btoa(JSON.stringify(claims)).replace(/=+$/, ""), signature].join(".");
+      localStorage.setItem("ducat-auth", JSON.stringify(auth));
+    });
+    await tab.reload();
+    await expect(tab.getByLabel("Codice di recupero", { exact: true })).toBeVisible();
+  } finally {
+    await third.close();
   }
 });
 

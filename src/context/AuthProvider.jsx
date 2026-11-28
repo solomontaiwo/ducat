@@ -115,6 +115,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const { signOut } = await import("../services/authService.js");
       await signOut();
+      if (uid) {
+        await import("../utils/vaultDeviceUnlock.js")
+          .then(({ clearPairedVaultSession }) => clearPairedVaultSession(uid))
+          .catch(() => {});
+      }
     } catch (error) {
       console.error("Errore durante il logout:", error);
       throw error;

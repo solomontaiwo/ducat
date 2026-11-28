@@ -198,8 +198,9 @@ export const openVault = async (uid, key) => {
       const secret = pairingKey.slice();
       try {
         const response = await encryptVaultPairing(uid, id, receiver, secret);
+        const keyCheck = await cryptography.id("pairing-key", uid);
         requireOpen();
-        return response;
+        return { ...response, keyCheck };
       } finally {
         secret.fill(0);
       }
