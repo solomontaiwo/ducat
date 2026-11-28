@@ -68,12 +68,12 @@ const Sidebar = ({ onAdd, addDisabled = false }) => {
               to={item.path}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-11 items-center gap-3 rounded-xl px-3 text-base font-semibold transition-colors short:h-10",
+                "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-base font-semibold transition-colors short:min-h-10 short:gap-2 short:text-sm",
                 active ? "glass-active text-accent-foreground" : "text-foreground/80 hover:bg-foreground/5 hover:text-foreground"
               )}
             >
-              <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-              {item.label}
+              <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+              <span className="min-w-0 [overflow-wrap:anywhere]">{item.label}</span>
             </Link>
           );
         })}
