@@ -623,9 +623,16 @@ for (const [name, viewport, columns] of [
     const summary = page.getByRole("region", { name: /riepilogo|summary/i });
     await expect(summary).toBeVisible();
     const money = page.locator("section[aria-labelledby='where-money-goes']");
-    const [a, b] = await Promise.all([summary.boundingBox(), money.boundingBox()]);
+    const recent = page.locator("section[aria-labelledby='recent-transactions']");
+    const [a, b, c] = await Promise.all([summary.boundingBox(), money.boundingBox(), recent.boundingBox()]);
     // Two columns: the cards share a row; one column: they are stacked.
     expect(Math.abs(a.y - b.y) < 2).toBe(columns === 2);
+    if (columns === 1) {
+      expect(c.y).toBeGreaterThanOrEqual(a.y + a.height);
+      expect(b.y).toBeGreaterThanOrEqual(c.y + c.height);
+    } else {
+      expect(c.y).toBeGreaterThanOrEqual(Math.max(a.y + a.height, b.y + b.height));
+    }
     const overflow = await page.evaluate(() => Math.max(0, ...[...document.querySelectorAll("main section, main .surface, .amount")]
       .map((element) => Math.ceil(element.getBoundingClientRect().right - window.innerWidth))));
     expect(overflow).toBeLessThanOrEqual(0);

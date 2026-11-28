@@ -75,10 +75,11 @@ describe("Category drill-down & Dashboard privacy toggle", () => {
     const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
     mocks.transactions = ["Esselunga", "Biglietto treno", "Farmacia", "Cinema"].map((description, index) => ({
       ...originalTransactions[0],
-      id: `t${index + 1}`,
+      id: `t${4 - index}`,
       description,
       dateKey,
-      date: new Date(today.getFullYear(), today.getMonth(), 1, index + 8),
+      date: new Date(today.getFullYear(), today.getMonth(), 1, 12),
+      createdAt: new Date(today.getFullYear(), today.getMonth(), 1, index + 8),
     }));
     try {
       window.history.replaceState({}, "", "/dashboard");
