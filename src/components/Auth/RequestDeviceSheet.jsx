@@ -99,6 +99,8 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
     }
   };
 
+  const ended = error === "expired" || error === "rejected";
+
   return (
     <Sheet open title={t("pairing.request")} description={t("pairing:requestHelp")}
       onOpenChange={(open) => { if (!open && !busy) onClose(); }}>
@@ -106,6 +108,9 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
         <div className="space-y-3">
           <p className="text-sm font-medium">{t("pairing:requestCode")}</p>
           <p data-testid="pairing-request-code" className="select-all rounded-xl bg-muted p-3 text-center font-mono">{formatPairingCode(request.id)}</p>
+          {!comparison && !ended && error !== "waiting" && (
+            <p role="status" className="text-sm font-medium">{t("pairing:awaitingApproval")}</p>
+          )}
           {comparison && (
             <div className="space-y-2" role="status">
               <p className="text-sm">{t("pairing:compareConfirmation")}</p>
@@ -113,18 +118,23 @@ export default function RequestDeviceSheet({ uid, onClose, onApproved }) {
               <Button type="button" disabled={busy} onClick={() => confirm(comparison)}>{t("pairing:codesMatch")}</Button>
             </div>
           )}
-          {!["expired", "rejected"].includes(error) && (
-            <form onSubmit={(event) => { event.preventDefault(); confirm(normalizePairingCode(code)); }} className="space-y-3">
-              <Label htmlFor="pairing-confirmation">{t("pairing:confirmation")}</Label>
-              <Input id="pairing-confirmation" autoCapitalize="characters" autoComplete="off" spellCheck={false}
-                value={code} onChange={(event) => setCode(event.target.value)} maxLength={17} required disabled={busy} />
-              <Button type="submit" variant="outline" disabled={busy}>{t("pairing:confirm")}</Button>
-            </form>
+          {!ended && (
+            <details className="border-t pt-3">
+              <summary className="cursor-pointer rounded text-sm text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+                {t("pairing:manualConfirmation")}
+              </summary>
+              <form onSubmit={(event) => { event.preventDefault(); confirm(normalizePairingCode(code)); }} className="mt-3 space-y-3">
+                <Label htmlFor="pairing-confirmation">{t("pairing:confirmation")}</Label>
+                <Input id="pairing-confirmation" autoCapitalize="characters" autoComplete="off" spellCheck={false}
+                  value={code} onChange={(event) => setCode(event.target.value)} maxLength={17} required disabled={busy} />
+                <Button type="submit" variant="outline" disabled={busy}>{t("pairing:confirm")}</Button>
+              </form>
+            </details>
           )}
         </div>
       ) : !error && <p role="status">{t("common.loadingPage")}</p>}
       {error && <p role="alert" className="text-sm text-destructive">{t(`pairing:${error}`)}</p>}
-      {(["expired", "rejected"].includes(error) || (!request && error)) && (
+      {(ended || (!request && error)) && (
         <Button variant="outline" onClick={() => setGeneration((value) => value + 1)}>{t("common.retry")}</Button>
       )}
     </Sheet>

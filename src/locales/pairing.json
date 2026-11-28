@@ -1,7 +1,9 @@
 {
   "en": {
     "approveHelp": "Select the request with the code shown on the new device or enter the code manually.",
-    "requestHelp": "Open Ducat on a device you already set up. After unlocking, compare the code below with the one on the request.",
+    "requestHelp": "On a device you already set up, unlock Ducat, select View requests and look for the code below.",
+    "awaitingApproval": "Waiting for approval on your other device…",
+    "manualConfirmation": "Enter the confirmation code manually",
     "requestCode": "Pairing code",
     "confirmation": "Confirmation code",
     "approvedHelp": "On the new device, check that the same confirmation code appears or enter it manually.",
@@ -24,7 +26,9 @@
   },
   "it": {
     "approveHelp": "Seleziona la richiesta con il codice che vedi sul nuovo dispositivo oppure inseriscilo a mano.",
-    "requestHelp": "Apri Ducat su un dispositivo già configurato. Dopo lo sblocco, confronta il codice qui sotto con quello della richiesta.",
+    "requestHelp": "Su un dispositivo già configurato, sblocca Ducat, seleziona Vedi richieste e cerca il codice qui sotto.",
+    "awaitingApproval": "In attesa di approvazione sull’altro dispositivo…",
+    "manualConfirmation": "Inserisci il codice di conferma a mano",
     "requestCode": "Codice di abbinamento",
     "confirmation": "Codice di conferma",
     "approvedHelp": "Sul nuovo dispositivo, verifica che compaia lo stesso codice di conferma oppure inseriscilo a mano.",
