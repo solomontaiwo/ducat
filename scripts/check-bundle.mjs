@@ -17,11 +17,12 @@ let initialBytes = 0;
 for (const filename of initialFiles) {
   initialBytes += gzipSync(await readFile(new URL(filename, assetsDirectory))).byteLength;
 }
-const INITIAL_BUDGET = 155_000;
+// Raised by 2 kB for the account currency (ISO 4217 list, synced preference).
+const INITIAL_BUDGET = 157_000;
 console.log(`initial (${initialFiles.length} files): ${initialBytes} / ${INITIAL_BUDGET} gzip bytes`);
 
 const budgets = [
-  { label: "main", filename: entryMatch[1], maxGzipBytes: 95_000 },
+  { label: "main", filename: entryMatch[1], maxGzipBytes: 97_000 },
   { label: "analytics", pattern: /^TransactionAnalytics-[^.]+\.js$/, maxGzipBytes: 150_000 },
   { label: "pdf", pattern: /^pdfUtils-[^.]+\.js$/, maxGzipBytes: 155_000 },
   // English is loaded on demand; keep its chunk from creeping into the initial payload.

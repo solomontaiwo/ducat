@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./AuthProvider.jsx";
@@ -11,6 +11,8 @@ import { minorToMajor } from "../utils/money.js";
 import { dueOccurrences, nextOccurrence, occurrenceRequestId } from "../utils/recurrence.js";
 import { DEFAULT_PREFERENCES, budgetLimitsSchema, normalizePreferences, preferencesSchema, recurringInputSchema } from "../schemas/planning.js";
 import { onLocalChange } from "../services/changeEvents.js";
+import { readOffline } from "../utils/offlineCache.js";
+import { DEFAULT_CURRENCY, getAccountCurrency, isSupportedCurrency, notifyAccountCurrency, syncAccountCurrency } from "../utils/currency.js";
 import { DEMO_BUDGETS_KEY, DEMO_PREFERENCES_KEY, DEMO_RECURRING_KEY } from "../utils/demoStorage.js";
 
 
@@ -39,6 +41,21 @@ const readDemo = (key, fallback) => {
   return parsed ?? fallback;
 };
 
+/**
+ * Defaults with the last known currency of this source, so amounts do not
+ * flash in euro while the preferences load.
+ */
+const initialPreferences = (source) => {
+  let currency = null;
+  try {
+    if (source === "demo") currency = readDemo(DEMO_PREFERENCES_KEY, {})?.currency;
+    else if (source) currency = readOffline(`preferences:${source}`)?.currency;
+  } catch {
+    currency = null;
+  }
+  return isSupportedCurrency(currency) ? { ...DEFAULT_PREFERENCES, currency } : DEFAULT_PREFERENCES;
+};
+
 const occurrencePayload = (rule, dateKey) => ({
   type: rule.type,
   amountMinor: rule.amountMinor,
@@ -57,14 +74,18 @@ const occurrencePayload = (rule, dateKey) => ({
  */
 export const PlanningProvider = ({ children }) => {
   const { currentUser } = useAuth();
-  const { isDemo, addTransaction } = useUnifiedTransactions();
+  const { isDemo, addTransaction, getTotalTransactionCount } = useUnifiedTransactions();
   const notification = useNotification();
   const { t, i18n } = useTranslation();
   const userId = !isDemo && currentUser?.emailVerified ? currentUser.uid : null;
 
   const [recurring, setRecurring] = useState([]);
   const [budgets, setBudgets] = useState({});
-  const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
+  const [preferences, setPreferences] = useState(() => initialPreferences(isDemo ? "demo" : userId));
+  // The stored preferences have no currency yet: chosen once, below.
+  const [currencyMissing, setCurrencyMissing] = useState(false);
+  const currencyMissingRef = useRef(currencyMissing);
+  currencyMissingRef.current = currencyMissing;
   const [status, setStatus] = useState({ recurring: "loading", budgets: "loading", preferences: "loading" });
   const [loadErrors, setLoadErrors] = useState({});
   const [reloadRevision, setReloadRevision] = useState(0);
@@ -94,7 +115,8 @@ export const PlanningProvider = ({ children }) => {
     if (loadedSourceRef.current !== source) {
       setRecurring([]);
       setBudgets({});
-      setPreferences(DEFAULT_PREFERENCES);
+      setPreferences(initialPreferences(source));
+      setCurrencyMissing(false);
       loadedSourceRef.current = source;
     }
     if (isDemo) {
@@ -103,7 +125,9 @@ export const PlanningProvider = ({ children }) => {
           const rules = readDemo(DEMO_RECURRING_KEY, []);
           setRecurring(rules.map((rule) => ({ ...recurringInputSchema.parse(rule), id: rule.id })));
           setBudgets(budgetLimitsSchema.parse(readDemo(DEMO_BUDGETS_KEY, {})));
-          setPreferences(normalizePreferences(readDemo(DEMO_PREFERENCES_KEY, {})));
+          const storedPreferences = readDemo(DEMO_PREFERENCES_KEY, {});
+          setPreferences(normalizePreferences(storedPreferences));
+          setCurrencyMissing(!isSupportedCurrency(storedPreferences?.currency));
           setLoadErrors({});
           setStatus({ recurring: "ready", budgets: "ready", preferences: "ready" });
         } catch (error) {
@@ -146,6 +170,7 @@ export const PlanningProvider = ({ children }) => {
         PlanningService.subscribePreferences(userId, (stored) => {
           if (cancelled) return;
           setPreferences(normalizePreferences(stored || {}));
+          setCurrencyMissing(!isSupportedCurrency(stored?.currency));
           markLoaded("preferences");
         }, onError("preferences")),
       ];
@@ -163,7 +188,7 @@ export const PlanningProvider = ({ children }) => {
   const addRecurring = useCallback(async (data) => {
     try {
       if (statusRef.current.recurring !== "ready") throw new Error("Recurring rules have not loaded");
-      const input = recurringInputSchema.parse({ currency: "EUR", nextIndex: 1, paused: false, ...data });
+      const input = recurringInputSchema.parse({ currency: getAccountCurrency(), nextIndex: 1, paused: false, ...data });
       if (isDemo) {
         writeDemoRecurring((rules) => [...rules, { ...input, id: crypto.randomUUID() }]);
       } else if (userId) {
@@ -277,8 +302,11 @@ export const PlanningProvider = ({ children }) => {
     }
   }, [isDemo, userId, notification, t]);
 
-  /** Merges a partial change into the preferences and saves the result. */
-  const savePreferences = useCallback((patch) => {
+  /**
+   * Merges a partial change into the preferences and saves the result.
+   * `silent` skips the error message, for changes the person did not ask for.
+   */
+  const savePreferences = useCallback((patch, { silent = false } = {}) => {
     const task = preferencesQueueRef.current.then(async () => {
       try {
         if (sourceRef.current !== source || statusRef.current.preferences !== "ready") {
@@ -298,16 +326,60 @@ export const PlanningProvider = ({ children }) => {
         if (sourceRef.current !== source) return false;
         preferencesRef.current = next;
         setPreferences(next);
+        if (parsedPatch.currency) {
+          currencyMissingRef.current = false;
+          setCurrencyMissing(false);
+        }
         return true;
       } catch (error) {
         console.error("Unable to save preferences", error);
-        notification.error(t("preferences.saveError"));
+        if (!silent) notification.error(t("preferences.saveError"));
         return false;
       }
     });
     preferencesQueueRef.current = task;
     return task;
   }, [isDemo, userId, source, notification, t]);
+
+  // Formatting and new records read the account currency from a module, like
+  // the language. Set it before the children render, so they never format
+  // with the previous currency, then wake the components that subscribe.
+  const currency = preferences.currency;
+  syncAccountCurrency(currency);
+  useLayoutEffect(() => {
+    notifyAccountCurrency();
+  }, [currency]);
+
+  // Accounts created before the currency setting hold euro amounts and keep
+  // them; a new, empty account starts with the currency of the device region.
+  const budgetsRef = useRef(budgets);
+  budgetsRef.current = budgets;
+  const countRef = useRef(getTotalTransactionCount);
+  countRef.current = getTotalTransactionCount;
+  const currencyInitRef = useRef(null);
+  useEffect(() => {
+    if (!ready || !currencyMissing || currencyInitRef.current === source) return;
+    currencyInitRef.current = source;
+    const retryLater = () => {
+      if (sourceRef.current === source) currencyInitRef.current = null;
+    };
+    (async () => {
+      const { deviceCurrency } = await import("../utils/currencyRegions.js");
+      let initial = deviceCurrency();
+      if (!isDemo) {
+        const hasData = recurringRef.current.length > 0
+          || Object.keys(budgetsRef.current).length > 0
+          || (await countRef.current()) > 0;
+        if (hasData) initial = DEFAULT_CURRENCY;
+      }
+      // The person may have picked a currency in the meantime.
+      if (!mountedRef.current || sourceRef.current !== source || !currencyMissingRef.current) return;
+      if (!(await savePreferences({ currency: initial }, { silent: true }))) retryLater();
+    })().catch((error) => {
+      console.warn("Unable to choose the account currency", error);
+      retryLater();
+    });
+  }, [ready, currencyMissing, source, isDemo, savePreferences]);
 
   // Register the occurrences of automatic rules that came due while the app
   // was closed. Deterministic request ids keep this safe across devices.
@@ -358,7 +430,7 @@ export const PlanningProvider = ({ children }) => {
         ),
       });
     }).catch(() => {});
-  }, [ready, isDemo, userId, recurring, t, i18n?.language]);
+  }, [ready, isDemo, userId, recurring, t, i18n?.language, currency]);
 
   const value = useMemo(() => ({
     recurring, budgets, preferences, ready, error, retry,

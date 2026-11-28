@@ -4,7 +4,7 @@ import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
 import i18n from "./i18n.jsx";
-import formatCurrency, { moneyLocale } from "./formatCurrency.jsx";
+import formatCurrency, { formatCurrencyCode, moneyLocale } from "./formatCurrency.jsx";
 import { generateExportFileName, getCurrentProfileName } from "./downloadUtils.jsx";
 import { buildReportModel } from "./reportModel.js";
 import { APP_NAME } from "./brand.js";
@@ -45,6 +45,18 @@ const pdfSafeText = (value) => String(value ?? "")
   .replace(/[^\x20-\x7E\xA0-\xFF\u20AC]/g, "")
   .replace(/\s+/g, " ")
   .trim();
+
+// What jsPDF's built-in Helvetica can encode: Latin-1 plus the euro sign.
+const PDF_UNSAFE = /[^\x20-\x7E\xA0-\xFF\u20AC]/;
+
+/**
+ * Amounts in the account currency. Symbols the PDF font cannot draw ("₹",
+ * "zł", "₩") are written as the ISO code instead ("INR 1,234.50").
+ */
+export const pdfMoney = (value, locale) => {
+  const text = formatCurrency(value, locale);
+  return PDF_UNSAFE.test(text) ? formatCurrencyCode(value, locale).replace(/\u202F/g, "\u00A0") : text;
+};
 
 /** Starts a fresh page when the remaining height cannot fit a section title and its first rows. */
 const nextSectionY = (doc, neededMm = 36) => {
@@ -87,7 +99,7 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
     startY: 48,
     margin: { bottom: 18 },
     head: [[strings.totalIncome, strings.totalExpense, strings.balance, strings.avgDailyIncome, strings.avgDailyExpense]],
-    body: [[model.totalIncome, model.totalExpense, model.balance, model.avgDailyIncome, model.avgDailyExpense].map((value) => formatCurrency(value, currencyLocale))],
+    body: [[model.totalIncome, model.totalExpense, model.balance, model.avgDailyIncome, model.avgDailyExpense].map((value) => pdfMoney(value, currencyLocale))],
     styles: { fontSize: 8 },
   });
 
@@ -106,8 +118,8 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
     body: model.categoryBreakdown.map((entry) => [
       pdfSafeText(categoryLabel(entry.category, lang)),
       `${entry.percentage.toFixed(2)}%`,
-      formatCurrency(entry.amount, currencyLocale),
-      formatCurrency(entry.average, currencyLocale),
+      pdfMoney(entry.amount, currencyLocale),
+      pdfMoney(entry.average, currencyLocale),
     ]),
   });
 
@@ -115,7 +127,7 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
     format(transaction.date, "dd/MM/yyyy", { locale }),
     pdfSafeText(transaction.description),
     pdfSafeText(categoryLabel(transaction.category, lang)),
-    formatCurrency(transaction.amount, currencyLocale),
+    pdfMoney(transaction.amount, currencyLocale),
   ]);
 
   const topExpY = nextSectionY(doc, 38);
@@ -147,7 +159,7 @@ export const createPDFReport = ({ transactions, startDate, endDate, periodLabel,
       transaction.type === "income" ? strings.income : strings.expense,
       pdfSafeText(transaction.description),
       pdfSafeText(categoryLabel(transaction.category, lang)),
-      formatCurrency(transaction.amount, currencyLocale),
+      pdfMoney(transaction.amount, currencyLocale),
     ]),
     showHead: "everyPage",
   });

@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { MAX_AMOUNT_MINOR } from "../utils/money";
+import { DEFAULT_CURRENCY } from "../utils/currency";
+import { currencyCodeSchema } from "./transaction.jsx";
 import { isDateKey } from "../utils/dateUtils";
 
 export const recurringDraftSchema = z.object({
@@ -11,7 +13,7 @@ export const recurringDraftSchema = z.object({
 export const recurringInputSchema = z.object({
   type: z.enum(["income", "expense"]),
   amountMinor: z.number().int().positive().max(MAX_AMOUNT_MINOR),
-  currency: z.literal("EUR"),
+  currency: currencyCodeSchema,
   description: z.string().trim().min(1).max(200),
   category: z.string().trim().min(1).max(60),
   frequency: z.enum(["weekly", "monthly", "yearly"]),
@@ -42,18 +44,23 @@ export const budgetLimitsSchema = z.record(
 
 export const DEFAULT_QUICK_AMOUNTS = Object.freeze([5, 10, 20, 50, 100]);
 
+/** Largest quick amount, in whole units: room for currencies with a small unit. */
+export const MAX_QUICK_AMOUNT = 1_000_000_000;
+
 /** Per-user settings synced across devices. */
 export const preferencesSchema = z.object({
   monthStartDay: z.number().int().min(1).max(31),
   defaultType: z.enum(["last", "expense", "income"]),
   defaultCategory: z.string().max(60).nullable(),
-  quickAmounts: z.array(z.number().int().positive().max(100000)).min(1).max(6),
+  quickAmounts: z.array(z.number().int().positive().max(MAX_QUICK_AMOUNT)).min(1).max(6),
   hiddenCategories: z.array(z.string().min(1).max(60)).max(40),
   categoryOrder: z.object({
     expense: z.array(z.string().min(1).max(60)).max(40),
     income: z.array(z.string().min(1).max(60)).max(40),
   }),
   lastBackupAt: z.number().int().nonnegative().nullable(),
+  /** Account currency: every amount is in this unit, never converted. */
+  currency: currencyCodeSchema,
 });
 
 export const DEFAULT_PREFERENCES = Object.freeze({
@@ -64,6 +71,8 @@ export const DEFAULT_PREFERENCES = Object.freeze({
   hiddenCategories: [],
   categoryOrder: { expense: [], income: [] },
   lastBackupAt: null,
+  // Accounts created before the currency setting keep their data in euro.
+  currency: DEFAULT_CURRENCY,
 });
 
 /** Stored data merged over the defaults; anything invalid falls back. */

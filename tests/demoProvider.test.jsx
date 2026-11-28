@@ -60,3 +60,14 @@ it('keeps ordinary additions available even if recurring storage is malformed', 
   expect(result.current.transactions).toHaveLength(1);
   expect(localStorage.getItem('ducat-demo-recurring')).toBe('{broken');
 });
+it('uses the account currency for sample and new demo movements', async () => {
+  const { setAccountCurrency } = await import('../src/utils/currency.js');
+  setAccountCurrency('USD');
+  const { result } = renderHook(() => useDemo(), { wrapper });
+  await waitFor(() => expect(result.current.transactions).toHaveLength(3));
+  expect(result.current.transactions.every(item => item.currency === 'USD')).toBe(true);
+  const withoutCurrency = { ...transaction };
+  delete withoutCurrency.currency;
+  await act(async () => expect(await result.current.addTransaction({ ...withoutCurrency, clientRequestId: 'usd' })).toBe(true));
+  expect(result.current.transactions.find(item => item.description === 'Saved user movement').currency).toBe('USD');
+});

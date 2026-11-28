@@ -11,7 +11,8 @@ import {
     import PropTypes from "prop-types";
     import { useTranslation } from 'react-i18next';
     import { transactionV2InputSchema } from "../schemas/transaction.jsx";
-    import { DEFAULT_CURRENCY, getTransactionAmountMinor, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
+    import { getTransactionAmountMinor, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
+    import { getAccountCurrency } from "../utils/currency.js";
     import { coerceDateKey, dateKeyToDate, todayDateKey } from "../utils/dateUtils.js";
     import { readLocalValue, removeLocalValue, writeLocalValue, writeLocalBatch } from "../utils/storage.js";
 
@@ -31,7 +32,7 @@ const normalizeDemoTransaction = (transaction) => {
   const dateKey = transaction.dateKey || coerceDateKey(transaction.date);
   const input = transactionV2InputSchema.parse({
     amountMinor,
-    currency: transaction.currency || DEFAULT_CURRENCY,
+    currency: transaction.currency || getAccountCurrency(),
     description: transaction.description,
     dateKey,
     category: transaction.category,
@@ -240,7 +241,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
         description: t('demo.sampleSalary'),
         date: today,
         dateKey,
-        currency: DEFAULT_CURRENCY,
+        currency: getAccountCurrency(),
         category: "stipendio",
         createdAt: new Date(),
         isSample: true,
@@ -253,7 +254,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
         description: t('demo.sampleGroceries'),
         date: today,
         dateKey,
-        currency: DEFAULT_CURRENCY,
+        currency: getAccountCurrency(),
         category: "supermercato",
         createdAt: new Date(),
         isSample: true,
@@ -266,7 +267,7 @@ export const DemoProvider = ({ children, seedOnMount = false }) => {
         description: t('demo.sampleFuel'),
         date: today,
         dateKey,
-        currency: DEFAULT_CURRENCY,
+        currency: getAccountCurrency(),
         category: "trasporti",
         createdAt: new Date(),
         isSample: true,

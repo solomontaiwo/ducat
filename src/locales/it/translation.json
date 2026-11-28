@@ -93,7 +93,7 @@
   },
   "searchTransactions": "Cerca descrizione, categoria o importo",
   "type": "Tipo",
-  "amount": "Importo (€)",
+  "amount": "Importo",
   "date": "Data",
   "description": "Descrizione",
   "category": "Categoria",
@@ -148,7 +148,7 @@
     "projectionLabel": "Proiezione fine mese"
   },
   "transaction": {
-    "amount": "Importo (€)",
+    "amount": "Importo ({{symbol}})",
     "invalidAmount": "Inserisci un importo valido"
   },
   "navbar": {
@@ -368,8 +368,8 @@
       "category": "Categoria",
       "allTime": "Tutto lo storico",
       "advanced": "Filtri",
-      "minAmount": "Min €",
-      "maxAmount": "Max €",
+      "minAmount": "Min {{symbol}}",
+      "maxAmount": "Max {{symbol}}",
       "reset": "Azzera filtri"
     },
     "scheduledBadge": "Programmato",
@@ -590,6 +590,7 @@
   },
   "money": {
     "decimals": "L’importo deve avere al massimo due cifre decimali",
+    "noDecimals": "Questa valuta non ha decimali: inserisci un importo intero",
     "notFinite": "L’importo deve essere un numero finito",
     "notPositive": "L’importo deve essere maggiore di zero",
     "tooLarge": "L’importo supera il massimo consentito",
@@ -714,6 +715,16 @@
       "hint": "Riceverai un link per scegliere una nuova password su {{email}}.",
       "send": "Invia il link"
     },
+    "currency": {
+      "title": "Valuta",
+      "hint": "Tutti gli importi sono mostrati in questa valuta. Gli importi già registrati non vengono convertiti.",
+      "search": "Cerca per nome o codice",
+      "noResults": "Nessuna valuta corrisponde a “{{query}}”",
+      "confirmTitle": "Passare a {{currency}}?",
+      "confirmBody": "Gli importi già registrati non vengono convertiti: {{before}} diventa {{after}}.",
+      "confirm": "Cambia valuta",
+      "changed": "Ora gli importi sono in {{currency}}"
+    },
     "monthStart": {
       "title": "Inizio del mese",
       "hint": "Se lo stipendio arriva a fine mese, Panoramica, budget e confronti possono ragionare da stipendio a stipendio.",
@@ -737,7 +748,7 @@
       "last": "Ultimo usato",
       "amounts": "Importi rapidi",
       "amountLabel": "Importo rapido {{index}}",
-      "amountsHint": "In euro. Lascia vuoto per averne meno.",
+      "amountsHint": "Importi in {{currency}}. Lascia vuoto per averne meno.",
       "summaryLast": "Ultimo usato · {{amounts}}"
     },
     "categories": {
@@ -942,7 +953,7 @@
   },
   "csvImport": {
     "currencyCol": "Valuta",
-    "unsupportedCurrency": "Questi movimenti hanno una valuta diversa da EUR e non saranno importati.",
+    "unsupportedCurrency": "Questi movimenti hanno una valuta diversa da {{currency}} e non saranno importati.",
     "retryFailed": "Riprova ({{count}})",
     "checking": "Controllo dei movimenti già presenti…",
     "historyError": "Impossibile verificare i duplicati. Seleziona di nuovo il file per riprovare.",

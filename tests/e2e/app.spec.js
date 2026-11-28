@@ -214,6 +214,10 @@ test("unlocks an archive on two devices and persists offline writes only as ciph
   await page.getByRole("button", { name: /^sblocca$/i }).click();
   const description = "Movimento inserito offline";
   await expect(page.getByRole("button", { name: ADD_BUTTON }).first()).toBeVisible();
+  // An empty archive saves its account currency once, from the device region (it-IT → EUR).
+  await expect.poll(() => writes.length).toBe(1);
+  const [settings] = [...records.values()];
+  expect(await archive.open(settings.ciphertext, "record", settings.id)).toMatchObject({ value: { currency: "EUR" } });
   await context.setOffline(true);
   await page.getByRole("button", { name: ADD_BUTTON }).first().click();
   const dialog = page.getByRole("dialog");
@@ -223,7 +227,7 @@ test("unlocks an archive on two devices and persists offline writes only as ciph
   await dialog.getByRole("button", { name: /12,50|12\.50/ }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole("button", { name: new RegExp(description) })).toBeVisible();
-  expect(writes).toHaveLength(0);
+  expect(writes).toHaveLength(1);
   const persistedQueue = await page.evaluate((userId) => new Promise((resolve, reject) => {
     const request = indexedDB.open("ducat-encrypted-archive");
     request.onerror = () => reject(request.error);
@@ -237,10 +241,10 @@ test("unlocks an archive on two devices and persists offline writes only as ciph
   expect(persistedQueue).not.toContain(description);
   expect(JSON.stringify(await archive.open(persistedQueue, "queue"))).toContain(description);
   await context.setOffline(false);
-  await expect.poll(() => writes.length).toBe(1);
-  const [record] = [...records.values()];
+  await expect.poll(() => writes.length).toBe(2);
+  const opened = await Promise.all([...records.values()].map((record) => archive.open(record.ciphertext, "record", record.id)));
   expect(JSON.stringify(writes)).not.toContain(description);
-  expect(await archive.open(record.ciphertext, "record", record.id)).toMatchObject({ value: { description, amount_minor: 1250 } });
+  expect(opened.find((record) => record.value?.description === description)).toMatchObject({ value: { description, amount_minor: 1250, currency: "EUR" } });
 
   const second = await browser.newContext({ locale: "it-IT", baseURL: page.url() });
   try {

@@ -15,6 +15,7 @@ was the currency of Mediterranean trade. The name comes from Latin *ducatus*,
 
 - **Accounts and login** — email/password accounts with password reset and email change, plus a local demo mode that needs no backend.
 - **Income and expenses** — add, edit and delete transactions with categories, search and a chronological view.
+- **Any currency** — each account works in one currency, proposed from the device region and changeable in Settings; amounts are never converted.
 - **Budgets and recurring expenses** — monthly limits per category and recurring rules.
 - **Analytics and insights** — KPI tiles, monthly income/expense trend, spending by category and comparisons with the previous period.
 - **Backups and exports** — JSON backup/restore plus CSV and PDF reports.

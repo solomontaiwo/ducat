@@ -45,12 +45,18 @@ describe("transaction schemas", () => {
   it.each([
     { amountMinor: 0 },
     { amountMinor: 1.5 },
-    { currency: "USD" },
+    { currency: "XYZ" },
+    { currency: "usd" },
+    { currency: "BGN" },
     { dateKey: "2026-02-31" },
     { description: "" },
     { type: "transfer" },
   ])("rejects invalid v2 fields: %o", (override) => {
     expect(transactionV2InputSchema.safeParse({ ...valid, ...override }).success).toBe(false);
+  });
+
+  it.each(["USD", "GBP", "JPY", "CHF", "INR"])("accepts the account currency %s", (currency) => {
+    expect(transactionV2InputSchema.parse({ ...valid, currency }).currency).toBe(currency);
   });
 
   it("requires a non-empty update patch", () => {

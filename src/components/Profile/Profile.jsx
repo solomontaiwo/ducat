@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { differenceInCalendarDays, differenceInCalendarMonths, format } from "date-fns";
 import { enUS, it } from "date-fns/locale";
@@ -20,7 +21,10 @@ import { Label } from "../ui/label";
 import Sheet from "../ui/sheet";
 import Switch from "../ui/switch";
 import { SettingsGroup, SettingsRow, InlineSegmented } from "./SettingsList.jsx";
-import { CategoriesSheet, DownloadAppSheet, EmailSheet, ExportSheet, InstallSheet, MonthStartSheet, NameSheet, PasswordSheet, QuickAddSheet } from "./ProfileSheets.jsx";
+import { CategoriesSheet, CurrencySheet, DownloadAppSheet, EmailSheet, ExportSheet, InstallSheet, MonthStartSheet, NameSheet, PasswordSheet, QuickAddSheet } from "./ProfileSheets.jsx";
+import { currencySymbol } from "../../utils/currency.js";
+import { currencyName } from "../../utils/currencyRegions.js";
+import { useAccountCurrency } from "../../hooks/useAccountCurrency.js";
 import UpdateChecker from "../Update/UpdateChecker";
 import { downloadJson } from "../../utils/accountExport.js";
 import { deleteCurrentAccount } from "../../services/accountService.js";
@@ -54,6 +58,20 @@ import {
 // Account deletion is required by the App Store (5.1.1(v)) for any app that
 // lets people create an account, so it is on unless it is explicitly disabled.
 const ACCOUNT_DELETION_ENABLED = import.meta.env.VITE_ENABLE_ACCOUNT_DELETION !== "false";
+
+/** The account currency's symbol, drawn where the other rows have an icon. */
+const CurrencyGlyph = ({ className }) => {
+  const { i18n } = useTranslation();
+  const currency = useAccountCurrency();
+  const symbol = currencySymbol(currency, moneyLocale(i18n.language));
+  return (
+    <span className={cn(className, "flex items-center justify-center font-display font-extrabold leading-none", symbol.length > 1 ? "whitespace-nowrap text-[10px]" : "text-[16px]")}>
+      {symbol}
+    </span>
+  );
+};
+
+CurrencyGlyph.propTypes = { className: PropTypes.string };
 const ApproveDeviceSheet = lazy(() => import("./ApproveDeviceSheet.jsx"));
 const RestoreBackupSheet = lazy(() => import("./RestoreBackupSheet.jsx"));
 const ImportCsvSheet = lazy(() => import("./ImportCsvSheet.jsx"));
@@ -437,6 +455,14 @@ const Profile = () => {
               )}
             />
             <SettingsRow
+              icon={CurrencyGlyph}
+              tone="green"
+              title={t("profilePage.currency.title")}
+              subtitle={`${currencyName(preferences.currency, i18n.language?.startsWith("en") ? "en" : "it")} · ${preferences.currency}`}
+              onClick={() => setSheet("currency")}
+              testId="row-currency"
+            />
+            <SettingsRow
               icon={FiCalendar}
               tone="blue"
               title={t("profilePage.monthStart.title")}
@@ -586,6 +612,7 @@ const Profile = () => {
       <EmailSheet open={sheet === "email"} onClose={close} />
       <PasswordSheet open={sheet === "password"} onClose={close} />
       <MonthStartSheet open={sheet === "monthStart"} onClose={close} />
+      <CurrencySheet open={sheet === "currency"} onClose={close} />
       <QuickAddSheet open={sheet === "quickAdd"} onClose={close} />
       <CategoriesSheet open={sheet === "categories"} onClose={close} />
       <ExportSheet open={sheet === "export"} onClose={close} firstDate={summary?.firstDate || undefined} />

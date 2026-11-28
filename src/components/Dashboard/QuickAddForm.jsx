@@ -7,6 +7,9 @@ import { useNotification } from "../../utils/notificationUtils.jsx";
 import { minorToMajor, parseMoneyToMinor } from "../../utils/money";
 import { evaluateAmountExpression, formatEvaluatedAmount, hasAmountExpression, sanitizeAmountInput } from "../../utils/amountExpression.js";
 import { dateKeyToDate, todayDateKey } from "../../utils/dateUtils";
+import { currencySymbol } from "../../utils/currency.js";
+import { moneyLocale } from "../../utils/formatCurrency.jsx";
+import { useAccountCurrency } from "../../hooks/useAccountCurrency.js";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
@@ -15,7 +18,8 @@ import { hapticSuccess } from "../../platform/haptics.js";
 
 /** Quick entry for desktop: type, amount, description, category, date, Enter. */
 const QuickAddForm = ({ preferences = null }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currency = useAccountCurrency();
   const { addTransaction, isDemo, canAddMoreTransactions, transactions: history } = useUnifiedTransactions();
   const { visibleExpenseCategories: expenseCategories, visibleIncomeCategories: incomeCategories } = useCategories();
   const notification = useNotification();
@@ -142,7 +146,7 @@ const QuickAddForm = ({ preferences = null }) => {
             }
           }}
           inputMode="decimal"
-          placeholder={`${t("transactionModal.amountPlaceholder")} €`}
+          placeholder={`${t("transactionModal.amountPlaceholder")} ${currencySymbol(currency, moneyLocale(i18n?.language))}`}
           className="tabular-nums"
           disabled={disabled}
         />

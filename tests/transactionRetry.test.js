@@ -7,6 +7,7 @@ vi.mock("../src/utils/supabaseClient.js", async (importOriginal) => {
 
 import { supabase } from "../src/utils/supabaseClient.js";
 import { TransactionService } from "../src/services/transactionService.jsx";
+import { setAccountCurrency } from "../src/utils/currency.js";
 
 const input = { amount: "12.50", description: "Caffè", date: new Date("2026-09-06T10:00:00Z"), category: "altro", type: "expense" };
 const duplicate = { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint" } };
@@ -21,6 +22,18 @@ describe("TransactionService.add retries", () => {
     expect(insert.payload).toMatchObject({
       id: "owner_req-1", user_id: "owner", amount_minor: 1250, currency: "EUR", type: "expense", date_key: "2026-09-06", schema_version: 2,
     });
+  });
+
+  it("records new transactions in the account currency", async () => {
+    setAccountCurrency("USD");
+    await TransactionService.add("owner", input, { requestId: "req-usd" });
+    const insert = supabase.calls.find((call) => call.action === "insert");
+    expect(insert.payload).toMatchObject({ id: "owner_req-usd", amount_minor: 1250, currency: "USD" });
+  });
+
+  it("rejects a currency the app does not support", async () => {
+    await expect(TransactionService.add("owner", { ...input, currency: "XYZ" }, { requestId: "req-x" })).rejects.toThrow();
+    expect(supabase.calls.filter((call) => call.action === "insert")).toHaveLength(0);
   });
 
   it("treats a duplicate retry as success when the row is already visible to the owner", async () => {

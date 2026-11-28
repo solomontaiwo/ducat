@@ -3,6 +3,7 @@ import { emitLocalChange, watchTable } from "./changeEvents.js";
 import { readOffline, writeOffline } from "../utils/offlineCache.js";
 import { transactionV2InputSchema, transactionV2PatchSchema } from "../schemas/transaction.jsx";
 import { DEFAULT_CURRENCY, minorToMajor, parseMoneyToMinor } from "../utils/money.js";
+import { getAccountCurrency } from "../utils/currency.js";
 import { compareTransactions, transactionComparator } from "../utils/transactionOrder.js";
 import { coerceDateKey, dateKeyToDate, isDateKey } from "../utils/dateUtils.js";
 import { currentVault, vaultRecord } from "./vaultSession.js";
@@ -125,7 +126,7 @@ const isAlreadyCreated = async (id) => {
 
 const toV2Input = (data) => transactionV2InputSchema.parse({
   amountMinor: Number.isSafeInteger(data.amountMinor) ? data.amountMinor : parseMoneyToMinor(data.amount),
-  currency: data.currency || DEFAULT_CURRENCY,
+  currency: data.currency || getAccountCurrency(),
   description: data.description,
   dateKey: data.dateKey || coerceDateKey(data.date),
   category: data.category,

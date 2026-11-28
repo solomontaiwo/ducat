@@ -10,6 +10,7 @@
  */
 
 import { DEFAULT_CURRENCY, MAX_AMOUNT_MINOR, getTransactionAmountMinor, minorToMajor, parseMoneyToMinor } from "./money.js";
+import { getAccountCurrency, isSupportedCurrency } from "./currency.js";
 import { coerceDateKey, dateKeyToDate, isDateKey } from "./dateUtils.js";
 import { transactionComparator } from "./transactionOrder.js";
 
@@ -32,8 +33,9 @@ const validateInput = (data) => {
   if (!Number.isInteger(amountMinor) || amountMinor <= 0 || amountMinor > MAX_AMOUNT_MINOR) {
     throw validationError("Invalid amount");
   }
-  const currency = data.currency || DEFAULT_CURRENCY;
-  if (currency !== "EUR") throw validationError("Invalid currency");
+  // Queued items keep the account currency of the moment they were entered.
+  const currency = data.currency || getAccountCurrency();
+  if (!isSupportedCurrency(currency)) throw validationError("Invalid currency");
   const description = typeof data.description === "string" ? data.description.trim() : "";
   if (!description || description.length > 200) throw validationError("Invalid description");
   const category = typeof data.category === "string" ? data.category.trim() : "";
@@ -204,7 +206,7 @@ const validatePatch = (patch = {}) => {
     out.amountMinor = amountMinor;
   }
   if (patch.currency !== undefined) {
-    if (patch.currency !== "EUR") throw validationError("Invalid currency");
+    if (!isSupportedCurrency(patch.currency)) throw validationError("Invalid currency");
     out.currency = patch.currency;
   }
   if (patch.description !== undefined) {
