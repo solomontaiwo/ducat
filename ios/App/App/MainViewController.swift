@@ -23,6 +23,18 @@ class MainViewController: CAPBridgeViewController {
     private var lastAppliedMetrics: TopCornerBarMetrics?
     private var topBarRegionObserver: UIView?
 
+    override open func instanceDescriptor() -> InstanceDescriptor {
+        let descriptor = super.instanceDescriptor()
+        if #available(iOS 17.0, *), !ProcessInfo.processInfo.isiOSAppOnMac {
+            var plugins = descriptor.pluginConfigurations
+            var keyboard = plugins["Keyboard"] as? [String: Any] ?? [:]
+            keyboard["resize"] = "none"
+            plugins["Keyboard"] = keyboard
+            descriptor.pluginConfigurations = plugins
+        }
+        return descriptor
+    }
+
     override open func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
@@ -83,11 +95,32 @@ class MainViewController: CAPBridgeViewController {
                 forMainFrameOnly: true
             )
             webView?.configuration.userContentController.addUserScript(script)
+        } else if #available(iOS 17.0, *) {
+            constrainWebViewToKeyboard()
         }
         bridge?.registerPluginInstance(BiometricAuthPlugin())
         bridge?.registerPluginInstance(NativeFeaturesPlugin())
         bridge?.registerPluginInstance(NativeNavigationPlugin())
         bridge?.registerPluginInstance(NativeRefreshPlugin())
+    }
+
+    @available(iOS 17.0, *)
+    private func constrainWebViewToKeyboard() {
+        guard let webView else { return }
+        // The content can occupy just one pane of the window on iPhone Duo.
+        // UIKit tracks keyboard changes in the container's own coordinates.
+        let container = UIView(frame: webView.frame)
+        view = container
+        let keyboard = container.keyboardLayoutGuide
+        keyboard.usesBottomSafeArea = false
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(webView)
+        NSLayoutConstraint.activate([
+            webView.topAnchor.constraint(equalTo: container.topAnchor),
+            webView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            webView.bottomAnchor.constraint(equalTo: keyboard.topAnchor),
+        ])
     }
 
     /// On Apple silicon Mac there is no software keyboard, yet UIKit still

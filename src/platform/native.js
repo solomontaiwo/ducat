@@ -13,6 +13,16 @@ import { MOBILE, runtime } from "./index.js";
 
 const darkMode = () => document.documentElement.classList.contains("dark");
 
+export const dismissKeyboardOnEnter = (event) => {
+  if (
+    runtime() !== MOBILE || document.documentElement.dataset.host === "macos"
+    || event.key !== "Enter" || event.metaKey || event.ctrlKey || event.nativeEvent.isComposing
+  ) return;
+
+  event.preventDefault();
+  event.currentTarget.blur();
+};
+
 /**
  * @param {object} [options]
  * @param {() => void} [options.onActive]   app came back to the foreground
@@ -22,6 +32,38 @@ export const startNativeShell = async ({ onActive, onInactive } = {}) => {
   if (runtime() !== MOBILE) return () => {};
 
   const cleanups = [];
+  if (document.documentElement.dataset.host !== "macos") {
+    let frame;
+    const revealFocusedField = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const field = document.activeElement;
+        if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field?.isContentEditable)) return;
+
+        // Use the scrollable form's own edges so a pinned footer cannot cover the field.
+        for (let parent = field.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+          const { overflowY } = getComputedStyle(parent);
+          if (overflowY !== "auto" && overflowY !== "scroll") continue;
+          if (parent.scrollHeight <= parent.clientHeight) continue;
+
+          const fieldRect = field.getBoundingClientRect();
+          const top = parent.getBoundingClientRect().top + parent.clientTop;
+          const bottom = top + parent.clientHeight;
+          if (fieldRect.bottom > bottom) parent.scrollTop += fieldRect.bottom - bottom + 8;
+          else if (fieldRect.top < top) parent.scrollTop += fieldRect.top - top - 8;
+        }
+        const fieldRect = field.getBoundingClientRect();
+        if (fieldRect.top < 0 || fieldRect.bottom > window.innerHeight) {
+          field.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }
+      });
+    };
+    window.addEventListener("resize", revealFocusedField);
+    cleanups.push(() => {
+      window.removeEventListener("resize", revealFocusedField);
+      cancelAnimationFrame(frame);
+    });
+  }
 
   try {
     const [{ StatusBar, Style }, { SplashScreen }, { App }] = await Promise.all([

@@ -22,6 +22,7 @@ import { Select } from "../ui/select";
 import Switch from "../ui/switch";
 import { useMediaQuery } from "react-responsive";
 import { hapticSuccess } from "../../platform/haptics.js";
+import { dismissKeyboardOnEnter } from "../../platform/native.js";
 
 const QUICK_ADD_PREF_KEY = "ducat-quick-add-preferences";
 const CALC_OPERATORS = ["+", "−", "×", "÷"];
@@ -383,6 +384,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
             onChange={(event) => setField("description", event.target.value)}
             maxLength={200}
             enterKeyHint="done"
+            onKeyDown={dismissKeyboardOnEnter}
             aria-label={t("transactionModal.description")}
             aria-describedby={`${idPrefix}-description-hint`}
           />
