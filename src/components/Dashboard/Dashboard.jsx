@@ -308,6 +308,22 @@ const Dashboard = () => {
           )}
         </section>
 
+        <section className="recent-card surface space-y-3 p-4 sm:p-6" aria-labelledby="recent-transactions">
+          <div className="flex items-baseline justify-between gap-3 px-1">
+            <h2 id="recent-transactions" className="text-lg font-bold short:text-base">{t("recentTransactions.title")}</h2>
+            <Link to="/transactions" className="text-sm font-semibold text-primary hover:underline">{t("recentTransactions.viewAll")}</Link>
+          </div>
+          <QuickAddForm preferences={preferences} />
+          <RecentTransactions
+            transactions={monthTransactions}
+            loading={isLoading}
+            onSelect={setEditing}
+            onAddFirst={canAdd ? openAddTransaction : undefined}
+            emptyLabel={t("dashboard.noTransactionsInMonth", { month: monthName })}
+            limit={3}
+          />
+        </section>
+
         <section className="spending-card surface flex flex-col gap-4 p-5 sm:p-6" aria-labelledby="where-money-goes">
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="where-money-goes" className="text-lg font-bold cols2:text-base short:text-base">{t("dashboard.whereMoneyGoes")}</h2>
@@ -372,21 +388,6 @@ const Dashboard = () => {
           {hasBudgets && <BudgetCard breakdown={stats?.categoryBreakdown || {}} isCurrentMonth={isCurrentMonth} startDate={startDate} endDate={endDate} monthParam={monthParam} />}
         </div>
       )}
-
-      <section className="recent-card surface space-y-3 p-4 sm:p-6" aria-labelledby="recent-transactions">
-        <div className="flex items-baseline justify-between gap-3 px-1">
-          <h2 id="recent-transactions" className="text-lg font-bold short:text-base">{t("recentTransactions.title")}</h2>
-          <Link to="/transactions" className="text-sm font-semibold text-primary hover:underline">{t("recentTransactions.viewAll")}</Link>
-        </div>
-        <QuickAddForm preferences={preferences} />
-        <RecentTransactions
-          transactions={monthTransactions}
-          loading={isLoading}
-          onSelect={setEditing}
-          onAddFirst={canAdd ? openAddTransaction : undefined}
-          emptyLabel={t("dashboard.noTransactionsInMonth", { month: monthName })}
-        />
-      </section>
 
       <TransactionModal
         show={Boolean(editing)}

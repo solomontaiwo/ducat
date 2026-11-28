@@ -69,6 +69,34 @@ afterEach(() => {
 });
 
 describe("Category drill-down & Dashboard privacy toggle", () => {
+  it("shows the three latest transactions between the summary and spending categories", async () => {
+    const originalTransactions = mocks.transactions;
+    const today = new Date();
+    const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+    mocks.transactions = ["Esselunga", "Biglietto treno", "Farmacia", "Cinema"].map((description, index) => ({
+      ...originalTransactions[0],
+      id: `t${index + 1}`,
+      description,
+      dateKey,
+      date: new Date(today.getFullYear(), today.getMonth(), 1, index + 8),
+    }));
+    try {
+      window.history.replaceState({}, "", "/dashboard");
+      render(<RouterProvider><PrivacyProvider><Dashboard /></PrivacyProvider></RouterProvider>);
+      const recent = await screen.findByRole("region", { name: "recentTransactions.title" });
+      await within(recent).findByRole("button", { name: /Cinema/ });
+      expect(within(recent).getAllByRole("listitem")).toHaveLength(3);
+      expect(within(recent).queryByRole("button", { name: /Esselunga/ })).not.toBeInTheDocument();
+      expect(within(recent).getByRole("link", { name: "recentTransactions.viewAll" })).toHaveAttribute("href", "/transactions");
+      const summary = screen.getByRole("region", { name: "dashboard.summary" });
+      const spending = screen.getByRole("region", { name: "dashboard.whereMoneyGoes" });
+      expect(summary.compareDocumentPosition(recent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(recent.compareDocumentPosition(spending) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    } finally {
+      mocks.transactions = originalTransactions;
+    }
+  });
+
   it("keeps the current month visible during a refresh and hides it when changing month", async () => {
     mocks.isDemo = false;
     window.history.replaceState({}, "", "/dashboard");
