@@ -303,6 +303,7 @@ test("activates an archive with a device PIN and resumes or recovers on demand",
     await source.getByLabel("Codice di abbinamento").fill(manualCode);
     await source.getByRole("button", { name: "Approva un dispositivo" }).click();
     const manualConfirmation = await source.getByTestId("pairing-confirmation").innerText();
+    await request.getByText("Inserisci il codice di conferma a mano", { exact: true }).click();
     await request.getByLabel("Codice di conferma").fill(manualConfirmation);
     await request.getByRole("button", { name: "Conferma abbinamento" }).click();
     await expect(tab.getByText("Dispositivo approvato. Scegli il PIN da usare qui.")).toBeVisible();
@@ -311,6 +312,8 @@ test("activates an archive with a device PIN and resumes or recovers on demand",
     await tab.reload();
     await tab.getByRole("button", { name: "Approva da un altro dispositivo" }).click();
     const pairingCode = await tab.getByTestId("pairing-request-code").innerText();
+    await expect(request.getByRole("status")).toContainText("In attesa di approvazione");
+    await expect(request.getByLabel("Codice di conferma")).toBeHidden();
     const openPending = async (code) => {
       await page.getByRole("button", { name: "Vedi richieste" }).click();
       await source.getByRole("button", { name: code, exact: true }).click();
@@ -330,6 +333,7 @@ test("activates an archive with a device PIN and resumes or recovers on demand",
     await openPending(renewedCode);
     await source.getByRole("button", { name: "I codici coincidono" }).click();
     const confirmation = await source.getByTestId("pairing-confirmation").innerText();
+    await request.getByText("Inserisci il codice di conferma a mano", { exact: true }).click();
     await request.getByLabel("Codice di conferma").fill("0000 0000 0000");
     await request.getByRole("button", { name: "Conferma abbinamento" }).click();
     await expect(request.getByRole("alert")).toBeVisible();
