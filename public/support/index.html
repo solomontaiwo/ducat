@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Assistenza e contatti per Ducat. Ducat support and contact information." />
+    <link rel="icon" href="/icon-192.png" />
+    <title>Supporto · Support | Ducat</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, -apple-system, sans-serif; color: #141b2c; background: #f6f7f9; }
+      * { box-sizing: border-box; }
+      body { margin: 0; line-height: 1.6; }
+      a { color: #174db7; text-underline-offset: 0.2em; }
+      a:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; border-radius: 3px; }
+      .wrap { width: min(100% - 2rem, 52rem); margin: auto; }
+      header { padding: 1.5rem 0; border-bottom: 1px solid #dce0e7; }
+      .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+      .brand { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 1.25rem; font-weight: 800; color: inherit; text-decoration: none; }
+      .brand img { border-radius: 0.6rem; }
+      nav { display: flex; gap: 1rem; font-weight: 650; }
+      main { padding: 2.5rem 0 4rem; }
+      .intro { margin-bottom: 2rem; }
+      .eyebrow { color: #174db7; font-size: 0.875rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+      h1 { font-size: clamp(2rem, 6vw, 3rem); line-height: 1.12; letter-spacing: -0.04em; margin: 0.5rem 0 0.75rem; }
+      .intro p { margin: 0; color: #505d70; }
+      .language-section { background: #fff; border: 1px solid #e0e4ea; border-radius: 1.25rem; padding: clamp(1.25rem, 4vw, 2rem); box-shadow: 0 8px 24px rgb(20 25 36 / 0.05); margin-top: 1.25rem; scroll-margin-top: 1rem; }
+      h2 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 0.5rem; }
+      h3 { font-size: 1.05rem; line-height: 1.35; margin: 1.5rem 0 0.35rem; }
+      p { margin: 0.4rem 0; }
+      .contact { padding: 1rem; margin: 1.25rem 0; background: #eff5ff; border-radius: 0.85rem; overflow-wrap: anywhere; }
+      .contact a { font-weight: 750; }
+      .links { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e0e4ea; }
+      footer { color: #505d70; padding: 0 0 2rem; font-size: 0.875rem; }
+      @media (prefers-color-scheme: dark) {
+        :root { color: #edf1f9; background: #111522; }
+        a, .eyebrow { color: #a6c4ff; }
+        header, .links { border-color: #343c4b; }
+        .intro p, footer { color: #bac3d2; }
+        .language-section { background: #1c2332; border-color: #343c4b; }
+        .contact { background: #263858; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap header-inner">
+        <a class="brand" href="/"><img src="/icon-192.png" alt="" width="36" height="36" />Ducat</a>
+        <nav aria-label="Lingua / Language"><a href="#italiano" lang="it">Italiano</a><a href="#english" lang="en">English</a></nav>
+      </div>
+    </header>
+    <main class="wrap">
+      <div class="intro">
+        <span class="eyebrow">Ducat</span>
+        <h1><span data-language="it" lang="it">Supporto</span> <span data-language="en" lang="en">Support</span></h1>
+        <p><span data-language="it" lang="it">Ti aiutiamo con Ducat.</span> <span data-language="en" lang="en">We’re here to help with Ducat.</span></p>
+      </div>
+
+      <section class="language-section" id="italiano" data-language="it" lang="it" aria-labelledby="italiano-title">
+        <h2 id="italiano-title">Come possiamo aiutarti?</h2>
+        <p>Per problemi con l’app, domande, suggerimenti o richieste di assistenza, scrivici via email.</p>
+        <div class="contact">
+          <strong>Email di supporto</strong><br />
+          <a href="mailto:taiwo.o.solomon@gmail.com">taiwo.o.solomon@gmail.com</a>
+        </div>
+        <p>Descrivi cosa è successo e indica, se possibile, il dispositivo e la versione dell’app. Non inviare password, PIN o codici di recupero.</p>
+
+        <h3>Non riesco ad accedere</h3>
+        <p>Nella schermata di accesso seleziona “Password dimenticata?” e segui le istruzioni ricevute via email. Controlla anche la cartella della posta indesiderata.</p>
+        <h3>Non riesco a sbloccare l’archivio cifrato</h3>
+        <p>Su un nuovo dispositivo puoi usare il codice di recupero oppure, se disponibile, approvarlo da un dispositivo già sbloccato. Il ripristino della password di accesso non ripristina il codice dell’archivio. Se perdi il codice e l’accesso a tutti i dispositivi approvati, Ducat non può riaprire l’archivio.</p>
+        <h3>Come elimino il mio account?</h3>
+        <p>Apri il profilo nell’app e seleziona l’opzione per eliminare l’account. Se non riesci ad accedere, contattaci all’indirizzo indicato sopra.</p>
+        <div class="links"><a href="/privacy">Informativa privacy</a><a href="/terms">Termini d’uso</a><a href="/">Apri Ducat</a></div>
+      </section>
+
+      <section class="language-section" id="english" data-language="en" lang="en" aria-labelledby="english-title">
+        <h2 id="english-title">How can we help?</h2>
+        <p>For app issues, questions, feedback or support requests, email us.</p>
+        <div class="contact">
+          <strong>Support email</strong><br />
+          <a href="mailto:taiwo.o.solomon@gmail.com">taiwo.o.solomon@gmail.com</a>
+        </div>
+        <p>Tell us what happened and, if possible, include your device and app version. Please do not send passwords, PINs or recovery codes.</p>
+
+        <h3>I can’t sign in</h3>
+        <p>On the sign-in screen, select “Forgot your password?” and follow the instructions in the email. Check your spam folder too.</p>
+        <h3>I can’t unlock my encrypted archive</h3>
+        <p>On a new device, you can use your recovery code or, if available, approve it from a device that is already unlocked. Resetting your sign-in password does not reset your archive recovery code. If you lose the code and access to all approved devices, Ducat cannot reopen the archive.</p>
+        <h3>How do I delete my account?</h3>
+        <p>Open your profile in the app and select the option to delete your account. If you cannot sign in, contact us at the email address above.</p>
+        <div class="links"><a href="/privacy">Privacy policy</a><a href="/terms">Terms of use</a><a href="/">Open Ducat</a></div>
+      </section>
+    </main>
+    <footer class="wrap">© Ducat</footer>
+    <script>
+      (() => {
+        const normalize = (value) => String(value || "").toLowerCase().startsWith("en") ? "en" : "it";
+        let preferred;
+        try {
+          preferred = localStorage.getItem("appLanguage") || localStorage.getItem("i18nextLng");
+        } catch {
+          // Language detection still works when browser storage is unavailable.
+        }
+        const detected = normalize(preferred || navigator.languages?.[0] || navigator.language);
+        const renderLanguage = () => {
+          const language = location.hash === "#english" ? "en" : location.hash === "#italiano" ? "it" : detected;
+          document.documentElement.lang = language;
+          document.title = language === "en" ? "Support | Ducat" : "Supporto | Ducat";
+          document.querySelectorAll("[data-language]").forEach((element) => {
+            element.hidden = element.dataset.language !== language;
+          });
+          document.querySelectorAll("nav a").forEach((link) => {
+            if (link.lang === language) link.setAttribute("aria-current", "true");
+            else link.removeAttribute("aria-current");
+          });
+        };
+        window.addEventListener("hashchange", renderLanguage);
+        renderLanguage();
+      })();
+    </script>
+  </body>
+</html>

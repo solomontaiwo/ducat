@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { detectLanguage, LANGUAGE_STORAGE_KEY, persistLanguage } from "../src/utils/language.js";
+import { readFileSync } from "node:fs";
+import { URL as NodeURL } from "node:url";
+import { JSDOM } from "jsdom";
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -40,5 +43,36 @@ describe("i18n resources", () => {
     expect(i18n.t("dashboard.income")).toBe("Income");
     await i18n.changeLanguage("it");
     expect(i18n.t("dashboard.income")).toBe("Entrate");
+  });
+});
+
+describe("support page language", () => {
+  const html = readFileSync(new NodeURL("../public/support/index.html", import.meta.url), "utf8");
+  const openPage = ({ hash = "", saved, browser = "it-IT" } = {}) => new JSDOM(html, {
+    url: `https://ducatapp.com/support/${hash}`,
+    runScripts: "dangerously",
+    beforeParse(window) {
+      if (saved) window.localStorage.setItem("appLanguage", saved);
+      Object.defineProperty(window.navigator, "languages", { value: [browser] });
+    },
+  });
+
+  it("uses the browser language when no preference is saved", () => {
+    const { window } = openPage({ browser: "en-US" });
+    expect(window.document.documentElement.lang).toBe("en");
+    expect(window.document.getElementById("english").hidden).toBe(false);
+    expect(window.document.getElementById("italiano").hidden).toBe(true);
+    window.close();
+  });
+
+  it("prefers the saved language and allows an explicit language link", () => {
+    const { window } = openPage({ saved: "it", browser: "en-US" });
+    expect(window.document.documentElement.lang).toBe("it");
+    window.location.hash = "english";
+    window.dispatchEvent(new window.Event("hashchange"));
+    expect(window.document.documentElement.lang).toBe("en");
+    expect(window.document.getElementById("english").hidden).toBe(false);
+    expect(window.localStorage.getItem("appLanguage")).toBe("it");
+    window.close();
   });
 });
