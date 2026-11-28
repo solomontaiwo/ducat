@@ -353,12 +353,13 @@
       border-right: 1px solid hsl(var(--border));
     }
   }
-  /* Reached by the iPhone Duo inner screen in landscape (sidebar, side bar
-     and 17pt system text leave it about 36em), where the compact `cols2`
-     sizes of the summary card apply. */
+  /* On wider screens the summary and recent transactions sit side by side. */
   @container (min-width: 34em) {
     .dashboard-summary {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .dashboard-summary > .spending-card {
+      grid-column: 1 / -1;
     }
   }
   /* Wider, the summary card takes a little more room. */
@@ -368,9 +369,8 @@
     }
   }
   /*
-   * "Where your money goes" beside the summary card (iPhone Duo inner screen,
-   * iPad in portrait): in a narrow card the amount and the share stack on the
-   * right, so the category name keeps room. Phones stay above the threshold.
+   * In a narrow spending card the amount and share stack on the right,
+   * so the category name keeps room.
    */
   .spending-card,
   .category-card {
