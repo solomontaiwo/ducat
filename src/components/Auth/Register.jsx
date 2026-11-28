@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
-import { useNotification } from "../../utils/notificationUtils";
 import { FiMail, FiUser, FiUserPlus } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { Input } from "../ui/input";
@@ -20,7 +19,6 @@ const Register = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const { markPendingVerification } = useAuth();
-  const notification = useNotification();
   const { t, i18n } = useTranslation();
 
   const handleSubmit = async (e) => {
@@ -44,7 +42,6 @@ const Register = () => {
         email: normalizedEmail, password, displayName: usernameTrimmed, language: i18n?.resolvedLanguage || i18n?.language,
       });
 
-      notification.success(t("errors.accountCreatedSuccess"));
       if (hasSession && user?.emailVerified) {
         navigate("/dashboard", { replace: true });
         return;

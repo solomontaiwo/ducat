@@ -92,7 +92,6 @@ const RecurringPage = () => {
     try {
       if (await updateRecurring(editing.id, patch)) {
         hapticSuccess();
-        notification.success(t("recurring.updated"));
         setEditing(null);
       }
     } finally {

@@ -111,6 +111,7 @@ it("keeps the real form mounted and retains values and request ID after a failed
   expect(amount).toHaveValue("12.50");
   expect(description).toHaveValue("Pranzo");
   fireEvent.submit(amount.closest("form"));
-  await waitFor(() => expect(mocks.notification.success).toHaveBeenCalled());
+  await waitFor(() => expect(mocks.add).toHaveBeenCalledTimes(2));
+  expect(mocks.notification.success).not.toHaveBeenCalled();
   expect(mocks.add.mock.calls[1][2].requestId).toBe(mocks.add.mock.calls[0][2].requestId);
 });

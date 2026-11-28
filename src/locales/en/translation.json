@@ -67,7 +67,6 @@
     "username": "Username",
     "user": "User",
     "updating": "Updating...",
-    "usernameSuccess": "Username updated successfully!",
     "usernameError": "Error updating username",
     "usernamePermissionError": "Insufficient permissions to update username",
     "exporting": "Preparing…",
@@ -81,7 +80,6 @@
     "deleteAccountHelp": "To confirm, use the current password entered in the “Data and security” section.",
     "deleting": "Deleting…",
     "deleteAccountButton": "Permanently delete account",
-    "exportSuccess": "Account data exported.",
     "exportError": "Could not export your data. Please try again.",
     "passwordResetSuccess": "Password reset email sent.",
     "passwordResetError": "Could not send the email. Please try again later.",
@@ -406,7 +404,6 @@
       "recategorize": "Change category…",
       "mixedTypes": "Same type only",
       "deleteTitle": "Delete {{count}} transactions?",
-      "updated": "Updated {{count}} transactions",
       "deleted": "Deleted {{count}} transactions"
     }
   },
@@ -456,14 +453,9 @@
   },
   "demo": {
     "limitReached": "You have reached the limit of {{limit}} transactions in demo mode. Register for complete functionality!",
-    "transactionAdded": "Transaction added in demo mode!",
-    "transactionUpdated": "Transaction updated!",
-    "transactionDeleted": "Transaction deleted!",
-    "allTransactionsCleared": "All demo transactions have been removed!",
     "sampleSalary": "Salary",
     "sampleGroceries": "Groceries",
     "sampleFuel": "Fuel",
-    "sampleTransactionsAdded": "Sample transactions have been added!",
     "deleteError": "Unable to save your changes. Check the available storage.",
     "pendingTrialNotice": "You are trying Ducat while you wait to confirm {{email}}: your data stays on this device only. Once you confirm and sign in, you can import it into your account.",
     "confirmEmail": "Confirm email",
@@ -475,7 +467,6 @@
       "discard": "Delete from this device",
       "later": "Later",
       "discardConfirm": "The trial movements will be deleted from this device and cannot be recovered. Continue?",
-      "discarded": "Trial movements deleted from this device.",
       "done": "Movements imported into your account: {{count}}.",
       "partial": "Imported {{imported}} movements; {{remaining}} remain on this device. Try again later.",
       "failed": "Import failed. The movements are still on this device: try again.",
@@ -483,9 +474,7 @@
     }
   },
   "notifications": {
-    "addSuccess": "Transaction added successfully!",
     "addError": "Error adding transaction",
-    "updateSuccess": "Transaction updated successfully!",
     "updateError": "Error updating transaction",
     "deleteSuccess": "Transaction deleted successfully!",
     "deleteError": "Error deleting transaction",
@@ -504,8 +493,7 @@
     "loginButton": "Login",
     "noAccount": "Don't have an account?",
     "registerNow": "Register now",
-    "backToHome": "Back to Home",
-    "success": "Signed in"
+    "backToHome": "Back to Home"
   },
   "register": {
     "title": "Create Account",
@@ -524,7 +512,6 @@
     "emailAlreadyInUse": "Email already in use",
     "weakPassword": "Password too weak",
     "operationNotAllowed": "Operation not allowed",
-    "accountCreatedSuccess": "Account created successfully!",
     "generic": "Something went wrong. Please try again.",
     "missingCredentials": "Enter your email and password."
   },
@@ -564,7 +551,6 @@
       "resendIn": "Send again in {{seconds}}s",
       "sending": "Sending…",
       "exit": "Sign out",
-      "verified": "Email verified. You can now use every feature.",
       "notVerified": "Your email is not verified yet.",
       "checkFailed": "Unable to check the verification. Please try again.",
       "sent": "Verification email sent.",
@@ -642,6 +628,7 @@
     "upcomingHint": "Next 7 days",
     "manage": "Recurring",
     "register": "Record",
+    "registered": "{{description}} recorded",
     "skip": "Skip the next one",
     "today": "today",
     "tomorrow": "tomorrow",
@@ -671,8 +658,7 @@
     "editTitle": "Edit recurring",
     "editHint": "Changes apply to future movements; already recorded ones stay as they are.",
     "editDescriptionRequired": "Enter a description",
-    "frequencyChangeUnavailable": "Frequency cannot be changed for this rule.",
-    "updated": "Recurring rule updated"
+    "frequencyChangeUnavailable": "Frequency cannot be changed for this rule."
   },
   "budgets": {
     "title": "Monthly budgets",
@@ -683,7 +669,6 @@
     "noAverage": "No spending in the last 3 months",
     "useSuggestions": "Use suggestions",
     "save": "Save budgets",
-    "saved": "Budgets saved",
     "saveError": "Unable to save budgets",
     "total": "Total budget",
     "of": "{{spent}} of {{limit}}",
@@ -916,9 +901,7 @@
       "lockedTitle": "{{app}} is locked",
       "lockedSubtitle": "Verify your identity to view balances and transactions.",
       "unlockWith": "Unlock with {{method}}",
-      "unlocking": "Verifying…",
-      "enabled": "{{method}} lock enabled",
-      "disabled": "{{method}} lock disabled"
+      "unlocking": "Verifying…"
     }
   },
   "mobileWelcome": {
@@ -943,8 +926,6 @@
   "reminders": {
     "title": "Recurring reminders",
     "summary": "Alert before due rules to confirm",
-    "enabled": "Recurring reminders enabled",
-    "disabled": "Recurring reminders disabled",
     "denied": "Enable notifications in iOS Settings.",
     "notifTitle": "Upcoming: {{description}}",
     "notifBodyTomorrow": "Tomorrow · {{amount}} to confirm",

@@ -67,7 +67,6 @@
     "username": "Nome Utente",
     "user": "Utente",
     "updating": "Aggiornamento in corso...",
-    "usernameSuccess": "Nome utente aggiornato con successo!",
     "usernameError": "Errore nell'aggiornamento del nome utente",
     "usernamePermissionError": "Permessi insufficienti per aggiornare il nome utente",
     "exporting": "Preparazione…",
@@ -81,7 +80,6 @@
     "deleteAccountHelp": "Per confermare usa la password attuale inserita nella sezione “Dati e sicurezza”.",
     "deleting": "Eliminazione…",
     "deleteAccountButton": "Elimina definitivamente l’account",
-    "exportSuccess": "Archivio account esportato.",
     "exportError": "Impossibile esportare i dati. Riprova.",
     "passwordResetSuccess": "Email per il reset della password inviata.",
     "passwordResetError": "Invio non riuscito. Riprova più tardi.",
@@ -406,7 +404,6 @@
       "recategorize": "Cambia categoria…",
       "mixedTypes": "Solo stesso tipo",
       "deleteTitle": "Eliminare {{count}} movimenti?",
-      "updated": "Aggiornati {{count}} movimenti",
       "deleted": "Eliminati {{count}} movimenti"
     }
   },
@@ -456,14 +453,9 @@
   },
   "demo": {
     "limitReached": "Hai raggiunto il limite di {{limit}} movimenti nella modalità demo. Registrati per funzionalità complete!",
-    "transactionAdded": "Movimento aggiunto in modalità demo!",
-    "transactionUpdated": "Movimento aggiornato!",
-    "transactionDeleted": "Movimento eliminato!",
-    "allTransactionsCleared": "Tutti i movimenti demo sono stati rimossi!",
     "sampleSalary": "Stipendio",
     "sampleGroceries": "Spesa alimentare",
     "sampleFuel": "Benzina",
-    "sampleTransactionsAdded": "Sono stati aggiunti alcuni movimenti di esempio!",
     "deleteError": "Impossibile salvare le modifiche. Controlla lo spazio disponibile.",
     "pendingTrialNotice": "Stai provando Ducat mentre aspetti la conferma di {{email}}: i dati restano solo su questo dispositivo. Dopo la conferma e l’accesso potrai importarli nel tuo account.",
     "confirmEmail": "Conferma email",
@@ -475,7 +467,6 @@
       "discard": "Elimina dal dispositivo",
       "later": "Più tardi",
       "discardConfirm": "I movimenti della prova verranno eliminati da questo dispositivo e non potranno essere recuperati. Continuare?",
-      "discarded": "Movimenti della prova eliminati dal dispositivo.",
       "done": "Movimenti importati nel tuo account: {{count}}.",
       "partial": "Importati {{imported}} movimenti; {{remaining}} restano su questo dispositivo. Riprova più tardi.",
       "failed": "Importazione non riuscita. I movimenti restano su questo dispositivo: riprova.",
@@ -483,9 +474,7 @@
     }
   },
   "notifications": {
-    "addSuccess": "Movimento aggiunto con successo!",
     "addError": "Errore nell'aggiunta del movimento",
-    "updateSuccess": "Movimento aggiornato con successo!",
     "updateError": "Errore nell'aggiornamento del movimento",
     "deleteSuccess": "Movimento eliminato con successo!",
     "deleteError": "Errore nell'eliminazione del movimento",
@@ -504,8 +493,7 @@
     "loginButton": "Accedi",
     "noAccount": "Non hai un account?",
     "registerNow": "Registrati ora",
-    "backToHome": "Torna alla Home",
-    "success": "Accesso effettuato"
+    "backToHome": "Torna alla Home"
   },
   "register": {
     "title": "Crea Account",
@@ -524,7 +512,6 @@
     "emailAlreadyInUse": "Email già in uso",
     "weakPassword": "Password troppo debole",
     "operationNotAllowed": "Operazione non consentita",
-    "accountCreatedSuccess": "Account creato con successo!",
     "generic": "Qualcosa è andato storto. Riprova tra poco.",
     "missingCredentials": "Inserisci email e password."
   },
@@ -564,7 +551,6 @@
       "resendIn": "Invia di nuovo tra {{seconds}}s",
       "sending": "Invio in corso…",
       "exit": "Esci",
-      "verified": "Email verificata. Ora puoi usare tutte le funzionalità.",
       "notVerified": "L’email non risulta ancora verificata.",
       "checkFailed": "Impossibile controllare la verifica. Riprova.",
       "sent": "Email di verifica inviata.",
@@ -642,6 +628,7 @@
     "upcomingHint": "Prossimi 7 giorni",
     "manage": "Ricorrenti",
     "register": "Registra",
+    "registered": "{{description}} registrata",
     "skip": "Salta il prossimo",
     "today": "oggi",
     "tomorrow": "domani",
@@ -671,8 +658,7 @@
     "editTitle": "Modifica ricorrenza",
     "editHint": "Le modifiche valgono per i prossimi movimenti; quelli già registrati restano.",
     "editDescriptionRequired": "Inserisci una descrizione",
-    "frequencyChangeUnavailable": "Non è possibile cambiare frequenza su questa regola.",
-    "updated": "Ricorrenza aggiornata"
+    "frequencyChangeUnavailable": "Non è possibile cambiare frequenza su questa regola."
   },
   "budgets": {
     "title": "Budget mensili",
@@ -683,7 +669,6 @@
     "noAverage": "Nessuna spesa negli ultimi 3 mesi",
     "useSuggestions": "Usa i suggerimenti",
     "save": "Salva budget",
-    "saved": "Budget salvati",
     "saveError": "Impossibile salvare i budget",
     "total": "Totale budget",
     "of": "{{spent}} di {{limit}}",
@@ -916,9 +901,7 @@
       "lockedTitle": "{{app}} è bloccata",
       "lockedSubtitle": "Verifica la tua identità per vedere saldi e movimenti.",
       "unlockWith": "Sblocca con {{method}}",
-      "unlocking": "Verifica…",
-      "enabled": "Blocco con {{method}} attivo",
-      "disabled": "Blocco con {{method}} disattivato"
+      "unlocking": "Verifica…"
     }
   },
   "mobileWelcome": {
@@ -943,8 +926,6 @@
   "reminders": {
     "title": "Promemoria ricorrenti",
     "summary": "Avviso prima delle scadenze da confermare",
-    "enabled": "Promemoria ricorrenti attivi",
-    "disabled": "Promemoria ricorrenti disattivati",
     "denied": "Abilita le notifiche nelle Impostazioni di iOS.",
     "notifTitle": "In arrivo: {{description}}",
     "notifBodyTomorrow": "Domani · {{amount}} da confermare",

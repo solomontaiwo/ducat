@@ -84,7 +84,6 @@ const DemoImportPrompt = () => {
   const discard = () => {
     if (busy || !window.confirm(t("demo.import.discardConfirm"))) return;
     finish();
-    notification.info(t("demo.import.discarded"));
   };
 
   const postpone = () => {

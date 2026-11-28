@@ -247,7 +247,7 @@ export const PlanningProvider = ({ children }) => {
 
   const registerOccurrence = useCallback(async (rule) => {
     const result = await registerRuleOccurrence(rule, nextOccurrence(rule));
-    if (result.ok && !isDemo) notification.success(t("notifications.addSuccess"));
+    if (result.ok && !isDemo) notification.success(t("recurring.registered", { description: rule.description }));
     return result.ok;
   }, [registerRuleOccurrence, isDemo, notification, t]);
 

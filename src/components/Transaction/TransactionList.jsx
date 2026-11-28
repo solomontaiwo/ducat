@@ -533,22 +533,19 @@ const TransactionList = () => {
   const handleBulkCategory = useCallback(async (nextCategory) => {
     if (!nextCategory || !selectedItems.length || bulkBusy || hasMixedBulkTypes) return;
     setBulkBusy(true);
-    let updated = 0;
     try {
       for (const item of selectedItems) {
         const ok = await updateTransaction(item.id, { category: nextCategory }, { silent: true });
         if (ok) {
-          updated += 1;
           setAllLoadedTransactions((prev) => prev.map((row) => (row.id === item.id ? { ...row, category: nextCategory } : row)));
           setHistoryIndex((prev) => prev && prev.map((row) => (row.id === item.id ? { ...row, category: nextCategory } : row)));
         }
       }
-      if (updated) notification.success(t("transactions.bulk.updated", { count: updated }));
       exitSelection();
     } finally {
       setBulkBusy(false);
     }
-  }, [selectedItems, bulkBusy, hasMixedBulkTypes, updateTransaction, notification, t, exitSelection]);
+  }, [selectedItems, bulkBusy, hasMixedBulkTypes, updateTransaction, exitSelection]);
 
   const confirmBulkDelete = useCallback(() => {
     const ids = selectedItems.map((item) => item.id);

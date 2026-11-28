@@ -334,7 +334,6 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
       const { clientRequestId, ...payload } = transactionData;
       await TransactionService.add(currentUser.uid, payload, { requestId: clientRequestId });
       if (!silent) {
-        notification.success(t('notifications.addSuccess'));
         if (import.meta.env.MODE === "mobile") {
           import("../platform/appReview.js")
             .then(({ recordPositiveSaveAndMaybeRequestReview }) => recordPositiveSaveAndMaybeRequestReview({ isDemo: false }))
@@ -402,7 +401,6 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
         }
         setPendingTransactions(result.pending);
         setQueueRevision((value) => value + 1);
-        if (!silent) notification.success(t("notifications.updateSuccess"));
         return true;
       } catch (error) {
         console.error("Error updating offline transaction:", error);
@@ -434,7 +432,6 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
       await TransactionService.update(transactionId, updatedData);
-      if (!silent) notification.success(t('notifications.updateSuccess'));
       return true;
     } catch (error) {
       console.error("Error updating transaction:", error);
@@ -456,7 +453,6 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
         if (!result.removed) return false;
         setPendingTransactions(result.pending);
         setQueueRevision((value) => value + 1);
-        if (!silent) notification.success(t("notifications.deleteSuccess"));
         return true;
       } catch (error) {
         console.error("Error deleting offline transaction:", error);
@@ -488,7 +484,6 @@ const AccountTransactionWrapper = ({ children, stopDemo }) => {
     try {
       const { TransactionService } = await import("../services/transactionService.jsx");
       await TransactionService.delete(transactionId);
-      if (!silent) notification.success(t('notifications.deleteSuccess'));
       return true;
     } catch (error) {
       console.error("Error deleting transaction:", error);

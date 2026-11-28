@@ -180,7 +180,7 @@ describe("importing the trial into the account", () => {
     fireEvent.click(screen.getByRole("button", { name: "demo.import.discard" }));
     expect(confirm).toHaveBeenCalledTimes(2);
     expect(readImportableDemoTransactions()).toEqual([]);
-    expect(mocks.notification.info).toHaveBeenCalledWith("demo.import.discarded");
+    expect(mocks.notification.info).not.toHaveBeenCalled();
     expect(mocks.add).not.toHaveBeenCalled();
   });
 

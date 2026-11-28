@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "../../router/RouterProvider";
 import { useAuth } from "../../context/AuthProvider";
-import { useNotification } from "../../utils/notificationUtils";
 import { FiLogIn, FiUser } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { Input } from "../ui/input";
@@ -17,7 +16,6 @@ const Login = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const { markPendingVerification } = useAuth();
-  const notification = useNotification();
   const { t } = useTranslation();
 
   const handleSubmit = async (e) => {
@@ -32,7 +30,6 @@ const Login = () => {
     try {
       const { signIn } = await import("../../services/authService.js");
       const user = await signIn(email, password);
-      notification.success(t("login.success"));
       navigate(user?.emailVerified ? "/dashboard" : "/verify-email", { replace: true });
     } catch (err) {
       if (err.code === "auth/email-not-verified") {

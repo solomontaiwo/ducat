@@ -195,7 +195,6 @@ const Profile = () => {
       const { saveProfileName } = await import("../../services/profileService.js");
       await saveProfileName(currentUser, name);
       await refreshProfileName(currentUser);
-      notification.success(t("profile.usernameSuccess"));
       return true;
     } catch (error) {
       console.error("Unable to update the name", error);
@@ -212,7 +211,6 @@ const Profile = () => {
       const saved = await downloadJson(payload, `ducat-backup-${new Date().toISOString().slice(0, 10)}.json`);
       if (!saved) return;
       await savePreferences({ lastBackupAt: Date.now() });
-      notification.success(t("profile.exportSuccess"));
     } catch (error) {
       console.error("Unable to export account data", error);
       notification.error(t("profile.exportError"), {
@@ -247,7 +245,6 @@ const Profile = () => {
       if (remindersEnabled) {
         await clearRecurringReminders();
         setRemindersEnabled(false);
-        notification.success(t("reminders.disabled"));
         return;
       }
       const granted = await requestReminderPermission();
@@ -264,7 +261,6 @@ const Profile = () => {
           { amount: formatCurrency(amount, moneyLocale(i18n.language)) }
         ),
       });
-      notification.success(t("reminders.enabled"));
     } finally {
       setTogglingReminders(false);
     }
@@ -284,10 +280,8 @@ const Profile = () => {
     setTogglingBiometric(true);
     try {
       const reason = t("privacy.biometric.promptReason", { app: APP_NAME });
-      const ok = biometricEnabled ? await disableBiometricLock(reason) : await enableBiometricLock(reason);
-      if (ok) {
-        notification.success(t(biometricEnabled ? "privacy.biometric.disabled" : "privacy.biometric.enabled", { method: biometricLabel }));
-      }
+      if (biometricEnabled) await disableBiometricLock(reason);
+      else await enableBiometricLock(reason);
     } finally {
       setTogglingBiometric(false);
     }
