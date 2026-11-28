@@ -70,6 +70,18 @@ test("auth pages load the account client without errors", async ({ page }) => {
 });
 
 const ADD_BUTTON = /^(nuovo movimento|new transaction)$/i;
+const CATEGORY_BUTTON = /^(categoria|category): /i;
+const CATEGORY_SHEET = /^(seleziona una categoria|select a category)$/i;
+
+const transactionCategory = async (page, dialog, name) => {
+  const trigger = dialog.getByRole("button", { name: CATEGORY_BUTTON });
+  if (await trigger.isVisible()) {
+    await trigger.click();
+    const sheet = page.getByRole("dialog", { name: CATEGORY_SHEET });
+    return sheet.getByRole("button", { name });
+  }
+  return dialog.getByRole("radio", { name });
+};
 
 const mockVaultAccount = (uid, keys) => {
   const authUser = { id: uid, email: "vault@example.com", email_confirmed_at: "2026-01-01T00:00:00Z", user_metadata: { lang: "it" } };
@@ -206,7 +218,7 @@ test("unlocks an archive on two devices and persists offline writes only as ciph
   await page.getByRole("button", { name: ADD_BUTTON }).first().click();
   const dialog = page.getByRole("dialog");
   await dialog.locator("#transaction-amount").fill("12,50");
-  await dialog.getByRole("radio", { name: /^(trasporti|transportation)$/i }).click();
+  await (await transactionCategory(page, dialog, /^(trasporti|transportation)$/i)).click();
   await dialog.locator("#transaction-description").fill(description);
   await dialog.getByRole("button", { name: /12,50|12\.50/ }).click();
   await expect(dialog).toBeHidden();
@@ -465,7 +477,7 @@ test("adds, edits and deletes a transaction in demo mode", async ({ page, isMobi
   await page.getByRole("button", { name: ADD_BUTTON }).first().click();
   const dialog = page.getByRole("dialog");
   await dialog.locator("#transaction-amount").fill("12,50");
-  await dialog.getByRole("radio", { name: /^(transportation|trasporti)$/i }).click();
+  await (await transactionCategory(page, dialog, /^(transportation|trasporti)$/i)).click();
   await dialog.locator("#transaction-description").fill("Biglietto treno");
   await dialog.getByRole("button", { name: /12,50|12\.50/ }).click();
   await expect(dialog).toBeHidden();
@@ -726,6 +738,21 @@ test("iPhone Duo inner screen: the new transaction form fits in two columns", as
   expect(Math.abs(description.y - amount.y)).toBeLessThan(120);
   // Repeat, the last section, is in view without scrolling.
   expect(repeat.y + repeat.height).toBeLessThanOrEqual(box.y + box.height);
+
+  await dialog.locator("#transaction-amount").fill("12,50");
+  await dialog.locator("#transaction-description").fill("Biglietto");
+  await page.setViewportSize({ width: 951, height: 400 });
+  await dialog.getByRole("radio", { name: "Trasporti" }).click();
+  await page.setViewportSize({ width: 466, height: 678 });
+  const trigger = dialog.getByRole("button", { name: "Categoria: Trasporti" });
+  await trigger.click();
+  const sheet = page.getByRole("dialog", { name: CATEGORY_SHEET });
+  await expect(sheet.getByRole("button", { name: "Trasporti" })).toHaveAttribute("aria-pressed", "true");
+  await sheet.getByRole("button", { name: "Trasporti" }).click();
+  await expect(sheet).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await expect(dialog.locator("#transaction-amount")).toHaveValue("12.50");
+  await expect(dialog.locator("#transaction-description")).toHaveValue("Biglietto");
   await context.close();
 });
 
@@ -932,7 +959,12 @@ test("suggests the category and turns a movement into a recurring one", async ({
   await dialog.locator("#transaction-amount").fill("13,99");
   await dialog.locator("#transaction-description").fill("Netflix");
   await expect(dialog.getByTestId("category-suggestion")).toBeVisible();
-  await expect(dialog.getByRole("radio", { name: /^abbonamenti$/i })).toHaveAttribute("aria-checked", "true");
+  const categoryTrigger = dialog.getByRole("button", { name: CATEGORY_BUTTON });
+  if (await categoryTrigger.isVisible()) {
+    await expect(categoryTrigger).toHaveAccessibleName("Categoria: Abbonamenti");
+  } else {
+    await expect(dialog.getByRole("radio", { name: /^abbonamenti$/i })).toHaveAttribute("aria-checked", "true");
+  }
   await dialog.getByRole("radio", { name: /altra data/i }).click();
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
@@ -1035,7 +1067,7 @@ test("inline amount calculator, privacy mode toggle and category drill-down work
   const dialog = page.getByRole("dialog");
   await dialog.locator("#transaction-amount").fill("12,50+4,80");
   await expect(dialog.getByTestId("amount-calc-result")).toContainText(/17,30|17\.30/);
-  await dialog.getByRole("radio", { name: /^(transportation|trasporti)$/i }).click();
+  await (await transactionCategory(page, dialog, /^(transportation|trasporti)$/i)).click();
   await dialog.locator("#transaction-description").fill("Taxi condiviso");
   await dialog.getByRole("button", { name: /17,30|17\.30/ }).click();
   await expect(dialog).toBeHidden();
