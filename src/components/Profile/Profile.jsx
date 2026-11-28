@@ -19,7 +19,6 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import Sheet from "../ui/sheet";
 import Switch from "../ui/switch";
-import BackButton from "../Planning/BackButton.jsx";
 import { SettingsGroup, SettingsRow, InlineSegmented } from "./SettingsList.jsx";
 import { CategoriesSheet, DownloadAppSheet, EmailSheet, ExportSheet, InstallSheet, MonthStartSheet, NameSheet, PasswordSheet, QuickAddSheet } from "./ProfileSheets.jsx";
 import UpdateChecker from "../Update/UpdateChecker";
@@ -339,7 +338,6 @@ const Profile = () => {
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5 md:space-y-6">
       <header className="mobile-glass-header flex items-center gap-2">
-        <BackButton />
         <h1 className="text-[1.75rem] font-extrabold leading-tight md:text-3xl">{t("profilePage.title")}</h1>
       </header>
 
