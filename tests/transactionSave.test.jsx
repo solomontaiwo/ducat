@@ -27,6 +27,8 @@ vi.mock("../src/components/Profile/Profile.jsx", async () => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   delete navigator.connection;
 });
 
@@ -47,6 +49,44 @@ it("focuses the dialog itself when it opens, so no control shows a focus ring", 
   const dialog = await screen.findByRole("dialog");
   await waitFor(() => expect(document.activeElement).toBe(dialog));
   expect(screen.getByRole("radio", { name: "transactionModal.expense" })).not.toHaveFocus();
+});
+
+it("reveals the focused field when the form's scrollable area shrinks", () => {
+  const observers = [];
+  vi.stubGlobal("ResizeObserver", class {
+    constructor(callback) { this.callback = callback; observers.push(this); }
+    observe(target) { this.target = target; }
+    disconnect() {}
+  });
+  let frame;
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => { frame = callback; return 1; });
+  vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+  render(<TransactionModal show onClose={() => {}} />);
+  const description = screen.getByLabelText("transactionModal.description");
+  const fields = description.closest(".overflow-y-auto");
+  const observer = observers.find((item) => item.target === fields);
+  expect(observer).toBeDefined();
+  vi.spyOn(fields, "getBoundingClientRect").mockReturnValue({ top: 100 });
+  vi.spyOn(description, "getBoundingClientRect").mockReturnValue({ top: 290, bottom: 340 });
+  Object.defineProperty(fields, "clientHeight", { value: 200, configurable: true });
+  description.focus();
+  observer.callback();
+  act(() => frame());
+  expect(fields.scrollTop).toBe(48);
+});
+
+it("waits for the native keyboard to hide before closing the transaction modal", () => {
+  vi.stubEnv("MODE", "mobile");
+  const onClose = vi.fn();
+  render(<TransactionModal show onClose={onClose} />);
+  const description = screen.getByLabelText("transactionModal.description");
+  description.focus();
+  fireEvent(window, new Event("keyboardWillShow"));
+  fireEvent.click(screen.getByRole("button", { name: "common.close" }));
+  expect(onClose).not.toHaveBeenCalled();
+  expect(description).not.toHaveFocus();
+  fireEvent(window, new Event("keyboardDidHide"));
+  expect(onClose).toHaveBeenCalledTimes(1);
 });
 
 it("keeps the real form mounted and retains values and request ID after a failed save", async () => {

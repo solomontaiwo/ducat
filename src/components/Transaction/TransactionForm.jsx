@@ -97,12 +97,41 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
   const [submitting, setSubmitting] = useState(false);
   const requestIdRef = useRef(crypto.randomUUID());
   const amountInputRef = useRef(null);
+  const fieldsRef = useRef(null);
   const [formData, setFormData] = useState(() => initialState(transaction, expenseCategories, incomeCategories, preferences, initialDraft));
   const [showDatePicker, setShowDatePicker] = useState(false);
   // Once the user picks a category by hand, suggestions stop overriding it.
   const [categoryTouched, setCategoryTouched] = useState(() => Boolean(initialDraft?.category));
   const { transactions: history } = useUnifiedTransactions();
   const [repeat, setRepeat] = useState(DEFAULT_REPEAT);
+
+  useEffect(() => {
+    const fields = fieldsRef.current;
+    if (!fields) return undefined;
+    let frame;
+    const revealFocusedField = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const field = document.activeElement;
+        if (!fields.contains(field) || !field.matches("input, textarea, [contenteditable='true']")) return;
+        const bounds = fields.getBoundingClientRect();
+        const fieldBounds = field.getBoundingClientRect();
+        const top = bounds.top + fields.clientTop;
+        const bottom = top + fields.clientHeight;
+        if (fieldBounds.bottom > bottom) fields.scrollTop += fieldBounds.bottom - bottom + 8;
+        else if (fieldBounds.top < top) fields.scrollTop += fieldBounds.top - top - 8;
+      });
+    };
+    // The native keyboard can resize this area after the field receives focus.
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(revealFocusedField);
+    observer?.observe(fields);
+    fields.addEventListener("focusin", revealFocusedField);
+    return () => {
+      observer?.disconnect();
+      fields.removeEventListener("focusin", revealFocusedField);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
 
   // Reset whenever another transaction is opened in the same form instance.
   const transactionKey = transaction?.id || (initialDraft ? `draft:${JSON.stringify(initialDraft)}` : "new");
@@ -276,7 +305,7 @@ const TransactionForm = ({ transaction, initialDraft, onSubmit, onCancel, idPref
       {/* One column; two on wide but short screens, so nothing needs
           scrolling there: how much and when on the left (type, amount, date,
           repeat), what on the right (description, category). */}
-      <div className="flex-1 space-y-6 overflow-y-auto px-5 pb-6 pt-1 short:space-y-4 short:pb-4 wideshort:grid wideshort:grid-cols-2 wideshort:grid-rows-[auto_1fr] wideshort:items-start wideshort:gap-x-8 wideshort:gap-y-4 wideshort:space-y-0">
+      <div ref={fieldsRef} className="flex-1 space-y-6 overflow-y-auto px-5 pb-6 pt-1 short:space-y-4 short:pb-4 wideshort:grid wideshort:grid-cols-2 wideshort:grid-rows-[auto_1fr] wideshort:items-start wideshort:gap-x-8 wideshort:gap-y-4 wideshort:space-y-0">
         <div className="space-y-6 short:space-y-4 wideshort:col-start-1 wideshort:row-start-1">
         <div
           role="radiogroup"

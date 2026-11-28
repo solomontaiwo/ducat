@@ -1160,6 +1160,7 @@ test("table preference survives the detail panel and falls back to cards on a ph
 });
 
 test("transaction modal opens centered on desktop and animates open and close", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto(".");
   await page.getByRole("button", { name: /try (the )?demo|prova (la )?demo/i }).first().click();
   await expect(page).toHaveURL(/\/transactions$/);
@@ -1179,6 +1180,14 @@ test("transaction modal opens centered on desktop and animates open and close", 
   if (isPhone) {
     expect(Math.abs(box.x)).toBeLessThanOrEqual(2);
     expect(Math.abs(box.width - viewport.width)).toBeLessThanOrEqual(2);
+    const overlay = page.locator(".dialog-overlay-full-sheet");
+    const colors = await Promise.all([dialog, overlay].map((element) => element.evaluate((el) => getComputedStyle(el).backgroundColor)));
+    expect(colors[0]).toBe(colors[1]);
+    expect(colors[0]).not.toMatch(/^rgba\(/);
+    await page.locator("html").evaluate((el) => el.classList.add("dark"));
+    const darkColors = await Promise.all([dialog, overlay].map((element) => element.evaluate((el) => getComputedStyle(el).backgroundColor)));
+    expect(darkColors[0]).toBe(darkColors[1]);
+    expect(darkColors[0]).not.toMatch(/^rgba\(/);
   } else {
     expect(Math.abs((box.x + box.width / 2) - viewport.width / 2)).toBeLessThanOrEqual(2);
     expect(Math.abs((box.y + box.height / 2) - viewport.height / 2)).toBeLessThanOrEqual(2);
@@ -1201,6 +1210,11 @@ test("transaction modal opens centered on desktop and animates open and close", 
   }));
   await page.keyboard.press("Escape");
   expect(await closeAnimationPromise).toBe(isPhone ? "dialog-sheet-out" : "dialog-pop-out");
+  if (isPhone) {
+    const overlay = page.locator(".dialog-overlay-full-sheet");
+    await expect(overlay).toHaveAttribute("data-state", "closed");
+    expect(await overlay.evaluate((el) => getComputedStyle(el).animationDelay)).toBe("0.2s");
+  }
   await expect(dialog).toBeHidden();
 });
 
